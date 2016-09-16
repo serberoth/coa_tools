@@ -133,8 +133,8 @@ class COAModal(bpy.types.Operator):
             self.sprite_object = get_sprite_object(context.active_object)
             
             self.set_scaling(active_object,event)
-            if self.sprite_object != None and context.scene.coa_nla_mode == "ACTION":
-                self.set_frame_bounds_and_actions(context)
+#            if self.sprite_object != None and context.scene.coa_nla_mode == "ACTION":
+#                self.set_frame_bounds_and_actions(context)
             
             screen = context.screen
             if screen.coa_view == "2D":
