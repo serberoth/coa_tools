@@ -291,7 +291,7 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
                     row.label(text="", icon="BONE_DATA")
                     row.separator()
                     row.prop(context.active_bone,'name',text="")
-                    if context.active_object.mode != "EDIT":
+                    if context.active_object.mode != "EDIT" and get_addon_prefs(context).json_export:
                         box = layout.box()
                         row = box.row(align=True)
                         if sprite_object.coa_show_export_box:
