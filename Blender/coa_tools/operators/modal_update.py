@@ -178,7 +178,8 @@ class COAModal(bpy.types.Operator):
                         if obj != None and "coa_sprite":
                             obj.coa_sprite_dimension = Vector((get_local_dimension(obj)[0],0,get_local_dimension(obj)[1]))
                     
-            self.obj_mode_hist = str(obj.mode)
+            if obj != None:        
+                self.obj_mode_hist = str(obj.mode)
                 
         if active_object != None and (self.check_event_value(event) in ["JUST_PRESSED","PRESSED"] and event.type == "G") and active_object.type == "ARMATURE" and active_object.mode == "POSE":
             bpy.context.window_manager.coa_update_uv = True
