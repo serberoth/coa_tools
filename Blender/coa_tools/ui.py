@@ -426,6 +426,9 @@ class CutoutAnimationTools(bpy.types.Panel):
             row = layout.row(align=True)
             op = row.operator("wm.coa_create_ortho_cam",text="Reset Camera Resolution",icon="OUTLINER_DATA_CAMERA")
             op.create = False
+            
+            row = layout.row(align=True)
+            row.operator("coa_tools.align_camera",text="Align 2D Camera",icon="ALIGN")
         
         if context.active_object == None or (context.active_object != None and context.active_object.mode not in ["EDIT","WEIGHT_PAINT"]):
             row = layout.row(align=True)
@@ -684,7 +687,8 @@ class CutoutAnimationCollections(bpy.types.Panel):
                 action_name += "_"    
             final_path = os.path.join(os.path.dirname(context.scene.render.filepath),action_name)
             context.scene.render.filepath = final_path
-            
+
+    
     def set_nla_mode(self,context):
         sprite_object = get_sprite_object(context.active_object)
         children = get_children(context,sprite_object,ob_list=[])

@@ -177,7 +177,7 @@ class COAModal(bpy.types.Operator):
                     for obj in context.selected_objects:
                         if obj != None and "coa_sprite":
                             obj.coa_sprite_dimension = Vector((get_local_dimension(obj)[0],0,get_local_dimension(obj)[1]))
-                    
+            
             if obj != None:        
                 self.obj_mode_hist = str(obj.mode)
                 
