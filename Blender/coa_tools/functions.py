@@ -211,8 +211,9 @@ def set_action(context,item=None):
     sprite_object = get_sprite_object(context.active_object)
     if item == None:
         item = sprite_object.coa_anim_collections[sprite_object.coa_anim_collections_index]
-
-    for child in get_children(context,sprite_object,ob_list=[]):
+    
+    children = get_children(context,sprite_object,ob_list=[])
+    for child in children:
         if child.animation_data != None:
             child.animation_data.action = None
             
@@ -437,7 +438,7 @@ def set_uv_default_coords(context,obj):
     if len(uv_coords) < len(obj.coa_uv_default_state):
         for i in range(len(obj.coa_uv_default_state) - len(uv_coords)):
             obj.coa_uv_default_state.remove(0)
-    
+
     ### set default uv coords
     frame_size = Vector((1 / obj.coa_tiles_x,1 / obj.coa_tiles_y))
     pos_x = frame_size.x * (obj.coa_sprite_frame % obj.coa_tiles_x)
@@ -446,12 +447,11 @@ def set_uv_default_coords(context,obj):
     offset = Vector((0,1-(1/obj.coa_tiles_y)))
     
     
-    for i,coord in enumerate(uv_coords):
-        
+    for i,coord in enumerate(uv_coords):    
         uv_vec_x = (coord.uv[0] - frame[0]) * obj.coa_tiles_x 
         uv_vec_y = (coord.uv[1] - offset[1] - frame[1]) * obj.coa_tiles_y
         uv_vec = Vector((uv_vec_x,uv_vec_y)) 
-        obj.coa_uv_default_state[i].uv = uv_vec
+        obj.coa_uv_default_state[i].uv = uv_vec   
                         
 def update_uv(context,obj):
     if "coa_sprite" in obj and obj.mode == "OBJECT":        
@@ -479,7 +479,12 @@ def update_verts(context,obj):
         
         mode_prev = obj.mode
         
+        
+        hide = bool(obj.coa_hide_base_sprite)
+        obj.coa_hide_base_sprite = False
         obj.coa_dimensions_old = Vector(obj.dimensions)
+        obj.coa_hide_base_sprite = hide    
+        
         
         spritesheet = obj.material_slots[0].material.texture_slots[0].texture.image
         assign_tex_to_uv(spritesheet,obj.data.uv_textures[0])
