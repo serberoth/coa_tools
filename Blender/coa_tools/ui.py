@@ -675,7 +675,16 @@ class CutoutAnimationCollections(bpy.types.Panel):
                 set_z_value(context,obj,obj.coa_z_value)
                 set_modulate_color(obj,context,obj.coa_modulate_color)
         
-    
+        ### set export name
+        if scene.coa_nla_mode == "ACTION":
+            action_name = sprite_object.coa_anim_collections[sprite_object.coa_anim_collections_index].name    
+            if action_name in ["Restpose","NO ACTION"]:
+                action_name = ""
+            else:
+                action_name += "_"    
+            final_path = os.path.join(os.path.dirname(context.scene.render.filepath),action_name)
+            context.scene.render.filepath = final_path
+            
     def set_nla_mode(self,context):
         sprite_object = get_sprite_object(context.active_object)
         children = get_children(context,sprite_object,ob_list=[])
