@@ -381,4 +381,52 @@ class CreateNlaTrack(bpy.types.Operator):
                     
                     
         return {"FINISHED"}
+    
+    
+class BatchRender(bpy.types.Operator):
+    bl_idname = "coa_tools.batch_render"
+    bl_label = "Batch Render"
+    bl_description = ""
+    bl_options = {"REGISTER"}
+
+    @classmethod
+    def poll(cls, context):
+        return True
+
+    def invoke(self, context, event):
+        scene = context.scene
+        obj = context.active_object
+        sprite_object = get_sprite_object(obj)
+        if sprite_object != None:
+            idx = int(sprite_object.coa_anim_collections_index)
+            
+            for i in range(len(sprite_object.coa_anim_collections)):
+                anim_name = sprite_object.coa_anim_collections[i].name
+                if anim_name not in ["NO ACTION","Restpose"]:
+                    sprite_object.coa_anim_collections_index = i
+                    set_action(context,item= sprite_object.coa_anim_collections[i])
+                    bpy.context.scene.frame_start = 0
+                    bpy.context.scene.frame_end = sprite_object.coa_anim_collections[sprite_object.coa_anim_collections_index].frame_end
+                    
+                    path = context.scene.render.filepath.replace("\\","/")
+                    dirpath = path[:path.rfind("/")]
+                    final_path = dirpath + "/" + anim_name + "_"
+                    context.scene.render.filepath = final_path
+                    
+                    bpy.ops.render.render(animation=True,write_still=True,use_viewport=True,scene=context.scene.name)
+
+            sprite_object.coa_anim_collections_index = idx
+                    
+        
+        ### open render path
+        path = context.scene.render.filepath.replace("\\","/")
+        dirpath = path[:path.rfind("/")]
+        dirpath = dirpath.replace("/","")
+        basename = os.path.basename(bpy.data.filepath)
+        blend_path = bpy.data.filepath.partition(basename)[0]
+        output = os.path.join(blend_path,dirpath)
+        print(blend_path,dirpath)
+        bpy.ops.wm.path_open(filepath = output)    
+        return {"FINISHED"}
+            
                         
