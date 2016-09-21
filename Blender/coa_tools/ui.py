@@ -528,6 +528,7 @@ class CutoutAnimationTools(bpy.types.Panel):
                 row2.prop(scene,"coa_lock_to_bounds",text="Draw only within Bounds",icon="LOCKVIEW_ON")
             else:
                 row2.prop(scene,"coa_lock_to_bounds",text="Draw everywhere",icon="LOCKVIEW_OFF")
+                
 
 ### Custom template_list look
 class UIListAnimationCollections(bpy.types.UIList):
@@ -684,8 +685,10 @@ class CutoutAnimationCollections(bpy.types.Panel):
             if action_name in ["Restpose","NO ACTION"]:
                 action_name = ""
             else:
-                action_name += "_"    
-            final_path = os.path.join(os.path.dirname(context.scene.render.filepath),action_name)
+                action_name += "_"
+            path = context.scene.render.filepath.replace("\\","/")
+            dirpath = path[:path.rfind("/")]
+            final_path = dirpath + "/" + action_name
             context.scene.render.filepath = final_path
 
     
@@ -764,5 +767,8 @@ class CutoutAnimationCollections(bpy.types.Panel):
                 row = layout.row(align=True)
                 row.prop(sprite_object.coa_anim_collections[sprite_object.coa_anim_collections_index],"frame_end",text="Animation Length")
                 #row.prop(sprite_object.coa_anim_collections[sprite_object.coa_anim_collections_index],"frame_end",text="End")    
+            
+            row = layout.row(align=True)
+            row.operator("coa_tools.batch_render",text="Batch Render",icon="RENDER_ANIMATION")        
 
 preview_collections = {}
