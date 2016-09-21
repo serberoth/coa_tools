@@ -394,6 +394,17 @@ class BatchRender(bpy.types.Operator):
         return True
 
     def invoke(self, context, event):
+        ### open render path
+        path = context.scene.render.filepath.replace("\\","/")
+        dirpath = path[:path.rfind("/")]
+        dirpath = dirpath.replace("/","")
+        basename = os.path.basename(bpy.data.filepath)
+        blend_path = bpy.data.filepath.partition(basename)[0]
+        output = os.path.join(blend_path,dirpath)
+        print(blend_path,dirpath)
+        bpy.ops.wm.path_open(filepath = output)    
+        
+        
         scene = context.scene
         obj = context.active_object
         sprite_object = get_sprite_object(obj)
@@ -413,20 +424,7 @@ class BatchRender(bpy.types.Operator):
                     final_path = dirpath + "/" + anim_name + "_"
                     context.scene.render.filepath = final_path
                     
-                    bpy.ops.render.render(animation=True,write_still=True,use_viewport=True,scene=context.scene.name)
+                    bpy.ops.render.render(animation=True,write_still=False,use_viewport=True,scene=context.scene.name)
 
             sprite_object.coa_anim_collections_index = idx
-                    
-        
-        ### open render path
-        path = context.scene.render.filepath.replace("\\","/")
-        dirpath = path[:path.rfind("/")]
-        dirpath = dirpath.replace("/","")
-        basename = os.path.basename(bpy.data.filepath)
-        blend_path = bpy.data.filepath.partition(basename)[0]
-        output = os.path.join(blend_path,dirpath)
-        print(blend_path,dirpath)
-        bpy.ops.wm.path_open(filepath = output)    
         return {"FINISHED"}
-            
-                        
