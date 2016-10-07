@@ -335,18 +335,18 @@ function path_button(){
     }
 }    
 
-var win = new Window("dialog", 'Json Exporter '+exporter_version, [0,0,445,160]);
+var win = new Window("dialog", 'Json Exporter'+exporter_version, [0,0,445,157], );
 with(win){
-	win.export_path = add( "edittext", [85,15,365,35], 'export_path' );
+	win.export_path = add( "edittext", [85,15,365,35], undefined );
 	win.sText = add( "statictext", [5,20,75,40], 'Export Path:' );
 	win.limit_layer = add( "checkbox", [5,70,180,90], 'Limit layers by Document' );
-	win.crop_layers = add( "checkbox", [5,90,180,90], 'Crop Layers' );
-	win.center_sprites = add( "checkbox", [5,110,180,90], 'Center Sprites in Blender' );
-	win.export_json = add( "checkbox", [5,130,180,90], 'Export Json File' );
-	win.export_button = add( "button", [340,130,440,112], 'Export Layers' );
-	win.export_name = add( "edittext", [85,40,440,60], 'export_name' );
+	win.center_sprites = add( "checkbox", [5,110,180,130], 'Center Sprites in Blender' );
+	win.export_button = add( "button", [340,130,440,152], 'Export Layers' );
+	win.export_name = add( "edittext", [85,40,440,60], undefined );
 	win.sText2 = add( "statictext", [5,45,85,65], 'Export Name:' );
 	win.button_path = add( "button", [370,13,440,35], 'select' );
+	win.export_json = add( "checkbox", [5,130,180,150], 'Export Json File' );
+	win.crop_layers = add( "checkbox", [5,90,180,110], 'Crop Layers' );
 	}
 win.export_path.text = app.activeDocument.info.caption;
 win.export_name.text = app.activeDocument.info.captionWriter;
