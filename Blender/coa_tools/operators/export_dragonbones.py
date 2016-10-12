@@ -534,6 +534,7 @@ class DragonBonesExport(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
 
     filter_glob = StringProperty(default="*.json",options={'HIDDEN'},)
     bake_anim = BoolProperty(name="Bake Animation", description="If checked, keyframes will be set for each frame. This is good if the Animation has to look exactly as in Blender.",default=False)
+    reduce_size = BoolProperty(name="Reduce Export Size", description="Reduces the export size by writing all data into one row.",default=True)
     
     sprite_object = None
     armature = None
@@ -630,8 +631,11 @@ class DragonBonesExport(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
         db_json["armature"] = []
         db_json["armature"].append(armature)
         db_json["name"] = self.sprite_object.name
-        json_file = json.dumps(db_json, indent="\t", sort_keys=False)
-        #json_file = json.dumps(db_json,separators=(',',':'))
+        
+        if self.reduce_size:
+            json_file = json.dumps(db_json,separators=(',',':'))
+        else:    
+            json_file = json.dumps(db_json, indent="\t", sort_keys=False)
         
         text_file = open(self.filepath, "w")
         text_file.write(json_file)
