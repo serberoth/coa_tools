@@ -52,6 +52,7 @@ class CreateSlotObject(bpy.types.Operator):
     
     def execute(self, context):
         #obj = bpy.data.objects[context.active_object.name]
+        init_obj = bpy.data.objects[context.active_object.name] 
         obj = context.active_object.copy()
         context.scene.objects.link(obj)
         context.scene.objects.active = obj
@@ -71,6 +72,10 @@ class CreateSlotObject(bpy.types.Operator):
                         item = obj.coa_slot[sprite.data.name]
                     item.name = sprite.data.name
                     item.index = len(obj.coa_slot)-1
+                    if sprite == init_obj:
+                        obj.coa_slot_index =  item.index
+                        obj.coa_slot_reset_index =  item.index
+                        
                     
                     item["active"] = False
         for sprite in objs:        

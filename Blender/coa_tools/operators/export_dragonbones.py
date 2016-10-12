@@ -52,6 +52,16 @@ armature = {
             "skin":[{"name":"","slot":[]}]
            }
 
+animation = {
+            "bone": [],
+            "frame": [],
+            "slot": [],
+            "playTimes": 0,
+            "name": "Anim Name",
+            "ffd": [],
+            "duration": 0
+            }
+    
 skin = OrderedDict()
 skin = {
         "name":"",
@@ -76,6 +86,137 @@ display = [
             }
         ]
 
+
+bone_default_states = {}
+
+### get objs and bones that are keyed on given frame         
+
+def bone_key_on_frame(bone,frame,action):
+    for fcurve in action.fcurves:
+        if bone.name in fcurve.data_path:
+            for keyframe in fcurve.keyframe_points:
+                if keyframe.co[0] == frame:
+                    return True
+    return False            
+
+def sprite_key_on_frame(sprite,frame,action):
+    for fcurve in action.fcurves:
+        for keyframe in fcurve.keyframe_points:
+            if keyframe.co[0] == frame:
+                return True
+    return False        
+
+def get_animation_data(context,sprite_object,armature,bake_anim):
+    m = Matrix() ### inverted posebone origin matrix
+    m.row[0] = [0,0,1,0]
+    m.row[1] = [1,0,0,0]
+    m.row[2] = [0,1,0,0]
+    m.row[3] = [0,0,0,1]
+    
+    data = []
+    scale = 1/get_addon_prefs(context).sprite_import_export_scale
+    anims = sprite_object.coa_anim_collections
+    for anim in anims:
+        anim_data = animation.copy()
+        anim_data["name"] = anim.name
+        anim_data["duration"] = anim.frame_end
+        anim_data["playTimes"] = 1
+        anim_data["bone"] = []
+        anim_data["slot"] = []
+        
+        if anim.name not in ["NO ACTION"]:
+            set_action(context,item=anims[1])
+            context.scene.update()
+            
+            set_action(context,item=anim)
+            context.scene.update()
+            objs = get_children(context,sprite_object,ob_list=[])
+            for obj in objs:
+                if obj.animation_data != None and obj.animation_data.action != None:
+                    action = obj.animation_data.action
+                    ### get keyframes for Bones (Position, Rotation, Scale)
+                    if obj.type == "ARMATURE":
+                        ### loop over all bones and get data
+                        for bone in obj.data.bones:
+                            bone_data = {}
+                            bone_data["name"] = bone.name
+                            bone_data["frame"] = []
+                            ### loop over action framerange
+                            for f in range(0,anim.frame_end+1):
+                                bpy.context.scene.frame_set(f)
+                                ### if bone has a keyframe on frame -> store data
+                                if bone_key_on_frame(bone,f,action) or bake_anim:
+                                    pose_bone = armature.pose.bones[bone.name]
+                                    
+                                    frame_data = {}
+                                    frame_data["duration"] = f
+                                    if len(bone_data["frame"]) > 0:
+                                        idx = len(bone_data["frame"])-1
+                                        bone_data["frame"][idx]["duration"] = f - bone_data["frame"][idx]["duration"] ### set duration of last keyframe
+                                    frame_data["tweenEasing"] = 0
+                                    #frame_data["curve"] = [0.25, 0.0, 0.75, 1.0]
+                                    frame_data["transform"] = {}
+                                    ### get bone position
+                                    
+                                    pos = get_bone_pos(armature,bone,scale)
+                                    pos -= bone_default_states[bone.name]
+                                    if pos != Vector((0,0)):
+                                        frame_data["transform"]["x"] = pos[0]
+                                        frame_data["transform"]["y"] = pos[1]
+                                    
+                                    ### get bone angle    
+                                    loc,rot,sca = pose_bone.matrix_basis.decompose()
+                                    
+                                    angle = rot.to_euler().z  # negate angle to fit dragonbones angle
+                                    angle = round(math.degrees(angle),2)
+            
+                                    #angle = get_bone_angle(armature,bone,relative=False)
+                                    if angle != 0:
+                                        frame_data["transform"]["skY"] = angle
+                                        frame_data["transform"]["skX"] = angle
+                                        
+                                    ### get bone scale
+                                    sca = get_bone_scale(armature,bone)
+                                    if sca != Vector((1.0,1.0,1.0)):
+                                        frame_data["transform"]["scX"] = sca[0]
+                                        frame_data["transform"]["scY"] = sca[1]
+                                    
+                                    bone_data["frame"].append(frame_data)
+                            anim_data["bone"].append(bone_data)
+                    ### get keyframes for slots (Color, Alpha, SlotIndex)
+                    elif obj.type == "MESH":
+                        slot_data = {}
+                        slot_data["name"] = obj.name
+                        slot_data["frame"] = []
+                        ### loop over action framerange
+                        for f in range(0,anim.frame_end+1):
+                            bpy.context.scene.frame_set(f)
+                            ### if slot has keyframe on frame -> store data
+                            if sprite_key_on_frame(obj,f,action) or bake_anim:
+                                frame_data = {}
+                                frame_data["duration"] = f
+                                if len(slot_data["frame"]) > 0:
+                                    idx = len(slot_data["frame"])-1
+                                    slot_data["frame"][idx]["duration"] = f - slot_data["frame"][idx]["duration"] ### set duration of last keyframe
+                                frame_data ["displayIndex"] = obj.coa_slot_index
+                                frame_data["color"] = {}
+                                frame_data["tweenEasing"] = 0.0
+                                #frame_data["curve"] = [0.5, 0.0, 0.5, 1.0]
+                                
+                                color_data = get_modulate_color(obj)
+                                #print(color_data)
+                                if color_data["rM"] != 100:
+                                    frame_data["color"]["rM"] = color_data["rM"]
+                                if color_data["gM"] != 100:
+                                    frame_data["color"]["gM"] = color_data["gM"]
+                                if color_data["bM"] != 100:
+                                    frame_data["color"]["bM"] = color_data["bM"]
+                                if color_data["aM"] != 100:
+                                    frame_data["color"]["aM"] = color_data["aM"]
+                                slot_data["frame"].append(frame_data)   
+                        anim_data["slot"].append(slot_data)
+            data.append(anim_data)
+    return data                 
 
 def get_modulate_color(sprite):
     color = sprite.coa_modulate_color
@@ -139,8 +280,6 @@ def get_skin_data(obj,tex_path,scale,armature):
     bpy.ops.object.mode_set(mode="EDIT")
     bm = bmesh.from_edit_mesh(obj.data)
     
-    print("------------------------>",tex_path)
-    
     d = OrderedDict()
     d["type"] = "mesh"
     d["name"] = tex_path
@@ -177,6 +316,7 @@ def get_skin_data(obj,tex_path,scale,armature):
         d["slotPose"] = [w,x,y,z, obj.matrix_local.to_translation()[0]*scale, -obj.matrix_local.to_translation()[2]*scale]
     
     d["transform"] = OrderedDict()
+    
     d["transform"]["x"] = obj.matrix_local.to_translation()[0]*scale
     d["transform"]["y"] = -obj.matrix_local.to_translation()[2]*scale
     d["transform"]["skX"] = math.degrees(obj.matrix_local.to_euler().y)
@@ -247,15 +387,6 @@ def get_uv_data(bm):
                 uvs.append(val)    
     return uvs
 
-### get slot data
-def get_slot_data(obj):
-    data = {}
-    data["name"] = obj.name
-    if obj.parent != None:
-        data["parent"] = obj.parent.name
-    data["color"] = {}
-    return data    
-
 def get_bone_matrix(armature,bone,relative=True):
     pose_bone = armature.pose.bones[bone.name]
     
@@ -291,35 +422,51 @@ def get_bone_matrix(armature,bone,relative=True):
     
     return mat_bone_space
         
-def get_bone_angle(armature,bone,e_bone_matrix):
-    loc, rot, scale = get_bone_matrix(armature,bone).decompose()
+def get_bone_angle(armature,bone,relative=True):
+    loc, rot, scale = get_bone_matrix(armature,bone,relative).decompose()
     compat_euler = Euler((0.0,0.0,math.pi),"XYZ")
     angle = -rot.to_euler().z  # negate angle to fit dragonbones angle
         
     return round(math.degrees(angle),2)
 
-def get_bone_pos(armature,bone,scale,e_bone_matrix):
+def get_bone_pos(armature,bone,scale):
     loc, rot, sca = get_bone_matrix(armature,bone).decompose()
     
-    return Vector((loc[1],-loc[0])) * scale # flip x and y and negate x to fit dragonbones coordinate system
+    pos_2d = Vector((loc[1],-loc[0])) * scale # flip x and y and negate x to fit dragonbones coordinate system
+    return pos_2d 
 
 def get_bone_scale(armature,bone):
     loc, rot, scale = get_bone_matrix(armature,bone).decompose()
-    return scale
+    return Vector((round(scale[0],2),round(scale[1],2),round(scale[2],2)))
  
 def get_bone_data(armature,bone,scale,e_bone_matrix):
-    pos = get_bone_pos(armature,bone,scale,e_bone_matrix)
     data = {}
     data["name"] = bone.name
     data["transform"] = {}
-    data["transform"]["x"] = pos[0]
-    data["transform"]["y"] = pos[1]
-    data["transform"]["skX"] = get_bone_angle(armature,bone,e_bone_matrix)
-    data["transform"]["skY"] = get_bone_angle(armature,bone,e_bone_matrix)
-    data["transform"]["scX"] = get_bone_scale(armature,bone)[0]
-    data["transform"]["scY"] = get_bone_scale(armature,bone)[1]
-    data["inheritRotation"] = int(bone.use_inherit_rotation)
-    data["inheritScale"] = int(bone.use_inherit_scale)
+    
+    ### get bone position
+    pos = get_bone_pos(armature,bone,scale)
+    bone_default_states[bone.name] = Vector(pos)
+    if pos != Vector((0,0)):
+        data["transform"]["x"] = pos[0]
+        data["transform"]["y"] = pos[1]
+    
+    ### get bone angle    
+    angle = get_bone_angle(armature,bone)
+    if angle != 0:
+        data["transform"]["skX"] = angle
+        data["transform"]["skY"] = angle
+        
+    ### get bone scale
+    sca = get_bone_scale(armature,bone)
+    if sca != Vector((1.0,1.0,1.0)):
+        data["transform"]["scX"] = sca[0]
+        data["transform"]["scY"] = sca[1]
+    
+    if int(bone.use_inherit_rotation) != 1:
+        data["inheritRotation"] = int(bone.use_inherit_rotation)
+    if int(bone.use_inherit_scale) != 1:    
+        data["inheritScale"] = int(bone.use_inherit_scale)
     if bone.parent != None:
         data["parent"] = bone.parent.name
     else:
@@ -333,7 +480,11 @@ def get_slot_data(obj):
     data["name"] = obj.name
     data["parent"] = obj.parent.name
     #data["color"] = {}
-    data["color"] = get_modulate_color(obj)
+    if len(obj.coa_slot) > 0:
+        data["displayIndex"] = obj.coa_slot_index
+    color = get_modulate_color(obj)
+    if color["rM"] != 100 or color["gM"] != 100 or color["bM"] != 100 or color["aM"] != 100:
+        data["color"] = color
     return data
     
 def create_texture_dir(texture_path):
@@ -372,7 +523,6 @@ def save_texture(obj,texture_path):
         rel_path = os.path.join("sprites",file_name[:file_name.rfind(".")])
         rel_path = rel_path.replace("\\","/")
         return rel_path
-        
             
 class DragonBonesExport(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
     bl_idname = "coa_tools.export_dragon_bones"
@@ -383,6 +533,7 @@ class DragonBonesExport(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
     filename_ext = ".json"
 
     filter_glob = StringProperty(default="*.json",options={'HIDDEN'},)
+    bake_anim = BoolProperty(name="Bake Animation", description="If checked, keyframes will be set for each frame. This is good if the Animation has to look exactly as in Blender.",default=False)
     
     sprite_object = None
     armature = None
@@ -402,6 +553,9 @@ class DragonBonesExport(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
         self.sprites = sorted(self.sprites, key=lambda obj: obj.location[1], reverse=True) ### sort objects based on the z depth. needed for draw order
         export_path = os.path.dirname(self.filepath)
         texture_path = os.path.join(export_path,"texture","sprites")
+        
+        
+        set_action(context,item=self.sprite_object.coa_anim_collections[1]) # set animation to restpose
         
         ### delete base sprite if hidden for export
         for sprite in self.sprites:
@@ -440,23 +594,15 @@ class DragonBonesExport(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
                 ### loop over all slots if of type "SLOT"    
                 elif sprite.coa_type == "SLOT":
                     data_name = sprite.data.name
-                    
-                    ### set active slot as first in list
-                    slot = sprite.coa_slot[sprite.coa_slot_index]
-                    data = data = bpy.data.meshes[slot.name]
-                    sprite.data = data
-                    tex_path = save_texture(sprite,texture_path)
-                    display["display"].append(get_skin_data(sprite,tex_path,self.scale,self.armature))
-                    
                     ### loop over all other slot items
                     for i,slot in enumerate(sprite.coa_slot):
-                        if i != sprite.coa_slot_index:
-                            data = bpy.data.meshes[slot.name]
-                            sprite.data = data
-                            
-                            tex_path = save_texture(sprite,texture_path)
-                            display["display"].append(get_skin_data(sprite,tex_path,self.scale,self.armature))
-                            #armature["skin"][0]["slot"].append({"name":obj.name,"display":get_skin_data(sprite,tex_path,self.scale,self.armature)})
+                        #if i != sprite.coa_slot_index:
+                        data = bpy.data.meshes[slot.name]
+                        sprite.data = data
+                        
+                        tex_path = save_texture(sprite,texture_path)
+                        display["display"].append(get_skin_data(sprite,tex_path,self.scale,self.armature))
+                        #armature["skin"][0]["slot"].append({"name":obj.name,"display":get_skin_data(sprite,tex_path,self.scale,self.armature)})
                     sprite.data = bpy.data.meshes[data_name]
                     
                 armature["skin"][0]["slot"].append(display)
@@ -475,11 +621,17 @@ class DragonBonesExport(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
                     if const.type == "IK" and const.subtarget != "":
                         armature["ik"].append(get_ik_data(self.armature,bone,const))
         
+        
+        ### get animation data
+        if len(self.sprite_object.coa_anim_collections)>0:
+            armature["animation"] = []
+            armature["animation"] = get_animation_data(context,self.sprite_object,self.armature,self.bake_anim)
             
         db_json["armature"] = []
         db_json["armature"].append(armature)
         db_json["name"] = self.sprite_object.name
         json_file = json.dumps(db_json, indent="\t", sort_keys=False)
+        #json_file = json.dumps(db_json,separators=(',',':'))
         
         text_file = open(self.filepath, "w")
         text_file.write(json_file)

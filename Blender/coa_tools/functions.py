@@ -279,6 +279,19 @@ def create_action(context,item=None,obj=None):
         obj.animation_data_create()
     obj.animation_data.action = action
     context.scene.update()
+
+def clear_pose(obj):
+    if obj.type == "ARMATURE":
+        for bone in child.pose.bones:
+            bone.scale = Vector((1,1,1))
+            bone.location = Vector((0,0,0))
+            bone.rotation_euler = Euler((0,0,0),"XYZ")
+            bone.rotation_quaternion = Euler((0,0,0),"XYZ").to_quaternion()
+    elif obj.type == "MESH":
+        obj.coa_sprite_frame = 0
+        obj.coa_alpha = 1.0
+        obj.coa_modulate_color = (1.0,1.0,1.0)
+        obj.coa_slot_index = child.coa_slot_reset_index
         
 def set_action(context,item=None):
     sprite_object = get_sprite_object(context.active_object)
@@ -300,9 +313,9 @@ def set_action(context,item=None):
             child.coa_sprite_frame = 0
             child.coa_alpha = 1.0
             child.coa_modulate_color = (1.0,1.0,1.0)
+            child.coa_slot_index = child.coa_slot_reset_index
         elif not (child.type == "MESH" and item.name == "Restpose") and context.scene.coa_nla_mode == "ACTION":
             action_name = item.name + "_" + child.name
-            
             action = None
             if action_name in bpy.data.actions:
                 action = bpy.data.actions[action_name]
@@ -311,6 +324,7 @@ def set_action(context,item=None):
                 if child.animation_data == None:
                     child.animation_data_create()
                 child.animation_data.action = action
+    context.scene.frame_set(context.scene.frame_current)
     context.scene.update()        
 
 def create_armature_parent(context):
