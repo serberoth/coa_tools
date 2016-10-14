@@ -282,7 +282,7 @@ def create_action(context,item=None,obj=None):
 
 def clear_pose(obj):
     if obj.type == "ARMATURE":
-        for bone in child.pose.bones:
+        for bone in obj.pose.bones:
             bone.scale = Vector((1,1,1))
             bone.location = Vector((0,0,0))
             bone.rotation_euler = Euler((0,0,0),"XYZ")
@@ -291,7 +291,7 @@ def clear_pose(obj):
         obj.coa_sprite_frame = 0
         obj.coa_alpha = 1.0
         obj.coa_modulate_color = (1.0,1.0,1.0)
-        obj.coa_slot_index = child.coa_slot_reset_index
+        obj["coa_slot_index"] = obj.coa_slot_reset_index
         
 def set_action(context,item=None):
     sprite_object = get_sprite_object(context.active_object)
@@ -300,6 +300,7 @@ def set_action(context,item=None):
     
     children = get_children(context,sprite_object,ob_list=[])
     for child in children:
+        clear_pose(child)
         if child.animation_data != None:
             child.animation_data.action = None
             
@@ -313,7 +314,7 @@ def set_action(context,item=None):
             child.coa_sprite_frame = 0
             child.coa_alpha = 1.0
             child.coa_modulate_color = (1.0,1.0,1.0)
-            child.coa_slot_index = child.coa_slot_reset_index
+            child["coa_slot_index"] = child.coa_slot_reset_index
         elif not (child.type == "MESH" and item.name == "Restpose") and context.scene.coa_nla_mode == "ACTION":
             action_name = item.name + "_" + child.name
             action = None

@@ -59,6 +59,21 @@ class SlotData(bpy.types.PropertyGroup):
     active = BoolProperty(update=change_slot_mesh)
     index = IntProperty()
 
+class Event(bpy.types.PropertyGroup):
+    def change_event_order(self,context):
+        events = self.id_data.coa_anim_collections[self.id_data.coa_anim_collections_index].event
+        for i,event in enumerate(events):
+            if i+1 < len(events):
+                if events[i].frame == events[i+1].frame:
+                    events.remove(i+1)
+                if events[i].frame > events[i+1].frame:
+                    events.move(i,i+1)        
+    
+    frame = IntProperty(default=0,min=0,update=change_event_order)
+    event = StringProperty(default="")
+    sound = StringProperty(default="")
+    action = StringProperty(default="")
+
 class AnimationCollections(bpy.types.PropertyGroup):
     def set_frame_start(self,context):
         bpy.context.scene.frame_start = self.frame_start
@@ -89,6 +104,8 @@ class AnimationCollections(bpy.types.PropertyGroup):
     action_collection = BoolProperty(default=False)
     frame_start = IntProperty(default=0 ,update=set_frame_start)
     frame_end = IntProperty(default=250 ,update=set_frame_end)
+    event = CollectionProperty(type=Event)
+    event_index = IntProperty(default=-1,max=-1)
         
 
 class CutoutAnimationInfo(bpy.types.Panel):
@@ -300,7 +317,6 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
     bpy.types.Object.coa_slot_index = bpy.props.IntProperty(default=0,update=change_slot_mesh,min=0)
     bpy.types.Object.coa_slot_reset_index = bpy.props.IntProperty(default=0,min=0)
     bpy.types.Object.coa_slot_show = bpy.props.BoolProperty(default=False)
-        
     
     bpy.types.WindowManager.coa_running_modal = BoolProperty(default=False)
     
@@ -415,12 +431,11 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
                 op = row.operator("my_operator.add_keyframe",text="",icon="SPACE2")
                 op.prop_name = "coa_modulate_color"
                 op.add_keyframe = True
-                op.default_interpolation = "BEZIER"
+                op.default_interpolation = "LINEAR"
                 op = row.operator("my_operator.add_keyframe",text="",icon="SPACE3")
                 op.prop_name = "coa_modulate_color"
-                op.add_keyframe = False
-                
-                                
+                op.add_keyframe = False  
+
 ######################################################################################################################################### Cutout Animation Tools Panel
 class CutoutAnimationTools(bpy.types.Panel):
     bl_space_type = 'VIEW_3D'
@@ -485,7 +500,8 @@ class CutoutAnimationTools(bpy.types.Panel):
             row = layout.row(align=True)
             row.operator("wm.coa_create_sprite_object",text="Create new Sprite Object",icon="TEXTURE_DATA")
         
-            
+            row = layout.row(align=True)
+            row.operator("coa_tools.batch_render",text="Batch Render Animations",icon="RENDER_ANIMATION")    
         
         if context.active_object != None and get_sprite_object(context.active_object) != None:
             if sprite_object.coa_edit_weights == False:
@@ -607,6 +623,25 @@ class UIListAnimationCollections(bpy.types.UIList):
             col = layout.row(align=False)
             op = col.operator("coa_operator.create_nla_track",icon="NLA",text="")
             op.anim_collection_name = item.name
+
+### Custom template_list look for event lists            
+class UIListEventCollection(bpy.types.UIList):
+    def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
+        ob = data
+        slot = item
+        col = layout.column(align=False)
+        
+        row = col.row(align=True)
+        row.label(text="",icon="TIME")
+        row.prop(item,"frame",emboss=False,text="Frame")
+        op = row.operator("coa_tools.remove_timeline_event",text="",icon="PANEL_CLOSE",emboss=False)
+        op.index = index
+        
+        row = col.row(align=True)
+        row.prop(item,"event",emboss=True,text="Event")
+        row.prop(item,"action",emboss=True,text="Action")
+        row.prop(item,"sound",emboss=True,text="Sound")
+        
         
 
 
@@ -827,10 +862,16 @@ class CutoutAnimationCollections(bpy.types.Panel):
             
             if  len(sprite_object.coa_anim_collections) > 0 and sprite_object.coa_anim_collections[sprite_object.coa_anim_collections_index].action_collection:
                 row = layout.row(align=True)
-                row.prop(sprite_object.coa_anim_collections[sprite_object.coa_anim_collections_index],"frame_end",text="Animation Length")
+                item = sprite_object.coa_anim_collections[sprite_object.coa_anim_collections_index]
+                row.prop(item,"frame_end",text="Animation Length")
+                
+                row = layout.row(align=True)
+                row.label(text="Timeline Events",icon="TIME")
+                row = layout.row(align=False)
+                row.template_list("UIListEventCollection","dummy",item, "event", item, "event_index",rows=1,maxrows=10,type='DEFAULT')
+                col = row.column(align=True)
+                col.operator("coa_tools.add_timeline_event",text="",icon="ZOOMIN")
                 #row.prop(sprite_object.coa_anim_collections[sprite_object.coa_anim_collections_index],"frame_end",text="End")    
-            
-            row = layout.row(align=True)
-            row.operator("coa_tools.batch_render",text="Batch Render",icon="RENDER_ANIMATION")        
+                
 
 preview_collections = {}
