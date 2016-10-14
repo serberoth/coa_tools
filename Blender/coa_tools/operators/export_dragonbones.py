@@ -564,7 +564,7 @@ def get_bone_scale(armature,bone):
     loc, rot, scale = get_bone_matrix(armature,bone).decompose()
     return Vector((round(scale[0],2),round(scale[1],2),round(scale[2],2)))
  
-def get_bone_data(armature,bone,scale,e_bone_matrix):
+def get_bone_data(armature,bone,scale):
     data = {}
     data["name"] = bone.name
     data["transform"] = {}
@@ -665,7 +665,6 @@ class DragonBonesExport(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
     armature = None
     sprites = None
     scale = 0.0
-    e_bone_matrix = {}
     @classmethod
     def poll(cls, context):
         return True
@@ -745,13 +744,11 @@ class DragonBonesExport(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
             armature["bone"].append({"name":self.armature.name,"transform":{}})
 
             for bone in self.armature.data.bones:
-                pose_bone = self.armature.pose.bones[bone.name]
-                if bone.name not in ignore_bones:
-                    armature["bone"].append(get_bone_data(self.armature,bone,self.scale,self.e_bone_matrix))
-                    
-                    for const in self.armature.pose.bones[bone.name].constraints:
-                        if const.type == "IK" and const.subtarget != "":
-                            armature["ik"].append(get_ik_data(self.armature,bone,const))
+                armature["bone"].append(get_bone_data(self.armature,bone,self.scale))
+                
+                for const in self.armature.pose.bones[bone.name].constraints:
+                    if const.type == "IK" and const.subtarget != "":
+                        armature["ik"].append(get_ik_data(self.armature,bone,const))
         
         
         ### get animation data
