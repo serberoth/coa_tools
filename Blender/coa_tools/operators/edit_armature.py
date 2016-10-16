@@ -461,6 +461,7 @@ class SetStretchBone(bpy.types.Operator):
         stretch_to_constraint.target = context.active_object
         stretch_to_constraint.subtarget = bone_name
         stretch_to_constraint.keep_axis = "PLANE_Z" 
+        stretch_to_constraint.volume = "VOLUME_X"
         set_bone_group(self, context.active_object, context.active_object.pose.bones[bone_name],group="stretch_to",theme = "THEME07")
         return{'FINISHED'}
 
