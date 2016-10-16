@@ -62,6 +62,8 @@ class QuickArmature(bpy.types.Operator):
         self.active_object = None
         self.armature = None
         
+        self.created_bones = []
+        
     def project_cursor(self, event):
         coord = mathutils.Vector((event.mouse_region_x, event.mouse_region_y))
         transform = bpy_extras.view3d_utils.region_2d_to_location_3d
@@ -125,6 +127,11 @@ class QuickArmature(bpy.types.Operator):
             
             bpy.ops.object.mode_set(mode='EDIT')
             bone = armature.data.edit_bones.new("Bone")
+            
+            ### store newly created editbone names -> for locking z scale for posebones later. Posebones are not available at this point yet
+            if bone.name not in self.created_bones:
+                self.created_bones.append(bone.name)
+            
             bone.head = self.armature.matrix_world.inverted() * context.scene.cursor_location
             bone.hide = True
             bone.bbone_x = .05
@@ -180,7 +187,7 @@ class QuickArmature(bpy.types.Operator):
                     bone.tail = Vector((bone.head[0],0,cursor_local[2]))
                 elif angle > -157.5 and angle < -112.5:
                     ### down left
-                    bone.tail = (bone.head +  Vector((mouse_vec[0],0,mouse_vec[0])))
+                        bone.tail = (bone.head +  Vector((mouse_vec[0],0,mouse_vec[0])))
                 elif angle > -112.5 and angle < -67.5:
                     ### left
                     bone.tail = Vector((cursor_local[0],0,bone.head[2]))
@@ -268,6 +275,14 @@ class QuickArmature(bpy.types.Operator):
             bpy.context.window.cursor_set("DEFAULT")
         scene = context.scene
         ob = context.active_object
+        
+        
+        ### lock posebone scale z value and then remove bone name from list
+        for bone_name in self.created_bones:
+            if bone_name in ob.pose.bones:
+                pose_bone = ob.pose.bones[bone_name]
+                pose_bone.lock_scale[2] = True
+                self.created_bones.remove(bone_name)
         
         if self.in_view_3d:
             self.mouse_press_hist = self.mouse_press
