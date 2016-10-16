@@ -1,4 +1,4 @@
-#target Photoshop
+﻿#target Photoshop
 
 var doc = app.activeDocument;
 var layers = doc.layers;
@@ -263,7 +263,7 @@ function export_sprites(export_path , export_name , crop_to_dialog_bounds , cent
                 var column_str_index = layer_name.indexOf("c=")+2;
                 var columns = Math.ceil(layer_name.substring(column_str_index,layer_name.length));
             }else{
-                var columns = Math.ceil((Math.sqrt(sprite_count)+0.5));
+                var columns = Math.ceil((Math.sqrt(sprite_count)));
             }
             tile_size = [columns,Math.ceil(sprite_count/columns)];
             var k = 0;
@@ -273,7 +273,8 @@ function export_sprites(export_path , export_name , crop_to_dialog_bounds , cent
                 }
                 sprites[j].translate(tmp_doc.width * (j%columns), tmp_doc.height * k);
             }
-
+            
+            
             extend_document_size(tmp_doc.width * columns, tmp_doc.height * (k+1));
         }
         
