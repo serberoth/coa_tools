@@ -53,6 +53,14 @@ class AddKeyframe(bpy.types.Operator):
         row = layout.row()
         row.prop(self,"interpolation",expand=True)
     
+    def set_fcurve_interpolation(self,context,sprite,data_path):
+        for fcurve in sprite.animation_data.action.fcurves:
+            if data_path in fcurve.data_path:
+                for key in fcurve.keyframe_points:
+                    if key.co[0] == context.scene.frame_current:
+                        print(self.interpolation)
+                        key.interpolation = self.interpolation
+    
     def create_keyframe(self,context,event,data_path,group=""):
         sprite = context.active_object
         sprite_object = get_sprite_object(sprite)
@@ -65,21 +73,15 @@ class AddKeyframe(bpy.types.Operator):
                             sprite.keyframe_insert(data_path,group=group)
                         else:
                             sprite.keyframe_insert(data_path)    
-                        
-                        for fcurve in sprite.animation_data.action.fcurves:
-                            if data_path in fcurve.data_path:
-                                for key in fcurve.keyframe_points:
-                                    if key.co[0] == context.scene.frame_current:
-                                        if event == None:
-                                            key.interpolation = self.interpolation
-                                        else:
-                                            key.interpolation = self.default_interpolation    
+                        self.set_fcurve_interpolation(context,sprite,data_path)
                     else:
                         create_action(context,obj=sprite)
                         if group != "":
                             sprite.keyframe_insert(data_path,group=group)
                         else:
                             sprite.keyframe_insert(data_path)   
+                        self.set_fcurve_interpolation(context,sprite,data_path)
+                            
                 self.report({'INFO'},str("Keyframe added at frame "+str(context.scene.frame_current)+"."))    
             else:
                 for sprite in context.selected_objects:
@@ -118,8 +120,10 @@ class AddKeyframe(bpy.types.Operator):
     def invoke(self,context,event):
         wm = context.window_manager
         if event.ctrl:
+            
             return wm.invoke_props_dialog(self)
         else:
+            self.interpolation = self.default_interpolation
             self.execute(context)
             return {'FINISHED'}
             
