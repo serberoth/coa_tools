@@ -708,10 +708,9 @@ def draw_children(self,context,sprite_object,layout,box,row,col,children,obj):
                     op.mode = "object"
                     op.ob_name = child.name
                     
-                    if child.type == "MESH":
-                        op = row.operator("import.coa_reimport_sprite",text="",icon="FILE_REFRESH",emboss=False)
-                        op.name = child.name
-                    
+#                    if child.type == "MESH":
+#                        op = row.operator("import.coa_reimport_sprite",text="",icon="FILE_REFRESH",emboss=False)
+#                        op.name = child.name
                     
                     if child.coa_favorite:
                         row.prop(child,"coa_favorite",emboss=False,text="",icon="SOLO_ON")
