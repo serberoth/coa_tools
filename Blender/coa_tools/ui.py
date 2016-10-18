@@ -508,7 +508,9 @@ class CutoutAnimationTools(bpy.types.Panel):
                 if context.active_object.mode != "EDIT":
                     row = layout.row(align=True)
                     row.operator("import.coa_import_sprites",text="Import Sprites",icon="IMASEL")
-                    
+                    if context.active_object.type == "MESH":
+                        row.operator("import.coa_reimport_sprite",text="Reimport Sprite",icon="FILE_REFRESH")
+                        
                     if get_addon_prefs(context).json_export:
                         row = layout.row()
                         row.operator("object.export_to_json",text="Export Json",icon="EXPORT",emboss=True)
