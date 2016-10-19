@@ -142,7 +142,7 @@ def sprite_key_on_frame(sprite,frame,action):
                 return True
     return False        
 
-def get_animation_data(context,sprite_object,armature,bake_anim):
+def get_animation_data(context,sprite_object,armature,bake_anim,bake_interval):
     m = Matrix() ### inverted posebone origin matrix
     m.row[0] = [0,0,1,0]
     m.row[1] = [1,0,0,0]
@@ -184,7 +184,7 @@ def get_animation_data(context,sprite_object,armature,bake_anim):
                                 for f in range(0,anim.frame_end+1):
                                     bpy.context.scene.frame_set(f)
                                     ### if bone has a keyframe on frame -> store data
-                                    if (bone_key_on_frame(bone,f,action) or bake_anim or f == 0):
+                                    if (bone_key_on_frame(bone,f,action) or (bake_anim and f%bake_interval == 0) or f == 0):
                                         
                                         frame_data = {}
                                         frame_data["duration"] = f
@@ -231,7 +231,7 @@ def get_animation_data(context,sprite_object,armature,bake_anim):
                         for f in range(0,anim.frame_end+1):
                             bpy.context.scene.frame_set(f)
                             ### if slot has keyframe on frame -> store data
-                            if sprite_key_on_frame(obj,f,action) or bake_anim or f == 0:
+                            if sprite_key_on_frame(obj,f,action) or (bake_anim and f%bake_interval == 0) or f == 0:
                                 frame_data = {}
                                 frame_data["duration"] = f
                                 if len(slot_data["frame"]) > 0:
@@ -272,7 +272,7 @@ def get_animation_data(context,sprite_object,armature,bake_anim):
                     for f in range(0,anim.frame_end+1):
                         bpy.context.scene.frame_set(f)
                         
-                        if f in keyframes or f == 0 or bake_anim:
+                        if f in keyframes or f == 0 or (bake_anim and f%bake_interval == 0 and len(keyframes)>0):
                             ffd_frame_data = {}
                             ffd_frame_data["duration"] = f
                             ffd_frame_data["tweenEasing"] = 0
@@ -659,7 +659,9 @@ class DragonBonesExport(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
 
     filter_glob = StringProperty(default="*.json",options={'HIDDEN'},)
     bake_anim = BoolProperty(name="Bake Animation", description="If checked, keyframes will be set for each frame. This is good if the Animation has to look exactly as in Blender.",default=False)
+    bake_interval = IntProperty(name="Bake Interval",default=1,min=1)
     reduce_size = BoolProperty(name="Reduce Export Size", description="Reduces the export size by writing all data into one row.",default=True)
+    
     
     sprite_object = None
     armature = None
@@ -668,7 +670,15 @@ class DragonBonesExport(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
     @classmethod
     def poll(cls, context):
         return True
-
+    
+    def draw(self,context):
+        layout = self.layout
+        col = layout.column()
+        col.prop(self,"bake_anim",text="Bake Animation")
+        if self.bake_anim:
+            col.prop(self,"bake_interval",text="Bake Interval")
+        col.prop(self,"reduce_size",text="Reduce Export Size")
+    
     def execute(self, context):
         bpy.ops.ed.undo_push(message="Export Undo")
         self.scale = 1/get_addon_prefs(context).sprite_import_export_scale
@@ -744,6 +754,9 @@ class DragonBonesExport(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
             armature["bone"].append({"name":self.armature.name,"transform":{}})
 
             for bone in self.armature.data.bones:
+                pose_bone = self.armature.pose.bones[bone.name]
+
+                #if bone.name not in ignore_bones:
                 armature["bone"].append(get_bone_data(self.armature,bone,self.scale))
                 
                 for const in self.armature.pose.bones[bone.name].constraints:
@@ -754,7 +767,7 @@ class DragonBonesExport(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
         ### get animation data
         if len(self.sprite_object.coa_anim_collections)>0:
             armature["animation"] = []
-            armature["animation"] = get_animation_data(context,self.sprite_object,self.armature,self.bake_anim)
+            armature["animation"] = get_animation_data(context,self.sprite_object,self.armature,self.bake_anim,self.bake_interval)
             
         db_json["armature"] = []
         db_json["armature"].append(armature)
