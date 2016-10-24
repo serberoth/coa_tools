@@ -398,9 +398,10 @@ class BatchRender(bpy.types.Operator):
         basename = os.path.basename(bpy.data.filepath)
         blend_path = bpy.data.filepath.partition(basename)[0]
         output = os.path.join(blend_path,dirpath)
-        print(blend_path,dirpath)
-        bpy.ops.wm.path_open(filepath = output)    
         
+        if not os.path.isdir(output):
+            os.makedirs(output)
+        bpy.ops.wm.path_open(filepath = output)
         
         scene = context.scene
         obj = context.active_object
