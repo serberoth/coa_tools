@@ -477,6 +477,9 @@ class CutoutAnimationTools(bpy.types.Panel):
         scene = context.scene    
         screen = context.screen
         
+        pcoll = preview_collections["main"]
+        db_icon = pcoll["db_icon"]
+        
         row = layout.row(align=True)
         row.prop(screen,"coa_view",expand=True)
         
@@ -515,7 +518,7 @@ class CutoutAnimationTools(bpy.types.Panel):
                         row.operator("object.export_to_json",text="Export Json",icon="EXPORT",emboss=True)
                     
                     row = layout.row()
-                    row.operator("coa_tools.export_dragon_bones",text="Export Dragonbones",icon="EXPORT",emboss=True)
+                    row.operator("coa_tools.export_dragon_bones",text="Export Dragonbones",icon_value=db_icon.icon_id,emboss=True)
                     
                     row = layout.row()
                     row.operator("coa_tools.create_slot_object",text="Merge to Slot Object",icon="IMASEL",emboss=True)

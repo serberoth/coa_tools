@@ -96,6 +96,7 @@ def register():
     my_icons_dir = os.path.join(os.path.dirname(__file__),"icons")
     pcoll.load("donate_icon", os.path.join(my_icons_dir,"donate_icon.png"),'IMAGE')
     pcoll.load("twitter_icon", os.path.join(my_icons_dir,"twitter_icon.png"),'IMAGE')
+    pcoll.load("db_icon", os.path.join(my_icons_dir,"db_icon.png"),'IMAGE')
     
     preview_collections["main"] = pcoll
     
