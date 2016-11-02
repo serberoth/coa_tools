@@ -678,17 +678,14 @@ def save_texture(obj,texture_path):
         
         file_name = src_path[src_path.rfind("/")+1:]
         dst_path = os.path.join(texture_path, file_name)
+            
+        if os.path.isfile(dst_path):
+            os.remove(dst_path)
         if os.path.isfile(src_path):
-            if os.path.isfile(dst_path):
-                os.remove(dst_path)
             copyfile(src_path,dst_path)
         else:
             img.save_render(dst_path)
-                
 
-            
-        
-        
         rel_path = os.path.join("sprites",file_name[:file_name.rfind(".")])
         rel_path = rel_path.replace("\\","/")
         return rel_path
