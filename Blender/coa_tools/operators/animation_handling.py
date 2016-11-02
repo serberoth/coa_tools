@@ -401,7 +401,7 @@ class BatchRender(bpy.types.Operator):
         
         if not os.path.isdir(output):
             os.makedirs(output)
-        bpy.ops.wm.path_open(filepath = output)
+        bpy.ops.wm.path_open(filepath = output)    
         
         scene = context.scene
         obj = context.active_object

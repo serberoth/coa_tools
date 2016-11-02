@@ -49,7 +49,6 @@ class SlotData(bpy.types.PropertyGroup):
         self["active"] = True
         if self.active:
             #obj.data = bpy.data.meshes[self.name]
-            print(obj.name)
             obj.coa_slot_index = self.index
             for slot in obj.coa_slot:
                 if slot != self:

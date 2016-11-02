@@ -30,6 +30,7 @@ from shutil import copyfile
 
 db_json = OrderedDict()
 db_json = {
+                    "info":"Generated with COA Tools",
                     "frameRate": 24,
                     "isGlobal": 0,
                     "name": "Project Name",
@@ -87,7 +88,8 @@ display = [
         ]
 
 
-bone_default_states = {}
+bone_default_pos = {}
+bone_default_rot = {}
 default_vert_coords = {}
 texture_pathes = {}
 ignore_bones = []
@@ -175,6 +177,7 @@ def get_animation_data(context,sprite_object,armature,bake_anim,bake_interval):
                     if obj.type == "ARMATURE":
                         ### loop over all bones and get data
                         for bone in obj.data.bones:
+                                
                             pose_bone = armature.pose.bones[bone.name]
                             if bone.name not in ignore_bones:
                                 bone_data = {}
@@ -197,18 +200,14 @@ def get_animation_data(context,sprite_object,armature,bake_anim,bake_interval):
                                         ### get bone position
                                         
                                         pos = get_bone_pos(armature,bone,scale)
-                                        pos -= bone_default_states[bone.name]
+                                        pos -= bone_default_pos[bone.name]
                                         if pos != Vector((0,0)):
                                             frame_data["transform"]["x"] = pos[0]
                                             frame_data["transform"]["y"] = pos[1]
                                         
                                         ### get bone angle    
-                                        loc,rot,sca = pose_bone.matrix_basis.decompose()
-                                        
-                                        angle = rot.to_euler().z  # negate angle to fit dragonbones angle
-                                        angle = round(math.degrees(angle),2)
-                
-                                        #angle = get_bone_angle(armature,bone,relative=False)
+                                        angle = get_bone_angle(armature,bone)
+                                        angle -= bone_default_rot[bone.name]
                                         if angle != 0:
                                             frame_data["transform"]["skY"] = angle
                                             frame_data["transform"]["skX"] = angle
@@ -332,7 +331,12 @@ def get_ik_data(armature,bone,const):
     return data
  
 def get_bone_index(armature,bone_name):
-    for i,bone in enumerate(armature.data.bones):
+    armature_bones = []
+    for bone in armature.data.bones:
+        if bone.name not in ignore_bones:
+            armature_bones.append(bone)
+    
+    for i,bone in enumerate(armature_bones):#enumerate(armature.data.bones):
         if bone_name == bone.name:
             return i
 
@@ -357,7 +361,15 @@ def get_weight_data(obj,armature):
             
             if group["group_name"] not in bone_names:
                 bone_names.append(group["group_name"])
-    for i,bone in enumerate(armature.data.bones):
+    
+    armature_bones = []
+    for bone in armature.data.bones:
+        if bone.name not in ignore_bones:
+            armature_bones.append(bone)
+        else:
+            print(bone.name)    
+                
+    for i,bone in enumerate(armature_bones):#enumerate(armature.data.bones):
         if bone.name in bone_names:
             bone = armature.data.bones[bone.name]            
             bones.append({"index":i,"bone":bone})
@@ -571,13 +583,14 @@ def get_bone_data(armature,bone,scale):
     
     ### get bone position
     pos = get_bone_pos(armature,bone,scale)
-    bone_default_states[bone.name] = Vector(pos)
+    bone_default_pos[bone.name] = Vector(pos)
     if pos != Vector((0,0)):
         data["transform"]["x"] = pos[0]
         data["transform"]["y"] = pos[1]
     
     ### get bone angle    
     angle = get_bone_angle(armature,bone)
+    bone_default_rot[bone.name] = angle
     if angle != 0:
         data["transform"]["skX"] = angle
         data["transform"]["skY"] = angle
@@ -715,11 +728,11 @@ class DragonBonesExport(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
         
         for sprite in self.sprites:
             if sprite.type == "MESH":
-                ### find export bones that have to be ignored
-                bones = get_shapekey_driver(sprite)[1]
-                for bone in bones:
-                    if bone.name not in ignore_bones:
-                        ignore_bones.append(bone.name)
+#                ### find export bones that have to be ignored
+#                bones = get_shapekey_driver(sprite)[1]
+#                for bone in bones:
+#                    if bone.name not in ignore_bones:
+#                        ignore_bones.append(bone.name)
                 
                 
                 armature["slot"].append(get_slot_data(sprite))
@@ -756,12 +769,12 @@ class DragonBonesExport(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
             for bone in self.armature.data.bones:
                 pose_bone = self.armature.pose.bones[bone.name]
 
-                #if bone.name not in ignore_bones:
-                armature["bone"].append(get_bone_data(self.armature,bone,self.scale))
-                
-                for const in self.armature.pose.bones[bone.name].constraints:
-                    if const.type == "IK" and const.subtarget != "":
-                        armature["ik"].append(get_ik_data(self.armature,bone,const))
+                if bone.name not in ignore_bones:
+                    armature["bone"].append(get_bone_data(self.armature,bone,self.scale))
+                    
+                    for const in self.armature.pose.bones[bone.name].constraints:
+                        if const.type == "IK" and const.subtarget != "":
+                            armature["ik"].append(get_ik_data(self.armature,bone,const))
         
         
         ### get animation data

@@ -139,8 +139,6 @@ def unregister():
     bpy.app.handlers.load_post.remove(coa_startup)
     
     unregister_keymaps()
-    
-
          
 @persistent
 def update_sprites(dummy):

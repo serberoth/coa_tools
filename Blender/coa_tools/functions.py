@@ -267,7 +267,6 @@ def create_action(context,item=None,obj=None):
         obj = context.active_object
         
     action_name = item.name + "_" + obj.name
-    print(action_name)
     
     if action_name not in bpy.data.actions:
         action = bpy.data.actions.new(action_name)
@@ -604,11 +603,12 @@ def set_modulate_color(obj,context,color):
             obj.material_slots[0].material.use_object_color = True
         obj.color[:3] = color    
 
-def change_slot_mesh(obj,context,index):    
-    slot = obj.coa_slot[obj.coa_slot_index]
-    mesh_name = obj.coa_slot[obj.coa_slot_index].name
-    obj.data = bpy.data.meshes[mesh_name]
-    set_alpha(obj,context,obj.coa_alpha)
+def change_slot_mesh(obj,context,index):
+    if obj.coa_slot_index <= len(obj.coa_slot):
+        slot = obj.coa_slot[obj.coa_slot_index]
+        mesh_name = obj.coa_slot[obj.coa_slot_index].name
+        obj.data = bpy.data.meshes[mesh_name]
+        set_alpha(obj,context,obj.coa_alpha)
             
 def display_children(self, context, obj):
     layout = self.layout
