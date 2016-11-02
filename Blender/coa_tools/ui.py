@@ -263,20 +263,11 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
         hide_base_sprite(self)            
     
     def change_slot_mesh(self,context):
-        slot_len = len(self.coa_slot)-1
-        if self.coa_slot_index > slot_len:
-            self.coa_slot_index = min(self.coa_slot_index,len(self.coa_slot)-1)
-        else:    
-            slot = self.coa_slot[self.coa_slot_index]
-            obj = slot.id_data
-            mesh_name = obj.coa_slot[self.coa_slot_index].name
-            obj.data = bpy.data.meshes[mesh_name]
-            set_alpha(obj,context,obj.coa_alpha)
-            for slot2 in obj.coa_slot:
-                if slot != slot2:
-                    slot2["active"] = False
-                else:
-                    slot2["active"] = True
+        
+        self.coa_slot_index_last = -1
+        self.coa_slot_index_last = self.coa_slot_index
+        
+        change_slot_mesh_data(context,self)
         
     bpy.types.Object.coa_dimensions_old = FloatVectorProperty()
     bpy.types.Object.coa_sprite_dimension = FloatVectorProperty()
@@ -314,6 +305,7 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
     bpy.types.Object.coa_modulate_color_last = FloatVectorProperty(default=(1.0,1.0,1.0),min=0.0,max=1.0,soft_min=0.0,soft_max=1.0,size=3,subtype="COLOR")
     bpy.types.Object.coa_type = EnumProperty(name="Object Type",default="MESH",items=(("SPRITE","Sprite","Sprite"),("MESH","Mesh","Mesh"),("SLOT","Slot","Slot")))
     bpy.types.Object.coa_slot_index = bpy.props.IntProperty(default=0,update=change_slot_mesh,min=0)
+    bpy.types.Object.coa_slot_index_last = bpy.props.IntProperty()
     bpy.types.Object.coa_slot_reset_index = bpy.props.IntProperty(default=0,min=0)
     bpy.types.Object.coa_slot_show = bpy.props.BoolProperty(default=False)
     

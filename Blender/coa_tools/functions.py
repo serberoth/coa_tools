@@ -551,8 +551,7 @@ def update_uv(context,obj):
         offset = Vector((0,1-(1/obj.coa_tiles_y)))
         
         for i,coord in enumerate(obj.data.uv_layers[obj.data.uv_layers.active.name].data):
-            coord.uv = Vector((obj.coa_uv_default_state[i].uv[0] / obj.coa_tiles_x , obj.coa_uv_default_state[i].uv[1]/ obj.coa_tiles_y)) + frame + offset
-      
+            coord.uv = Vector((obj.coa_uv_default_state[i].uv[0] / obj.coa_tiles_x , obj.coa_uv_default_state[i].uv[1]/ obj.coa_tiles_y)) + frame + offset     
         
 def update_verts(context,obj):
     if "coa_sprite" in obj:
@@ -602,6 +601,22 @@ def set_modulate_color(obj,context,color):
         if not obj.material_slots[0].material.use_object_color:
             obj.material_slots[0].material.use_object_color = True
         obj.color[:3] = color    
+
+def change_slot_mesh_data(context,obj):
+    slot_len = len(obj.coa_slot)-1
+    if obj.coa_slot_index > slot_len:
+        obj.coa_slot_index = min(obj.coa_slot_index,len(obj.coa_slot)-1)
+    else:    
+        slot = obj.coa_slot[obj.coa_slot_index]
+        obj = slot.id_data
+        mesh_name = obj.coa_slot[obj.coa_slot_index].name
+        obj.data = bpy.data.meshes[mesh_name]
+        set_alpha(obj,context,obj.coa_alpha)
+        for slot2 in obj.coa_slot:
+            if slot != slot2:
+                slot2["active"] = False
+            else:
+                slot2["active"] = True 
 
 def change_slot_mesh(obj,context,index):
     if obj.coa_slot_index <= len(obj.coa_slot):

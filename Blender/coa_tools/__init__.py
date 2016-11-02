@@ -159,6 +159,9 @@ def update_sprites(dummy):
             if obj.coa_sprite_frame != obj.coa_sprite_frame_last:
                 update_uv(bpy.context,obj)
                 obj.coa_sprite_frame_last = obj.coa_sprite_frame
+            if obj.coa_slot_index != obj.coa_slot_index_last:
+                change_slot_mesh_data(context,obj)
+                obj.coa_slot_index_last = obj.coa_slot_index
             if obj.coa_alpha != obj.coa_alpha_last:
                 set_alpha(obj,bpy.context,obj.coa_alpha)
                 obj.coa_alpha_last = obj.coa_alpha
@@ -200,7 +203,10 @@ def scene_update(dummy):
                 if "coa_sprite" in obj and obj.animation_data != None and obj.type == "MESH":
                     if obj.coa_sprite_frame != obj.coa_sprite_frame_last:
                         update_uv(bpy.context,obj)
-                        obj.coa_sprite_frame_last = obj.coa_sprite_frame 
+                        obj.coa_sprite_frame_last = obj.coa_sprite_frame
+                    if obj.coa_slot_index != obj.coa_slot_index_last:
+                        change_slot_mesh_data(context,obj)
+                        obj.coa_slot_index_last = obj.coa_slot_index
                     if ticker%5 == 0:
                         if obj.coa_alpha != obj.coa_alpha_last:
                             set_alpha(obj,bpy.context,obj.coa_alpha)

@@ -111,6 +111,22 @@ def get_shapekey_driver(obj):
                         bone_drivers.append(bone)           
     return armature, bone_drivers
 
+def get_sprite_driver(obj):
+    bone_drivers = []
+    armature = None
+    if obj.animation_data != None:
+        for driver in obj.animation_data.drivers:
+            if driver.data_path in ["coa_slot_index","coa_alpha","coa_modulate_color"]:
+                for var in driver.driver.variables:
+                    armature = var.targets[0].id
+                    if armature != None:
+                        bone_target = var.targets[0].bone_target
+                        if bone_target in armature.data.bones:
+                            bone = armature.data.bones[bone_target]
+                            bone_drivers.append(bone)
+    return armature, bone_drivers
+
+
 def get_bone_keyframe_pos(armature, bones):
     action = None
     keyframes = []    
@@ -142,7 +158,7 @@ def sprite_key_on_frame(sprite,frame,action):
         for keyframe in fcurve.keyframe_points:
             if keyframe.co[0] == frame:
                 return True
-    return False        
+    return False
 
 def get_animation_data(context,sprite_object,armature,bake_anim,bake_interval):
     m = Matrix() ### inverted posebone origin matrix
@@ -162,7 +178,6 @@ def get_animation_data(context,sprite_object,armature,bake_anim,bake_interval):
         anim_data["bone"] = []
         anim_data["slot"] = []
         anim_data["ffd"] = []
-        
         if anim.name not in ["NO ACTION"]:
             set_action(context,item=anims[1])
             context.scene.update()
@@ -171,8 +186,10 @@ def get_animation_data(context,sprite_object,armature,bake_anim,bake_interval):
             context.scene.update()
             objs = get_children(context,sprite_object,ob_list=[])
             for obj in objs:
-                if obj.animation_data != None and obj.animation_data.action != None:
-                    action = obj.animation_data.action
+                if obj.animation_data != None:# and obj.animation_data.action != None:
+                    action = None
+                    if obj.animation_data.action != None:
+                        action = obj.animation_data.action
                     ### get keyframes for Bones (Position, Rotation, Scale)
                     if obj.type == "ARMATURE":
                         ### loop over all bones and get data
@@ -187,7 +204,7 @@ def get_animation_data(context,sprite_object,armature,bake_anim,bake_interval):
                                 for f in range(0,anim.frame_end+1):
                                     bpy.context.scene.frame_set(f)
                                     ### if bone has a keyframe on frame -> store data
-                                    if (bone_key_on_frame(bone,f,action) or (bake_anim and f%bake_interval == 0) or f == 0):
+                                    if (action != None and (bone_key_on_frame(bone,f,action)) or (bake_anim and f%bake_interval == 0) or f == 0):
                                         
                                         frame_data = {}
                                         frame_data["duration"] = f
@@ -226,11 +243,27 @@ def get_animation_data(context,sprite_object,armature,bake_anim,bake_interval):
                         slot_data = {}
                         slot_data["name"] = obj.name
                         slot_data["frame"] = []
+                        
+                        ### get sprite property driver bones
+                        arm, bones = get_sprite_driver(obj)
+                        arm_action = None
+                        if arm != None and arm.animation_data != None:
+                            arm_action = arm.animation_data.action
+                        
                         ### loop over action framerange
                         for f in range(0,anim.frame_end+1):
                             bpy.context.scene.frame_set(f)
+                            
+                            ### check if property is manipulated by a bone driver
+                            bone_key = False
+                            if arm != None and arm_action != None:
+                                for bone in bones:
+                                    if bone_key_on_frame(bone,f,arm_action):
+                                        bone_key = True
+                                        break    
+                                    
                             ### if slot has keyframe on frame -> store data
-                            if sprite_key_on_frame(obj,f,action) or (bake_anim and f%bake_interval == 0) or f == 0:
+                            if (action != None and sprite_key_on_frame(obj,f,action)) or (bake_anim and f%bake_interval == 0) or f == 0 or bone_key:
                                 frame_data = {}
                                 frame_data["duration"] = f
                                 if len(slot_data["frame"]) > 0:
@@ -242,7 +275,7 @@ def get_animation_data(context,sprite_object,armature,bake_anim,bake_interval):
                                 #frame_data["curve"] = [0.5, 0.0, 0.5, 1.0]
                                 
                                 color_data = get_modulate_color(obj)
-                                #print(color_data)
+
                                 if color_data["rM"] != 100:
                                     frame_data["color"]["rM"] = color_data["rM"]
                                 if color_data["gM"] != 100:
@@ -365,9 +398,7 @@ def get_weight_data(obj,armature):
     armature_bones = []
     for bone in armature.data.bones:
         if bone.name not in ignore_bones:
-            armature_bones.append(bone)
-        else:
-            print(bone.name)    
+            armature_bones.append(bone)   
                 
     for i,bone in enumerate(armature_bones):#enumerate(armature.data.bones):
         if bone.name in bone_names:
