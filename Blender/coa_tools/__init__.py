@@ -179,7 +179,7 @@ def update_sprites(dummy):
         sprite_object = get_sprite_object(context.active_object)
         if sprite_object != None and sprite_object.coa_animation_loop:
             if context.scene.frame_current > context.scene.frame_end:
-                context.scene.frame_current = 0
+                context.scene.frame_current = context.scene.frame_start
 
 
 ticker = 0

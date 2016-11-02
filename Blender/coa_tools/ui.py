@@ -850,9 +850,10 @@ class CutoutAnimationCollections(bpy.types.Panel):
             row = layout.row()
             row.prop(scene,"coa_nla_mode",expand=True)
             
-            row = layout.row(align=True)
-            row.prop(scene,"coa_frame_start")
-            row.prop(scene,"coa_frame_end")
+            if scene.coa_nla_mode == "NLA":
+                row = layout.row(align=True)
+                row.prop(scene,"coa_frame_start")
+                row.prop(scene,"coa_frame_end")
             
             row = layout.row()
             row.template_list("UIListAnimationCollections","dummy",sprite_object, "coa_anim_collections", sprite_object, "coa_anim_collections_index",rows=1,maxrows=10,type='DEFAULT')
