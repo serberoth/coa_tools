@@ -605,7 +605,7 @@ def set_modulate_color(obj,context,color):
 def change_slot_mesh_data(context,obj):
     slot_len = len(obj.coa_slot)-1
     if obj.coa_slot_index > slot_len:
-        obj.coa_slot_index = min(obj.coa_slot_index,len(obj.coa_slot)-1)
+        obj["coa_slot_index"] = min(obj.coa_slot_index,len(obj.coa_slot))
     else:    
         slot = obj.coa_slot[obj.coa_slot_index]
         obj = slot.id_data
@@ -619,7 +619,7 @@ def change_slot_mesh_data(context,obj):
                 slot2["active"] = True 
 
 def change_slot_mesh(obj,context,index):
-    if obj.coa_slot_index <= len(obj.coa_slot):
+    if obj.coa_slot_index <= len(obj.coa_slot)-1:
         slot = obj.coa_slot[obj.coa_slot_index]
         mesh_name = obj.coa_slot[obj.coa_slot_index].name
         obj.data = bpy.data.meshes[mesh_name]

@@ -96,6 +96,138 @@ ignore_bones = []
 ### get objs and bones that are keyed on given frame         
 
 
+def generate_texture_atlas(context,objs,atlas_name,width,height):
+    ### create new atlas Image
+    atlas = bpy.data.images.new(atlas_name,width,height,alpha=True)
+    
+    ### deselect objects
+    for obj in context.scene.objects:
+        obj.select = False
+        
+    ### select given objects    
+    for obj in objs:
+        mesh_data = []
+        ### get all mesh names if from type slot. Otherwise just append the obj mesh name 
+        if obj.coa_type == "MESH":
+            mesh_data.append(obj.data.name)
+        elif obj.coa_type == "SLOT":
+            for slot in obj.coa_slot:
+                mesh_data.append(slot.name)
+        ### loop over all mesh names        
+        for i,name in enumerate(mesh_data):
+            obj.data = bpy.data.meshes[name]
+            ob_data = obj.data.copy()
+            name = obj.name+"_atlas"
+            new_ob = obj.copy()
+            new_ob.data = ob_data
+            new_ob.name = name
+            new_ob.matrix_world = obj.matrix_world
+            context.scene.objects.link(new_ob)
+            
+            new_ob.select = True
+            context.scene.objects.active = new_ob
+            
+            
+            for group in new_ob.vertex_groups:
+                new_ob.vertex_groups.remove(group)
+            
+            ### generate vertex group with containing vertices    
+            group_name = obj.name + "_coa_slot_"+obj.data.name ### append vertex group with object and meshname
+            new_ob.vertex_groups.new(name=group_name)
+            bpy.ops.object.mode_set(mode="EDIT")  
+            bpy.ops.mesh.reveal()
+            bpy.ops.mesh.select_all(action='SELECT')
+            bpy.ops.object.vertex_group_assign()
+            bpy.ops.object.mode_set(mode="OBJECT")
+            if new_ob.active_shape_key != None:#new_ob.data.shape_keys != None and len(new_ob.data.shape_keys.key_blocks) > 0:
+                bpy.ops.object.shape_key_remove(all=True)  
+                
+            ### set active uv as default uv
+            for mat in obj.data.materials:
+                for tex_slot in mat.texture_slots:
+                    if tex_slot != None:
+                        if tex_slot.texture != None:
+                            tex_slot.uv_layer = new_ob.data.uv_textures.active.name
+                    
+    
+    ### join all selected objects into one 
+    bpy.ops.object.join()
+    obj = context.active_object
+    
+    ### generate new uv map item
+    bpy.ops.object.mode_set(mode="EDIT")
+    bpy.ops.mesh.reveal()
+    uv_map = obj.data.uv_textures.new(name="COA_ATLAS")
+    uv_map.active_render = True
+    obj.data.uv_textures.active = uv_map
+    
+    ### create uv layout
+    bpy.ops.uv.unwrap(method='ANGLE_BASED', margin=0.01)
+    bpy.ops.object.mode_set(mode="OBJECT")
+    
+    for vert in obj.data.uv_textures["COA_ATLAS"].data:
+        vert.image = atlas
+        
+    bpy.ops.object.mode_set(mode="EDIT")
+    bpy.ops.uv.unwrap(method='ANGLE_BASED', margin=0.01)
+    bpy.ops.object.mode_set(mode="OBJECT")
+    
+    ### bake texture into new uv layout
+    context.scene.render.bake_type = "TEXTURE"
+    bpy.ops.object.bake_image()
+    
+    bpy.context.scene.update()
+    
+    ### separate mesh parts into single objects and copy uv data to original sprites
+    bpy.ops.object.mode_set(mode="EDIT")
+    bpy.ops.mesh.select_all(action='DESELECT')
+    bpy.ops.object.mode_set(mode="OBJECT")
+    
+    for group in obj.vertex_groups:
+        tmp_sprite = None
+        for vert in obj.data.vertices:
+            for group2 in vert.groups:
+                if group2.group == group.index:
+                    vert.select = True
+        ### separate mesh
+        bpy.ops.object.mode_set(mode="EDIT")
+        bpy.ops.mesh.separate(type='SELECTED')
+        bpy.ops.object.mode_set(mode="OBJECT")
+        
+        ### set proper selection to copy uv data
+        obj.select = False
+        tmp_sprite = bpy.context.selected_objects[0]
+        context.scene.objects.active = tmp_sprite
+        sprite = bpy.data.objects[group.name.split("_coa_slot_")[0]]
+        sprite.data = bpy.data.meshes[group.name.split("_coa_slot_")[1]]
+        sprite.select = True
+        
+        ### generate new atlas uv layout and make it active for final sprites
+        if "COA_ATLAS" in sprite.data.uv_textures:
+            uv_map = sprite.data.uv_textures["COA_ATLAS"]
+        else:    
+            uv_map = sprite.data.uv_textures.new(name="COA_ATLAS")
+        sprite.data.uv_textures.active = uv_map
+        
+        ### copy uv data from tmp sprites to original sprite
+        bpy.ops.object.join_uvs()
+        
+        ### assign atlas texture to verts in edit mode
+        for vert in sprite.data.uv_textures.active.data:
+            vert.image = atlas
+        
+        ### restore selections
+        context.scene.objects.active = obj
+        obj.select = True
+        tmp_sprite.select = False
+        sprite.select = False
+        
+        ### delete tmp sprite
+        bpy.context.scene.objects.unlink(tmp_sprite)
+        bpy.data.objects.remove(tmp_sprite)
+    bpy.context.scene.objects.unlink(obj)
+    bpy.data.objects.remove(obj)
+
 def get_shapekey_driver(obj):
     bone_drivers = []
     armature = None
@@ -409,7 +541,7 @@ def get_weight_data(obj,armature):
                 
     
 ### get skin data
-def get_skin_data(obj,tex_path,scale,armature):
+def get_skin_data(obj,tex_path,scale,armature,texture_atlas=False):
     context = bpy.context
     obj.select = True
     context.scene.objects.active = obj
@@ -423,8 +555,12 @@ def get_skin_data(obj,tex_path,scale,armature):
     d["type"] = "mesh"
     d["name"] = tex_path
     d["user_edges"] = []
-    d["width"] = get_img_tex(obj).size[0]
-    d["height"] = get_img_tex(obj).size[1]
+    if not texture_atlas:
+        d["width"] = get_img_tex(obj).size[0]
+        d["height"] = get_img_tex(obj).size[1]
+    else:
+        d["width"] = bpy.data.images[tex_path.split("/")[1]].size[0]
+        d["height"] = bpy.data.images[tex_path.split("/")[1]].size[1]
     
     verts = get_mixed_vertex_data(obj,store_tmp=True)
     d["vertices"] = convert_vertex_data(verts)
@@ -678,9 +814,9 @@ def save_texture(obj,texture_path):
         
         file_name = src_path[src_path.rfind("/")+1:]
         dst_path = os.path.join(texture_path, file_name)
-            
         if os.path.isfile(dst_path):
             os.remove(dst_path)
+            
         if os.path.isfile(src_path):
             copyfile(src_path,dst_path)
         else:
@@ -702,7 +838,9 @@ class DragonBonesExport(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
     bake_anim = BoolProperty(name="Bake Animation", description="If checked, keyframes will be set for each frame. This is good if the Animation has to look exactly as in Blender.",default=False)
     bake_interval = IntProperty(name="Bake Interval",default=1,min=1)
     reduce_size = BoolProperty(name="Reduce Export Size", description="Reduces the export size by writing all data into one row.",default=True)
-    
+    generate_atlas = BoolProperty(name="Generate Texture Atlas",description="Generates a Texture Atlas to reduce size and bundle all graphics in one Image",default=True)
+    atlas_size = EnumProperty(name="Atlas Size",items=(("AUTOMATIC","Automatic","Automatic"),("MANUAL","Manual","Manual")))
+    atlas_dimension = IntVectorProperty(name="Dimension",size=2,default=(512,512))
     
     sprite_object = None
     armature = None
@@ -719,6 +857,18 @@ class DragonBonesExport(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
         if self.bake_anim:
             col.prop(self,"bake_interval",text="Bake Interval")
         col.prop(self,"reduce_size",text="Reduce Export Size")
+        
+        if self.generate_atlas:
+            box = col.box()
+        else:
+            box = col    
+        box.prop(self,"generate_atlas",text="Generate Texture Atlas")
+        if self.generate_atlas:
+            row = box.row()
+            row.prop(self,"atlas_size",text="Atlas Size",expand=True)
+            if self.atlas_size == "MANUAL":
+                row = box.row()
+                row.prop(self,"atlas_dimension",text="")
     
     def execute(self, context):
         bpy.ops.ed.undo_push(message="Export Undo")
@@ -741,11 +891,19 @@ class DragonBonesExport(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
                     sprite.select = True
                     remove_base_mesh(sprite)
         
+        ### if generate atlas is toggled a texture atlas is generated
+        if self.generate_atlas:            
+            sprites = []            
+            for sprite in self.sprites:
+                if sprite.type == "MESH":
+                    sprites.append(sprite)
+            name = self.sprite_object.name+"_atlas"
+            generate_texture_atlas(context,sprites,name,self.atlas_dimension[0],self.atlas_dimension[1])
+            bpy.data.images[name].save_render(os.path.join(texture_path,name+".png"))
         
         create_texture_dir(texture_path)
         
         armature["slot"] = []
-        
         
         skin = OrderedDict()
         skin = {
@@ -762,16 +920,19 @@ class DragonBonesExport(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
 #                    if bone.name not in ignore_bones:
 #                        ignore_bones.append(bone.name)
                 
-                
                 armature["slot"].append(get_slot_data(sprite))
-                
                 
                 display = {"name":sprite.name,"display":[]}
                 
                 ### export mesh directly when of type "MESH"
                 if sprite.coa_type == "MESH":
-                    tex_path = save_texture(sprite,texture_path)
-                    display["display"].append(get_skin_data(sprite,tex_path,self.scale,self.armature))
+                    if not self.generate_atlas:
+                        tex_path = save_texture(sprite,texture_path)
+                    else:
+                        
+                        tex_path = os.path.join("sprites",self.sprite_object.name+"_atlas")
+                        tex_path = tex_path.replace("\\","/")
+                    display["display"].append(get_skin_data(sprite,tex_path,self.scale,self.armature,texture_atlas=self.generate_atlas))
                     
                 ### loop over all slots if of type "SLOT"    
                 elif sprite.coa_type == "SLOT":
@@ -781,8 +942,13 @@ class DragonBonesExport(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
                         data = bpy.data.meshes[slot.name]
                         sprite.data = data
                         
-                        tex_path = save_texture(sprite,texture_path)
-                        display["display"].append(get_skin_data(sprite,tex_path,self.scale,self.armature))
+                        if not self.generate_atlas:
+                            tex_path = save_texture(sprite,texture_path)
+                        else:
+                            
+                            tex_path = os.path.join("sprites",self.sprite_object.name+"_atlas")
+                            tex_path = tex_path.replace("\\","/")
+                        display["display"].append(get_skin_data(sprite,tex_path,self.scale,self.armature,texture_atlas=self.generate_atlas))
                     sprite.data = bpy.data.meshes[data_name]
                     
                 armature["skin"][0]["slot"].append(display)
