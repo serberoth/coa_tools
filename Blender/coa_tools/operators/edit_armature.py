@@ -130,6 +130,7 @@ class QuickArmature(bpy.types.Operator):
             
             ### tag bones that will be locked
             bone["lock_z"] = True
+            bone["lock_rot"] = True
             
             bone.head = self.armature.matrix_world.inverted() * context.scene.cursor_location
             bone.hide = True
@@ -283,6 +284,12 @@ class QuickArmature(bpy.types.Operator):
                     pose_bone = ob.pose.bones[bone.name]
                     pose_bone.lock_scale[2] = True
                     del bone["lock_z"]
+            if "lock_rot" in bone:
+                if bone.name in ob.pose.bones:
+                    pose_bone = ob.pose.bones[bone.name]
+                    pose_bone.lock_rotation[0] = True
+                    pose_bone.lock_rotation[1] = True
+                    del bone["lock_rot"]        
         
         if self.in_view_3d:
             self.mouse_press_hist = self.mouse_press
