@@ -125,7 +125,7 @@ class QuickArmature(bpy.types.Operator):
         if armature != None:
             
             bpy.ops.object.mode_set(mode='EDIT')
-            bone = armature.data.edit_bones.new("Bone_tmp")
+            bone = armature.data.edit_bones.new("Bone")
             #print(bone.name)
             
             ### tag bones that will be locked
