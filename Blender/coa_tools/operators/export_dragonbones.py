@@ -93,10 +93,27 @@ bone_default_rot = {}
 default_vert_coords = {}
 texture_pathes = {}
 ignore_bones = []
-### get objs and bones that are keyed on given frame         
 
 
-def generate_texture_atlas(context,objs,atlas_name,width,height):
+def get_uv_bounds(uv):
+    top = 0
+    left = 1
+    right = 0
+    bottom = 1
+    for vert in uv.data:
+        if vert.uv.x < left:
+            left = float(vert.uv.x)
+        if vert.uv.x > right:
+            right = float(vert.uv.x)
+        if vert.uv.y > top:
+            top = float(vert.uv.y)
+        if vert.uv.y < bottom:
+            bottom = float(vert.uv.y)
+    scale_x = 1/(right-left)
+    scale_y = 1/(top-bottom)
+    return ((left,top),(right,bottom)),(scale_x,scale_y)
+
+def generate_texture_atlas(context,objs,atlas_name,width,height,atlas_size,unwrap_method,island_margin):
     ### create new atlas Image
     atlas = bpy.data.images.new(atlas_name,width,height,alpha=True)
     
@@ -162,28 +179,29 @@ def generate_texture_atlas(context,objs,atlas_name,width,height):
     obj.data.uv_textures.active = uv_map
     
     ### create uv layout
-    bpy.ops.uv.unwrap(method='ANGLE_BASED', margin=0.01)
+    bpy.ops.uv.unwrap(method='ANGLE_BASED', margin=island_margin)
+
     bpy.ops.object.mode_set(mode="OBJECT")
     
     for vert in obj.data.uv_textures["COA_ATLAS"].data:
         vert.image = atlas
         
     bpy.ops.object.mode_set(mode="EDIT")
-    bpy.ops.uv.unwrap(method='ANGLE_BASED', margin=0.01)
+    if unwrap_method == "ANGLE_BASED":
+        bpy.ops.uv.unwrap(method='ANGLE_BASED', margin=island_margin)
+    elif unwrap_method == "SMART_UV":
+        bpy.ops.uv.smart_project(island_margin=island_margin,use_aspect=True, stretch_to_bounds=False)
+
+    
     bpy.ops.object.mode_set(mode="OBJECT")
-    
-    ### bake texture into new uv layout
-    context.scene.render.bake_type = "TEXTURE"
-    bpy.ops.object.bake_image()
-    
-    bpy.context.scene.update()
     
     ### separate mesh parts into single objects and copy uv data to original sprites
     bpy.ops.object.mode_set(mode="EDIT")
     bpy.ops.mesh.select_all(action='DESELECT')
     bpy.ops.object.mode_set(mode="OBJECT")
     
-    for group in obj.vertex_groups:
+    tmp_sprites = []
+    for i,group in enumerate(obj.vertex_groups):
         tmp_sprite = None
         for vert in obj.data.vertices:
             for group2 in vert.groups:
@@ -197,10 +215,20 @@ def generate_texture_atlas(context,objs,atlas_name,width,height):
         ### set proper selection to copy uv data
         obj.select = False
         tmp_sprite = bpy.context.selected_objects[0]
+        tmp_sprites.append(tmp_sprite)
         context.scene.objects.active = tmp_sprite
         sprite = bpy.data.objects[group.name.split("_coa_slot_")[0]]
         sprite.data = bpy.data.meshes[group.name.split("_coa_slot_")[1]]
         sprite.select = True
+        
+        ### calc autoatic texture size
+        if i == 0 and atlas_size == "AUTOMATIC":
+            bounds,atlas_scale = get_uv_bounds(tmp_sprite.data.uv_layers["COA_ATLAS"])
+            image_size = tmp_sprite.data.uv_textures[0].data[0].image.size
+            width = image_size[0] * atlas_scale[0]
+            height = image_size[1] * atlas_scale[1]
+            atlas.generated_width = width
+            atlas.generated_height = height
         
         ### generate new atlas uv layout and make it active for final sprites
         if "COA_ATLAS" in sprite.data.uv_textures:
@@ -222,11 +250,40 @@ def generate_texture_atlas(context,objs,atlas_name,width,height):
         tmp_sprite.select = False
         sprite.select = False
         
+        
+        
         ### delete tmp sprite
-        bpy.context.scene.objects.unlink(tmp_sprite)
-        bpy.data.objects.remove(tmp_sprite)
+        #bpy.context.scene.objects.unlink(tmp_sprite)
+        #bpy.data.objects.remove(tmp_sprite)
+    
+    obj = context.active_object
     bpy.context.scene.objects.unlink(obj)
     bpy.data.objects.remove(obj)
+    
+    ####
+    for obj in context.scene.objects:
+        obj.select = False
+    for obj in tmp_sprites:
+        obj.select = True
+        context.scene.objects.active = obj
+    
+    
+    bpy.ops.object.join()
+    obj = context.active_object
+    
+    ### bake texture into new uv layout
+    for vert in obj.data.uv_textures["COA_ATLAS"].data:
+        vert.image = atlas
+        
+    context.scene.render.bake_type = "TEXTURE"
+    bpy.ops.object.bake_image()
+    bpy.context.scene.update()
+    
+    bpy.context.scene.objects.unlink(obj)
+    bpy.data.objects.remove(obj)
+    
+        
+
 
 def get_shapekey_driver(obj):
     bone_drivers = []
@@ -276,7 +333,7 @@ def get_bone_keyframe_pos(armature, bones):
         keyframes = sorted(keyframes)
     return keyframes
     
-    
+### get objs and bones that are keyed on given frame    
 def bone_key_on_frame(bone,frame,action):
     for fcurve in action.fcurves:
         if bone.name in fcurve.data_path:
@@ -841,6 +898,8 @@ class DragonBonesExport(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
     generate_atlas = BoolProperty(name="Generate Texture Atlas",description="Generates a Texture Atlas to reduce size and bundle all graphics in one Image",default=True)
     atlas_size = EnumProperty(name="Atlas Size",items=(("AUTOMATIC","Automatic","Automatic"),("MANUAL","Manual","Manual")))
     atlas_dimension = IntVectorProperty(name="Dimension",size=2,default=(512,512))
+    unwrap_method = EnumProperty(name="Unwrap Method",items=(("SMART_UV","Smart UV","Smart UV"),("ANGLE_BASED","Angle Based","Angle Based")))
+    island_margin = FloatProperty(default=.01,min=0.0,step=.1)
     
     sprite_object = None
     armature = None
@@ -869,6 +928,10 @@ class DragonBonesExport(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
             if self.atlas_size == "MANUAL":
                 row = box.row()
                 row.prop(self,"atlas_dimension",text="")
+            row = box.row()    
+            row.prop(self,"unwrap_method",text="Unwrap Method",expand=True)  
+            row = box.row()
+            row.prop(self,"island_margin",text="Sprite Margin")  
     
     def execute(self, context):
         bpy.ops.ed.undo_push(message="Export Undo")
@@ -882,6 +945,8 @@ class DragonBonesExport(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
         
         
         set_action(context,item=self.sprite_object.coa_anim_collections[1]) # set animation to restpose
+        
+        create_texture_dir(texture_path)
         
         ### delete base sprite if hidden for export
         for sprite in self.sprites:
@@ -898,10 +963,8 @@ class DragonBonesExport(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
                 if sprite.type == "MESH":
                     sprites.append(sprite)
             name = self.sprite_object.name+"_atlas"
-            generate_texture_atlas(context,sprites,name,self.atlas_dimension[0],self.atlas_dimension[1])
+            generate_texture_atlas(context,sprites,name,self.atlas_dimension[0],self.atlas_dimension[1],self.atlas_size,self.unwrap_method,self.island_margin)
             bpy.data.images[name].save_render(os.path.join(texture_path,name+".png"))
-        
-        create_texture_dir(texture_path)
         
         armature["slot"] = []
         
