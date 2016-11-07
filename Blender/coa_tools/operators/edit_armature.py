@@ -62,7 +62,6 @@ class QuickArmature(bpy.types.Operator):
         self.active_object = None
         self.armature = None
         
-        self.created_bones = []
         
     def project_cursor(self, event):
         coord = mathutils.Vector((event.mouse_region_x, event.mouse_region_y))
@@ -126,11 +125,11 @@ class QuickArmature(bpy.types.Operator):
         if armature != None:
             
             bpy.ops.object.mode_set(mode='EDIT')
-            bone = armature.data.edit_bones.new("Bone")
+            bone = armature.data.edit_bones.new("Bone_tmp")
+            #print(bone.name)
             
-            ### store newly created editbone names -> for locking z scale for posebones later. Posebones are not available at this point yet
-            if bone.name not in self.created_bones:
-                self.created_bones.append(bone.name)
+            ### tag bones that will be locked
+            bone["lock_z"] = True
             
             bone.head = self.armature.matrix_world.inverted() * context.scene.cursor_location
             bone.hide = True
@@ -277,12 +276,13 @@ class QuickArmature(bpy.types.Operator):
         ob = context.active_object
         
         
-        ### lock posebone scale z value and then remove bone name from list
-        for bone_name in self.created_bones:
-            if bone_name in ob.pose.bones:
-                pose_bone = ob.pose.bones[bone_name]
-                pose_bone.lock_scale[2] = True
-                self.created_bones.remove(bone_name)
+        ### lock posebone scale z value
+        for bone in self.armature.data.bones:
+            if "lock_z" in bone:
+                if bone.name in ob.pose.bones:
+                    pose_bone = ob.pose.bones[bone.name]
+                    pose_bone.lock_scale[2] = True
+                    del bone["lock_z"]
         
         if self.in_view_3d:
             self.mouse_press_hist = self.mouse_press
