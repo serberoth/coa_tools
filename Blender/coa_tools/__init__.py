@@ -172,8 +172,6 @@ def update_sprites(dummy):
             if obj.coa_modulate_color != obj.coa_modulate_color_last:
                 set_modulate_color(obj,context,obj.coa_modulate_color)
                 obj.coa_modulate_color_last = obj.coa_modulate_color
-            if obj.coa_type == "SLOT":
-                change_slot_mesh(obj,context,obj.coa_slot_index)    
 
         if update_scene:
             bpy.context.scene.update()

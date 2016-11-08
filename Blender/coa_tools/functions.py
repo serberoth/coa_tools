@@ -290,7 +290,9 @@ def clear_pose(obj):
         obj.coa_sprite_frame = 0
         obj.coa_alpha = 1.0
         obj.coa_modulate_color = (1.0,1.0,1.0)
-        obj["coa_slot_index"] = obj.coa_slot_reset_index
+        obj["coa_slot_index"] = len(obj.coa_slot)-1
+        #obj["coa_slot_index"] = obj.coa_slot_reset_index
+        #obj.coa_slot_index = obj.coa_slot_reset_index
         
 def set_action(context,item=None):
     sprite_object = get_sprite_object(context.active_object)
@@ -313,7 +315,8 @@ def set_action(context,item=None):
             child.coa_sprite_frame = 0
             child.coa_alpha = 1.0
             child.coa_modulate_color = (1.0,1.0,1.0)
-            child["coa_slot_index"] = child.coa_slot_reset_index
+            #child["coa_slot_index"] = len(child.coa_slot)-1#child.coa_slot_reset_index
+            #print(child["coa_slot_index"])
         elif not (child.type == "MESH" and item.name == "Restpose") and context.scene.coa_nla_mode == "ACTION":
             action_name = item.name + "_" + child.name
             action = None
@@ -603,11 +606,13 @@ def set_modulate_color(obj,context,color):
         obj.color[:3] = color    
 
 def change_slot_mesh_data(context,obj):
-    slot_len = len(obj.coa_slot)-1
-    if obj.coa_slot_index > slot_len:
-        obj["coa_slot_index"] = min(obj.coa_slot_index,len(obj.coa_slot))
-    else:    
-        slot = obj.coa_slot[obj.coa_slot_index]
+    if len(obj.coa_slot) > 0:
+        slot_len = len(obj.coa_slot)-1
+        obj["coa_slot_index"] = min(obj.coa_slot_index,len(obj.coa_slot)-1)
+        
+        idx = max(min(obj.coa_slot_index,len(obj.coa_slot)-1),0)
+        
+        slot = obj.coa_slot[idx]
         obj = slot.id_data
         mesh_name = obj.coa_slot[obj.coa_slot_index].name
         obj.data = bpy.data.meshes[mesh_name]
@@ -618,12 +623,13 @@ def change_slot_mesh_data(context,obj):
             else:
                 slot2["active"] = True 
 
-def change_slot_mesh(obj,context,index):
-    if obj.coa_slot_index <= len(obj.coa_slot)-1:
-        slot = obj.coa_slot[obj.coa_slot_index]
-        mesh_name = obj.coa_slot[obj.coa_slot_index].name
-        obj.data = bpy.data.meshes[mesh_name]
-        set_alpha(obj,context,obj.coa_alpha)
+#def change_slot_mesh(obj,context,index):
+#    slot_len = len(obj.coa_slot)-1
+#    if obj.coa_slot_index <= len(obj.coa_slot)-1:
+#        slot = obj.coa_slot[obj.coa_slot_index]
+#        mesh_name = obj.coa_slot[obj.coa_slot_index].name
+#        obj.data = bpy.data.meshes[mesh_name]
+#        set_alpha(obj,context,obj.coa_alpha)
             
 def display_children(self, context, obj):
     layout = self.layout
@@ -744,19 +750,36 @@ def draw_children(self,context,sprite_object,layout,box,row,col,children,obj):
                     #row.prop(child,"hide_select",emboss=False,text="")
                     
                     if child.type == "MESH" and child.coa_type == "SLOT" and child.coa_slot_show:
-                        for slot in child.coa_slot:
-                            row = col.row(align=True)
-                            row.alignment = "LEFT"
-                            row.separator()
-                            row.separator()
-                            row.separator()
-                            row.separator()
-                            row.separator()
-                            row.separator()
+                        for i,slot in enumerate(child.coa_slot):
+                            row = col.row()
+                            subrow = row.row(align=True)
+                            subrow.alignment = "LEFT"
+                            subrow.separator()
+                            subrow.separator()
+                            subrow.separator()
+                            subrow.separator()
+                            subrow.separator()
+                            subrow.separator()
                             if slot.active:
-                                row.prop(slot,"active",text=slot.name,icon="RADIOBUT_ON",emboss=False)
+                                subrow.prop(slot,"active",text=slot.name,icon="RADIOBUT_ON",emboss=False)
                             else:
-                                row.prop(slot,"active",text=slot.name,icon="RADIOBUT_OFF",emboss=False)
+                                subrow.prop(slot,"active",text=slot.name,icon="RADIOBUT_OFF",emboss=False)
+                            
+                            subrow = row.row(align=True)
+                            
+                            op = subrow.operator("coa_tools.move_slot_item",icon="TRIA_DOWN",emboss=False,text="")
+                            op.idx = i
+                            op.ob_name = child.name
+                            op.mode = "DOWN"
+                            op = subrow.operator("coa_tools.move_slot_item",icon="TRIA_UP",emboss=False,text="")
+                            op.idx = i
+                            op.ob_name = child.name
+                            op.mode = "UP"
+                            
+                            subrow.alignment = "RIGHT"
+                            op = subrow.operator("coa_tools.remove_from_slot",icon="PANEL_CLOSE",emboss=False,text="")
+                            op.idx = i
+                            op.ob_name = child.name
                             
                     
                     if child.type == "ARMATURE":

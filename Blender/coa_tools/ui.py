@@ -263,10 +263,8 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
         hide_base_sprite(self)            
     
     def change_slot_mesh(self,context):
-        
         self.coa_slot_index_last = -1
         self.coa_slot_index_last = self.coa_slot_index
-        
         change_slot_mesh_data(context,self)
         
     bpy.types.Object.coa_dimensions_old = FloatVectorProperty()
@@ -510,10 +508,10 @@ class CutoutAnimationTools(bpy.types.Panel):
                         row.operator("object.export_to_json",text="Export Json",icon="EXPORT",emboss=True)
                     
                     row = layout.row()
-                    row.operator("coa_tools.export_dragon_bones",text="Export Dragonbones",icon_value=db_icon.icon_id,emboss=True)
+                    row.operator("coa_tools.create_slot_object",text="Merge to Slot Object",icon="IMASEL",emboss=True)
                     
                     row = layout.row()
-                    row.operator("coa_tools.create_slot_object",text="Merge to Slot Object",icon="IMASEL",emboss=True)
+                    row.operator("coa_tools.export_dragon_bones",text="Export Dragonbones",icon_value=db_icon.icon_id,emboss=True)
                     
                 row = layout.row(align=True)
                 row.label(text="Edit Operator:")
