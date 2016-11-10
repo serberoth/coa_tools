@@ -10,7 +10,10 @@ class ShowHelp(bpy.types.Operator):
 
     region_offset = 0
     region_height = 0
-
+    _timer = None
+    alpha = 1.0
+    alpha_current = 0.0
+    i = 0
     @classmethod
     def poll(cls, context):
         return True
@@ -18,7 +21,7 @@ class ShowHelp(bpy.types.Operator):
     def write_text(self,text,size=20,pos_y=0,color=(1,1,1,1)):
         lines = text.split("\n")
         
-        bgl.glColor4f(color[0],color[1],color[2],color[3])
+        bgl.glColor4f(color[0],color[1],color[2],color[3]*self.alpha_current)
         line_height = size + size*.5
         for i,line in enumerate(lines):
             
@@ -27,30 +30,46 @@ class ShowHelp(bpy.types.Operator):
             blf.draw(self.font_id, line)
             
     def invoke(self, context, event):
+        wm = context.window_manager
         context.scene.coa_show_help = True
         args = ()
         self.draw_handler = bpy.types.SpaceView3D.draw_handler_add(self.draw_callback_px, args, "WINDOW", "POST_PIXEL")
+        self._timer = wm.event_timer_add(0.01, context.window)
         context.window_manager.modal_handler_add(self)
         return {"RUNNING_MODAL"}
-
+    
+    def fade(self):
+        print(self.alpha_current)
+        self.alpha_current = self.alpha_current*.7 + self.alpha*.3
+            
     def modal(self, context, event):
+        wm = context.window_manager
         context.area.tag_redraw()
-        
         if context.user_preferences.system.use_region_overlap:
             for region in context.area.regions:
                 if region.type == "TOOLS":
                     self.region_offset = region.width
-                if region.type == "UI":    
+                if region.type == "WINDOW":    
                     self.region_height = region.height
         else:
             self.region_offset = 0            
-
-        if not context.scene.coa_show_help:#event.type in {"RIGHTMOUSE", "ESC"}:
+        
+        
+        if not context.scene.coa_show_help:
+            self.alpha = 0.0
+            
+        if not context.scene.coa_show_help and round(self.alpha_current,1) == 0:#event.type in {"RIGHTMOUSE", "ESC"}:
             return self.finish()
-
+        
+        if self.alpha != round(self.alpha_current,1):
+            self.fade()
+            
         return {"PASS_THROUGH"}
 
     def finish(self):
+        context = bpy.context
+        wm = context.window_manager
+        wm.event_timer_remove(self._timer)
         bpy.types.SpaceView3D.draw_handler_remove(self.draw_handler, "WINDOW")
         return {"FINISHED"}
 
@@ -60,18 +79,21 @@ class ShowHelp(bpy.types.Operator):
         # draw some text
         headline_color = [1.0, 0.9, 0.6, 1.0]
         
-        
         ### draw gradient overlay
         bgl.glEnable(bgl.GL_BLEND)
         
         line_width = 1
         bgl.glLineWidth(line_width)
-        
-        width = 200
+        width = 525
+        start_at = .2
         for i in range(width):
             bgl.glBegin(bgl.GL_LINE_STRIP)
-            alpha = (width-i)/width  
-            bgl.glColor4f(0.0, 0.0, 0.0, .5*alpha)
+            alpha = (width-i)/width/(1-start_at)
+
+            if i > width*start_at:
+                bgl.glColor4f(0.0, 0.0, 0.0, .7*self.alpha_current*alpha)
+            else:
+                bgl.glColor4f(0.0, 0.0, 0.0, .7*self.alpha_current)
             x = (i*line_width) + self.region_offset
             y = self.region_height
             bgl.glVertex2i(x, 0)
