@@ -32,15 +32,15 @@ class ShowHelp(bpy.types.Operator):
             
     def invoke(self, context, event):
         wm = context.window_manager
-        context.scene.coa_show_help = True
+        wm.coa_show_help = True
         args = ()
         self.draw_handler = bpy.types.SpaceView3D.draw_handler_add(self.draw_callback_px, args, "WINDOW", "POST_PIXEL")
-        self._timer = wm.event_timer_add(0.01, context.window)
+        self._timer = wm.event_timer_add(0.1, context.window)
         context.window_manager.modal_handler_add(self)
         return {"RUNNING_MODAL"}
     
     def fade(self):
-        self.alpha_current = self.alpha_current*.7 + self.alpha*.3
+        self.alpha_current = self.alpha_current*.55 + self.alpha*.45
             
     def modal(self, context, event):
         wm = context.window_manager
@@ -54,10 +54,10 @@ class ShowHelp(bpy.types.Operator):
         else:
             self.region_offset = 0
         
-        if not context.scene.coa_show_help:
+        if not wm.coa_show_help:
             self.alpha = 0.0
             
-        if not context.scene.coa_show_help and round(self.alpha_current,1) == 0:#event.type in {"RIGHTMOUSE", "ESC"}:
+        if not wm.coa_show_help and round(self.alpha_current,1) == 0:#event.type in {"RIGHTMOUSE", "ESC"}:
             return self.finish()
         
         if self.alpha != round(self.alpha_current,1):
