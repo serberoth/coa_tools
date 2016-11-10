@@ -33,7 +33,6 @@ import json
 from bpy.app.handlers import persistent
 from .. functions import *
 
-
 class CreateSlotObject(bpy.types.Operator):
     bl_idname = "coa_tools.create_slot_object"
     bl_label = "Create Slot Object"

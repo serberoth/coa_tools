@@ -492,9 +492,6 @@ class CutoutAnimationTools(bpy.types.Panel):
             row = layout.row(align=True)
             row.operator("wm.coa_create_sprite_object",text="Create new Sprite Object",icon="TEXTURE_DATA")
         
-            row = layout.row(align=True)
-            row.operator("coa_tools.batch_render",text="Batch Render Animations",icon="RENDER_ANIMATION")    
-        
         if context.active_object != None and get_sprite_object(context.active_object) != None:
             if sprite_object.coa_edit_weights == False:
                 if context.active_object.mode != "EDIT":
@@ -509,6 +506,9 @@ class CutoutAnimationTools(bpy.types.Panel):
                     
                     row = layout.row()
                     row.operator("coa_tools.create_slot_object",text="Merge to Slot Object",icon="IMASEL",emboss=True)
+                    
+                    row = layout.row(align=True)
+                    row.operator("coa_tools.batch_render",text="Batch Render Animations",icon="RENDER_ANIMATION")    
                     
                     row = layout.row()
                     row.operator("coa_tools.export_dragon_bones",text="Export Dragonbones",icon_value=db_icon.icon_id,emboss=True)

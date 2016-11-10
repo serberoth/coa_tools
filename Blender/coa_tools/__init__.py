@@ -45,6 +45,7 @@ modules = developer_utils.setup_addon_modules(__path__, __name__)
 
 from . ui import *
 from . ui import preview_collections
+from . operators.pie_menu import preview_collections_pie
 from . functions import *
 
 # register
@@ -99,6 +100,7 @@ def register():
     pcoll.load("db_icon", os.path.join(my_icons_dir,"db_icon.png"),'IMAGE')
     
     preview_collections["main"] = pcoll
+    preview_collections_pie["main"] = pcoll
     
     
     try: bpy.utils.register_module(__name__)
