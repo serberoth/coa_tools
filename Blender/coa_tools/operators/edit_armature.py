@@ -61,7 +61,7 @@ class QuickArmature(bpy.types.Operator):
         self.selected_objects = []
         self.active_object = None
         self.armature = None
-        
+        self.emulate_3_button = False
         
     def project_cursor(self, event):
         coord = mathutils.Vector((event.mouse_region_x, event.mouse_region_y))
@@ -265,6 +265,7 @@ class QuickArmature(bpy.types.Operator):
         
     
     def modal(self, context, event):
+        print(event.type)
         self.in_view_3d = check_region(context,event)
         if self.in_view_3d:
             if not event.alt:
@@ -295,7 +296,7 @@ class QuickArmature(bpy.types.Operator):
             self.mouse_press_hist = self.mouse_press
             mouse_button = None
             if context.user_preferences.inputs.select_mouse == "RIGHT":
-                mouse_button = 'LEFTMOUSE'
+                mouse_button = 'LEFTMOUSE' 
             else:
                 mouse_button = 'RIGHTMOUSE'    
             ### Set Mouse click 
@@ -416,12 +417,15 @@ class QuickArmature(bpy.types.Operator):
                 for obj in self.selected_objects:
                     obj.select = True
                 context.scene.objects.active = self.active_object   
+                context.user_preferences.inputs.use_mouse_emulate_3_button = self.emulate_3_button
                 return{'CANCELLED'}
         return {'PASS_THROUGH'}
     
     def execute(self, context):
         #bpy.ops.wm.coa_modal() ### start coa modal mode if not running
-    
+        self.emulate_3_button = context.user_preferences.inputs.use_mouse_emulate_3_button
+        context.user_preferences.inputs.use_mouse_emulate_3_button = False
+        
         for obj in context.scene.objects:
             if obj.select:
                 self.selected_objects.append(obj)
