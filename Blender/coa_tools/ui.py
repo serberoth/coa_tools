@@ -459,6 +459,8 @@ class CutoutAnimationTools(bpy.types.Panel):
     bpy.types.Scene.coa_lock_to_bounds = BoolProperty(default=True,description="Lock Cursor to Object Bounds")
     
     bpy.types.Screen.coa_view = EnumProperty(default="3D",items=(("3D","3D View","3D","MESH_CUBE",0),("2D","2D View","2D","MESH_PLANE",1)),update=lock_view)
+    bpy.types.Scene.coa_show_help = BoolProperty(default=False,description="Hide Help")
+    
     
     def draw(self, context):
         layout = self.layout
@@ -472,6 +474,10 @@ class CutoutAnimationTools(bpy.types.Panel):
         
         row = layout.row(align=True)
         row.prop(screen,"coa_view",expand=True)
+        if not scene.coa_show_help:
+            row.operator("coa_tools.show_help",text="",icon="QUESTION")
+        else:
+            row.prop(scene,"coa_show_help",text="",icon="QUESTION")    
         
         if context.active_object == None or (context.active_object != None):
             row = layout.row(align=True)
