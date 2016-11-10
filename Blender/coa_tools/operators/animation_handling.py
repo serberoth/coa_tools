@@ -132,22 +132,26 @@ class AddKeyframe(bpy.types.Operator):
         event = None
         obj = context.active_object
         sprite_object = get_sprite_object(obj)
-        anim = sprite_object.coa_anim_collections[sprite_object.coa_anim_collections_index]
         
-        if self.prop_name in ["location","rotation","scale","LocRotScale"]:
-            if self.prop_name == "LocRotScale":
-                data_path = "location"
-                self.create_bone_keyframe(context,event,data_path)
-                
-                data_path = "rotation"
-                self.create_bone_keyframe(context,event,data_path)
-                
-                data_path = "scale"
-                self.create_bone_keyframe(context,event,data_path)
+        if len(sprite_object.coa_anim_collections) > 0:
+            anim = sprite_object.coa_anim_collections[sprite_object.coa_anim_collections_index]
+            if self.prop_name in ["location","rotation","scale","LocRotScale"]:
+                if self.prop_name == "LocRotScale":
+                    data_path = "location"
+                    self.create_bone_keyframe(context,event,data_path)
+                    
+                    data_path = "rotation"
+                    self.create_bone_keyframe(context,event,data_path)
+                    
+                    data_path = "scale"
+                    self.create_bone_keyframe(context,event,data_path)
+                else:
+                    self.create_bone_keyframe(context,event,self.prop_name)
             else:
-                self.create_bone_keyframe(context,event,self.prop_name)
+                self.create_keyframe(context,event,self.prop_name)
         else:
-            self.create_keyframe(context,event,self.prop_name)
+            self.report({'WARNING'},"First create an animation collection.")        
+                
         return {"FINISHED"}   
 
 class AddAnimationCollection(bpy.types.Operator):
