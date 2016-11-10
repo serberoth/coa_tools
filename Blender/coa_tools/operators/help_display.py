@@ -14,6 +14,7 @@ class ShowHelp(bpy.types.Operator):
     alpha = 1.0
     alpha_current = 0.0
     i = 0
+    fade_in = False
     @classmethod
     def poll(cls, context):
         return True
@@ -39,7 +40,6 @@ class ShowHelp(bpy.types.Operator):
         return {"RUNNING_MODAL"}
     
     def fade(self):
-        print(self.alpha_current)
         self.alpha_current = self.alpha_current*.7 + self.alpha*.3
             
     def modal(self, context, event):
@@ -52,8 +52,7 @@ class ShowHelp(bpy.types.Operator):
                 if region.type == "WINDOW":    
                     self.region_height = region.height
         else:
-            self.region_offset = 0            
-        
+            self.region_offset = 0
         
         if not context.scene.coa_show_help:
             self.alpha = 0.0
