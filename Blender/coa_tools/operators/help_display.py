@@ -81,9 +81,9 @@ class ShowHelp(bpy.types.Operator):
         ### draw gradient overlay
         bgl.glEnable(bgl.GL_BLEND)
         
-        line_width = 1
+        line_width = 10
         bgl.glLineWidth(line_width)
-        width = 525
+        width = int(525/line_width)
         start_at = .2
         for i in range(width):
             bgl.glBegin(bgl.GL_LINE_STRIP)
