@@ -667,7 +667,8 @@ class SelectChild(bpy.types.Operator):
             context.scene.objects.active = ob
                 
         elif self.mode == "bone":
-            armature = bpy.data.armatures[self.ob_name]
+            armature_ob = bpy.data.objects[self.ob_name]
+            armature = bpy.data.armatures[armature_ob.data.name]
             bone = armature.bones[self.bone_name]
             bone.select = not bone.select
             bone.select_tail = not bone.select_tail
