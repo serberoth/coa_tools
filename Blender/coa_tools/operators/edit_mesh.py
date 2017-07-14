@@ -32,6 +32,7 @@ from bpy_extras.io_utils import ExportHelper, ImportHelper
 import json
 from bpy.app.handlers import persistent
 from .. functions import *
+import bgl
 
 
 ######################################################################################################################################### Grid Fill
@@ -358,6 +359,41 @@ result = bpy.context.scene.ray_cast(start,end)
 result = [result[0],result[4],result[5],result[1],result[2]]
 '''
 
+#class test(bpy.types.Operator):
+#    bl_idname = "my_operator.test"
+#    bl_label = "Test"
+#    bl_description = ""
+#    bl_options = {"REGISTER"}
+
+#    @classmethod
+#    def poll(cls, context):
+#        return True
+
+#    def invoke(self, context, event):
+#        args = ()
+#        self.draw_handler = bpy.types.SpaceView3D.draw_handler_add(self.draw_callback_px, args, "WINDOW", "POST_PIXEL")
+#        context.window_manager.modal_handler_add(self)
+#        return {"RUNNING_MODAL"}
+
+#    def modal(self, context, event):
+#        context.area.tag_redraw()
+
+#        if event.type == "LEFTMOUSE":
+#            return self.finish()
+
+#        if event.type in {"RIGHTMOUSE", "ESC"}:
+#            return self.finish()
+
+#        return {"RUNNING_MODAL"}
+
+#    def finish(self):
+#        bpy.types.SpaceView3D.draw_handler_remove(self.draw_handler, "WINDOW")
+#        return {"FINISHED"}
+
+#    def draw_callback_px(self):
+#        pass
+#    
+
 class DrawContour(bpy.types.Operator):
     bl_idname = "object.coa_edit_mesh" 
     bl_label = "Edit Mesh"
@@ -381,6 +417,8 @@ class DrawContour(bpy.types.Operator):
         self.bone_shape = None
         self.draw_bounds = False
         self.draw_type = ""
+        self.draw_handler_removed = False
+        self.bounds = []
     
     def project_cursor(self, event):
         coord = mathutils.Vector((event.mouse_region_x, event.mouse_region_y))
@@ -461,7 +499,7 @@ class DrawContour(bpy.types.Operator):
     
     def limit_cursor_by_bounds(self,context,event,location):
         obj = context.active_object
-        bounds = get_bounds_and_center(obj)[1]
+        bounds = self.bounds#get_bounds_and_center(obj)[1]
         if location[0] < bounds[0][0]:
             location[0] = bounds[0][0]
         if location[0] > bounds[3][0]:
@@ -534,10 +572,34 @@ class DrawContour(bpy.types.Operator):
             self.armature.data.bones[self.bone.name].show_wire = True
         bm.free()    
     
+    def check_verts(self,context,event):
+        verts = []
+        bm = bmesh.from_edit_mesh(context.active_object.data)
+        for vert in bm.verts:
+            if vert.select:
+                verts.append(vert)
+        for vert in verts:
+            vert.co = context.active_object.matrix_world.inverted() * self.limit_cursor_by_bounds(context,event,context.active_object.matrix_world * vert.co)
+        bmesh.update_edit_mesh(context.active_object.data)
+        
     def modal(self, context, event):
         self.in_view_3d = check_region(context,event)
         
-        if self.in_view_3d:
+        if event.value == "RELEASE" and context.active_object.mode == "EDIT":
+            self.check_verts(context,event)
+        
+        if self.in_view_3d and context.active_object != None:
+            if (context.active_object.mode != "EDIT" and not self.draw_handler_removed) or self.sprite_object.coa_edit_mesh == False:
+                self.draw_handler_removed = True
+                self.sprite_object.coa_edit_mesh = False
+                bpy.types.SpaceView3D.draw_handler_remove(self.draw_handler, "WINDOW")
+                bpy.context.space_data.show_manipulator = self.show_manipulator
+                bpy.context.window.cursor_set("CROSSHAIR")
+                bpy.ops.object.mode_set(mode="OBJECT")
+                self.sprite_object.coa_edit_mesh = False
+                set_local_view(False)
+                return {"FINISHED"}
+                
             scene = context.scene
             ob = context.active_object
             
@@ -625,6 +687,8 @@ class DrawContour(bpy.types.Operator):
             if event.type in {'TAB'} and not event.ctrl:
                 self.sprite_object.coa_edit_mesh = False
                 bpy.ops.object.mode_set(mode='OBJECT')
+                
+                
                 #return{'CANCELLED'}
             
             if self.mouse_press_hist and not self.mouse_press:
@@ -637,6 +701,7 @@ class DrawContour(bpy.types.Operator):
     def execute(self, context):
         #bpy.ops.wm.coa_modal() ### start coa modal mode if not running
         self.sprite_object = get_sprite_object(context.active_object)
+        self.bounds = get_bounds_and_center(context.active_object)[1]
         
         if self.mode == "DRAW_BONE_SHAPE":
             self.draw_bounds = context.scene.coa_lock_to_bounds
@@ -693,6 +758,9 @@ class DrawContour(bpy.types.Operator):
         if self.mode == "EDIT_MESH":
             set_local_view(True)
         
+        args = ()
+        self.draw_handler = bpy.types.SpaceView3D.draw_handler_add(self.draw_callback_px, args, "WINDOW", "POST_VIEW")
+                
         context.window_manager.modal_handler_add(self)
         return {'RUNNING_MODAL'}
 
@@ -700,3 +768,36 @@ class DrawContour(bpy.types.Operator):
         bpy.context.space_data.show_manipulator = self.show_manipulator
         bpy.context.window_manager.sketch_assets_enabled = False
         return {'CANCELLED'}
+    
+    def draw_callback_px(self):
+        obj = bpy.context.active_object
+#        vec1 = obj.matrix_world * Vector(obj.bound_box[0])
+#        vec2 = obj.matrix_world * Vector(obj.bound_box[2])
+#        vec3 = obj.matrix_world * Vector(obj.bound_box[5])
+#        vec4 = obj.matrix_world * Vector(obj.bound_box[4])
+        
+        vec1 = Vector(self.bounds[0])
+        vec2 = Vector(self.bounds[1])
+        vec3 = Vector(self.bounds[3])
+        vec4 = Vector(self.bounds[2])
+        
+        color = [1,.7,.5]
+        bgl.glEnable(bgl.GL_BLEND)
+        bgl.glColor4f(color[0], color[1], color[2], .3)
+        bgl.glLineWidth(1)
+        
+        bgl.glEnable(bgl.GL_LINE_SMOOTH)
+        
+        bgl.glBegin(bgl.GL_LINE_STRIP)
+        bgl.glVertex3f(vec1[0],vec1[1],vec1[2])
+        bgl.glVertex3f(vec2[0],vec2[1],vec2[2])
+        bgl.glVertex3f(vec3[0],vec3[1],vec3[2])
+        bgl.glVertex3f(vec4[0],vec4[1],vec4[2])
+        bgl.glVertex3f(vec1[0],vec1[1],vec1[2])
+        bgl.glEnd()
+        
+        # restore opengl defaults
+        bgl.glLineWidth(1)
+        bgl.glDisable(bgl.GL_BLEND)
+        bgl.glDisable(bgl.GL_LINE_SMOOTH)
+        bgl.glColor4f(0.0, 0.0, 0.0, 1.0) 
