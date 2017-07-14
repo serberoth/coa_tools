@@ -359,41 +359,6 @@ result = bpy.context.scene.ray_cast(start,end)
 result = [result[0],result[4],result[5],result[1],result[2]]
 '''
 
-#class test(bpy.types.Operator):
-#    bl_idname = "my_operator.test"
-#    bl_label = "Test"
-#    bl_description = ""
-#    bl_options = {"REGISTER"}
-
-#    @classmethod
-#    def poll(cls, context):
-#        return True
-
-#    def invoke(self, context, event):
-#        args = ()
-#        self.draw_handler = bpy.types.SpaceView3D.draw_handler_add(self.draw_callback_px, args, "WINDOW", "POST_PIXEL")
-#        context.window_manager.modal_handler_add(self)
-#        return {"RUNNING_MODAL"}
-
-#    def modal(self, context, event):
-#        context.area.tag_redraw()
-
-#        if event.type == "LEFTMOUSE":
-#            return self.finish()
-
-#        if event.type in {"RIGHTMOUSE", "ESC"}:
-#            return self.finish()
-
-#        return {"RUNNING_MODAL"}
-
-#    def finish(self):
-#        bpy.types.SpaceView3D.draw_handler_remove(self.draw_handler, "WINDOW")
-#        return {"FINISHED"}
-
-#    def draw_callback_px(self):
-#        pass
-#    
-
 class DrawContour(bpy.types.Operator):
     bl_idname = "object.coa_edit_mesh" 
     bl_label = "Edit Mesh"
