@@ -36,7 +36,7 @@ import bgl
 
 
 ######################################################################################################################################### Grid Fill
-def collapse_short_edges(bm,obj,threshold=2.2):
+def collapse_short_edges(bm,obj,threshold=1.0):
     ### collapse short edges
     edges_len_average = 0
     edges_count = 0
