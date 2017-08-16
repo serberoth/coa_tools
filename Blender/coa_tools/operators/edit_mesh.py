@@ -36,7 +36,7 @@ import bgl
 
 
 ######################################################################################################################################### Grid Fill
-def collapse_short_edges(bm,obj,threshold=1):
+def collapse_short_edges(bm,obj,threshold=2.2):
     ### collapse short edges
     edges_len_average = 0
     edges_count = 0
@@ -60,8 +60,7 @@ def collapse_short_edges(bm,obj,threshold=1):
 
     bmesh.update_edit_mesh(obj.data)
 
-def average_edge_cuts(bm,obj,cuts=1):
-    ### collapse short edges
+def get_average_edge_length(bm,obj):
     edges_len_average = 0
     edges_count = 0
     shortest_edge = 10000
@@ -73,7 +72,22 @@ def average_edge_cuts(bm,obj,cuts=1):
             if length < shortest_edge:
                 shortest_edge = length
     edges_len_average = edges_len_average/edges_count
+    return edges_len_average, shortest_edge
 
+def clean_boundary_edges(bm,obj):
+    edges_len_average, shortest_edge = get_average_edge_length(bm,obj)
+    edges = []
+    
+    for edge in bm.edges:
+        if edge.calc_length() < edges_len_average*.12 and not edge.tag:
+            edges.append(edge)
+    bmesh.ops.collapse(bm,edges=edges,uvs=False)        
+    bmesh.update_edit_mesh(obj.data)        
+
+def average_edge_cuts(bm,obj,cuts=1):
+    ### collapse short edges
+    edges_len_average, shortest_edge = get_average_edge_length(bm,obj)
+    
     subdivide_edges = []
     for edge in bm.edges:
         cut_count = int(edge.calc_length()/shortest_edge)*cuts
@@ -148,10 +162,21 @@ def clean_verts(bm,obj):
     bmesh.ops.dissolve_verts(bm,verts=verts)
     bmesh.update_edit_mesh(obj.data)
 
+def remove_doubles(obj,edge_average_len,edge_min_len):
+    bm = bmesh.from_edit_mesh(obj.data)
+    verts = []
+    for vert in bm.verts:
+        if not vert.hide:
+            verts.append(vert)
+    bmesh.ops.remove_doubles(bm,verts=verts,dist=0.0001)
+    bmesh.update_edit_mesh(obj.data)     
+        
 
 class Fill(bpy.types.Operator):
     bl_idname = "object.coa_fill"
     bl_label = "Triangle Fill"
+    bl_description = ""
+    bl_options = {"REGISTER"}
     
     detail = FloatProperty(name="Detail",default=.3,min=0,max=1.0)
     triangulate = BoolProperty(default=False)
@@ -185,15 +210,23 @@ class Fill(bpy.types.Operator):
         context.scene.objects.active = context.selected_objects[0]
         obj = context.selected_objects[0]
         bpy.ops.object.mode_set(mode="EDIT")
-        
         bpy.ops.mesh.select_all(action='SELECT')
+        
+        ### get edge lenght
+        bm = bmesh.from_edit_mesh(context.active_object.data)
+        edges_len_average, shortest_edge = get_average_edge_length(bm,context.active_object)
 
         ### grid fill start
         bm = bmesh.from_edit_mesh(obj.data)
         bm.verts.index_update()
+        
             
         fill_ok = triangle_fill(bm,obj)
+        
         if fill_ok:
+            ### remove short edges
+            clean_boundary_edges(bm,obj)
+            
             average_edge_cuts(bm,obj)
             triangulate(bm,obj)
             smooth_verts(bm,obj)
@@ -203,7 +236,6 @@ class Fill(bpy.types.Operator):
             smooth_verts(bm,obj)
             triangulate(bm,obj)
             smooth_verts(bm,obj)
-            
             
             bm.verts.index_update()
             bmesh.update_edit_mesh(obj.data) 
@@ -223,8 +255,8 @@ class Fill(bpy.types.Operator):
         context.scene.objects.active = start_obj
         bpy.ops.object.join()
         bpy.ops.object.mode_set(mode="EDIT")
-        bpy.ops.mesh.remove_doubles(use_unselected=True)
-        
+        #bpy.ops.mesh.remove_doubles(use_unselected=True)
+        remove_doubles(context.active_object,edges_len_average, shortest_edge)
         
         
         ### create uv map
@@ -248,7 +280,6 @@ class Fill(bpy.types.Operator):
         for face in not_selected_faces:
             face.select = False
         bmesh.update_edit_mesh(start_obj.data)
-        
         
         ### unwrap
         obj = context.active_object
@@ -666,6 +697,7 @@ class DrawContour(bpy.types.Operator):
     def execute(self, context):
         #bpy.ops.wm.coa_modal() ### start coa modal mode if not running
         self.sprite_object = get_sprite_object(context.active_object)
+        self.sprite_object = bpy.data.objects[self.sprite_object.name]
         self.bounds = get_bounds_and_center(context.active_object)[1]
         
         if self.mode == "DRAW_BONE_SHAPE":
@@ -766,3 +798,32 @@ class DrawContour(bpy.types.Operator):
         bgl.glDisable(bgl.GL_BLEND)
         bgl.glDisable(bgl.GL_LINE_SMOOTH)
         bgl.glColor4f(0.0, 0.0, 0.0, 1.0) 
+
+
+class PickEdgeLength(bpy.types.Operator):
+    bl_idname = "coa_tools.pick_edge_length"
+    bl_label = "Pick Edge Length"
+    bl_description = ""
+    bl_options = {"REGISTER"}
+
+    @classmethod
+    def poll(cls, context):
+        return True
+
+    def execute(self, context):
+        scene = context.scene
+        obj = context.active_object
+        bm = bmesh.from_edit_mesh(obj.data)
+        
+        for edge in bm.edges:
+            if edge.select:
+                scene.coa_distance = edge.calc_length()
+        for vert in bm.verts:
+            vert.select = False
+        for edge in bm.edges:
+            edge.select = False    
+        for face in bm.faces:
+            face.select = False            
+        bmesh.update_edit_mesh(obj.data)    
+        return {"FINISHED"}
+        
