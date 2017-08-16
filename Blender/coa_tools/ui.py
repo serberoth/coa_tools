@@ -589,6 +589,7 @@ class CutoutAnimationTools(bpy.types.Panel):
             
             row2 = col.row(align=True)
             row2.prop(scene,'coa_distance',text="Stroke Distance")
+            row2.operator("coa_tools.pick_edge_length",text="",icon="EYEDROPPER")
             row2.row(align=True).prop(scene,'coa_distance_constraint',text="",icon="CONSTRAINT")
             
             row2 = col.row(align=True)
