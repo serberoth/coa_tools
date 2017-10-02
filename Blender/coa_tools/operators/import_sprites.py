@@ -88,7 +88,7 @@ class ImportSprite(bpy.types.Operator):
         mod.show_render = False
         mod.show_viewport = False
         mod.show_on_cage = True
-        obj.coa_hide_base_sprite = False
+        obj.data.coa_hide_base_sprite = False
         
         
         obj.data.uv_textures.new("UVMap")

@@ -67,6 +67,7 @@ class CreateSlotObject(bpy.types.Operator):
         for sprite in context.selected_objects:
             if sprite != obj:
                 if sprite.type == "MESH":
+                    item = None
                     if sprite.coa_type == "MESH":
                         if sprite.data.name not in obj.coa_slot:
                             item = obj.coa_slot.add()
@@ -83,8 +84,8 @@ class CreateSlotObject(bpy.types.Operator):
                             item.name = slot.name
                                     
                         
-                    
-                    item["active"] = False
+                    if item != None:
+                        item["active"] = False
         for sprite in objs:        
             if sprite != obj:
                 sprite.parent = None

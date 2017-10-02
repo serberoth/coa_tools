@@ -22,10 +22,10 @@ bl_info = {
     "name": "Cutout Animation Tools",
     "description": "This Addon provides a Toolset for a 2D Animation Workflow.",
     "author": "Andreas Esau",
-    "version": (0, 1, 0, "Beta"),
+    "version": (1, 0, 0, "Beta"),
     "blender": (2, 75, 0),
     "location": "View 3D > Tools > Cutout Animation Tools",
-    "warning": "This addon is still in development.",
+    "warning": "",
     "wiki_url": "https://github.com/ndee85/coa_tools/wiki",
     "tracker_url": "https://github.com/ndee85/coa_tools/issues",
     "category": "Ndee Tools" }
@@ -56,14 +56,16 @@ import traceback
 class ExampleAddonPreferences(bpy.types.AddonPreferences):
     bl_idname = __name__
 
-    show_donate_icon = bpy.props.BoolProperty(name="Show Donate Icon",default=True)
+    show_donate_icon = bpy.props.BoolProperty(name="Show Donate Icon",default=False)
     sprite_import_export_scale = bpy.props.FloatProperty(name="Sprite import/export scale",default=0.01)
     sprite_thumb_size = bpy.props.IntProperty(name="Sprite thumbnail size",default=48)
     json_export = bpy.props.BoolProperty(name="Experimental Json export",default=False)
+    dragon_bones_export = bpy.props.BoolProperty(name="Dragonbones Export",default=False)
     def draw(self, context):
         layout = self.layout
         layout.prop(self, "show_donate_icon")
         layout.prop(self,"json_export")
+        layout.prop(self,"dragon_bones_export")
         layout.prop(self,"sprite_import_export_scale")
         layout.prop(self,"sprite_thumb_size")
 
@@ -184,6 +186,9 @@ def update_sprites(dummy):
         if sprite_object != None and sprite_object.coa_animation_loop:
             if context.scene.frame_current > context.scene.frame_end:
                 context.scene.frame_current = context.scene.frame_start
+            if context.scene.frame_current == context.scene.coa_frame_last and context.scene.frame_current == context.scene.frame_start:
+                context.scene.frame_current = context.scene.frame_end
+            context.scene.coa_frame_last = context.scene.frame_current
 
 
 ticker = 0
@@ -210,7 +215,7 @@ def scene_update(dummy):
                     if ticker%5 == 0:
                         if obj.coa_alpha != obj.coa_alpha_last:
                             set_alpha(obj,bpy.context,obj.coa_alpha)
-                            obj.coa_alpha_last = obj.coa_alpha                
+                            obj.coa_alpha_last = obj.coa_alpha
                 
     if hasattr(bpy.context,"active_object"):
         obj = bpy.context.active_object
@@ -219,6 +224,11 @@ def scene_update(dummy):
                 preview_collections["coa_thumbs"][thumb].reload()
             obj.coa_sprite_updated = True
 
+
+def hide_base_sprite_version_fix():
+    for obj in bpy.data.objects:
+        if obj.type == "MESH":
+            obj.data.coa_hide_base_sprite = obj.coa_hide_base_sprite
 
 ### start modal operator 
 def scene_update_callback(scene):
@@ -235,6 +245,9 @@ def scene_update_callback(scene):
 def coa_startup(dummy):
     print("startup coa modal operator")
     bpy.app.handlers.scene_update_pre.append(scene_update_callback)
+    
+    
+    hide_base_sprite_version_fix()
     
     ### version fix
     for obj in bpy.data.objects:

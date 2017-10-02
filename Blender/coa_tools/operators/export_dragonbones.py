@@ -951,7 +951,7 @@ class DragonBonesExport(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
         ### delete base sprite if hidden for export
         for sprite in self.sprites:
             if sprite.type == "MESH":
-                if sprite.coa_hide_base_sprite:
+                if sprite.data.coa_hide_base_sprite:
                     bpy.context.scene.objects.active = sprite
                     sprite.select = True
                     remove_base_mesh(sprite)

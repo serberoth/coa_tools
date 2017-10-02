@@ -172,6 +172,53 @@ def remove_doubles(obj,edge_average_len,edge_min_len):
     bmesh.update_edit_mesh(obj.data)     
         
 
+class ReprojectSpriteTexture(bpy.types.Operator):
+    bl_idname = "coa_tools.reproject_sprite_texture"
+    bl_label = "Reproject Sprite Texture"
+    bl_description = ""
+    bl_options = {"REGISTER"}
+    
+    def reproject(self,context):
+        ### unwrap
+        obj = context.active_object
+        hide_base_sprite = obj.data.coa_hide_base_sprite
+        obj.data.coa_hide_base_sprite = False
+        bm = bmesh.from_edit_mesh(obj.data)
+        selected_edges = []
+        for edge in bm.edges:
+            if edge.select:
+                selected_edges.append(edge)
+                
+        unselected_verts = []
+        for vert in bm.verts:
+            if not vert.select:
+                unselected_verts.append(vert)
+                vert.select = True
+        unselected_faces = []
+        for face in bm.faces:
+            if not face.select:
+                unselected_faces.append(face)
+                face.select = True        
+        bpy.ops.uv.project_from_view(camera_bounds=False, correct_aspect=True, scale_to_bounds=True)        
+        
+        for vert in unselected_verts:
+            vert.select = False
+        for face in unselected_faces:
+            face.select = False
+        for edge in selected_edges:
+            edge.select = True
+        bmesh.update_edit_mesh(obj.data)    
+        obj.data.coa_hide_base_sprite = hide_base_sprite
+    
+    @classmethod
+    def poll(cls, context):
+        return True
+
+    def execute(self, context):
+        self.reproject(context)
+        return {"FINISHED"}
+        
+
 class Fill(bpy.types.Operator):
     bl_idname = "object.coa_fill"
     bl_label = "Triangle Fill"
@@ -193,17 +240,37 @@ class Fill(bpy.types.Operator):
         bpy.ops.object.mode_set(mode="EDIT")
         return img
         
+        
+    def selection_closed(self,context,bm):
+        for vert in bm.verts:
+            if vert.select and len(vert.link_edges) == 1:
+                return False
+        return True    
+            
+        
     def triangulate_fill(self,context):
         start_obj = context.active_object
         
         bm = bmesh.from_edit_mesh(start_obj.data)
         selected = False
+        select_count = 0
         for vert in bm.verts:
             if vert.select:
+                select_count += 1
                 selected = True
+        
+        if select_count in [1]:
+            self.report({'WARNING'},"Select a full loop to fill.")
+            return{'CANCELLED'}    
+        
         if not selected:
             self.report({'WARNING'},"No vertex selected.")
             return{'CANCELLED'}
+        
+        if not self.selection_closed(context,bm):
+            self.report({'WARNING'},"Selection needs to be a loop. Close the loop first.")
+            return{'CANCELLED'}    
+            
         
         bpy.ops.mesh.separate(type="SELECTED")
         bpy.ops.object.mode_set(mode="OBJECT")
@@ -300,7 +367,8 @@ class Fill(bpy.types.Operator):
         for vert in unselected_verts:
             vert.select = False
         for face in unselected_faces:
-            face.select = False    
+            face.select = False
+            
         self.revert_rest_spritesheet(context,start_obj)
         
         return fill_ok
@@ -359,6 +427,9 @@ class Fill(bpy.types.Operator):
         start_obj = context.active_object
         img = self.get_img(context,start_obj)
         
+        hide_sprite = start_obj.data.coa_hide_base_sprite
+        start_obj.data.coa_hide_base_sprite = False
+        
         if self.triangulate:
             if not self.triangulate_fill(context):
                 bpy.ops.object.mode_set(mode="OBJECT")
@@ -374,6 +445,8 @@ class Fill(bpy.types.Operator):
             bpy.ops.object.mode_set(mode="OBJECT")
             assign_tex_to_uv(img,start_obj.data.uv_textures.active)
             bpy.ops.object.mode_set(mode="EDIT")
+        
+        start_obj.data.coa_hide_base_sprite = hide_sprite
         
         bpy.ops.ed.undo_push(message="Grid Fill")
         return{'FINISHED'}
@@ -399,6 +472,7 @@ class DrawContour(bpy.types.Operator):
     def __init__(self):
         self.distance = .1
         self.cur_distance = 0
+        self.draw_dir = Vector((0,0,0))
         self.old_coord = Vector((0,0,0))
         self.mouse_press = False
         self.mouse_press_hist = False
@@ -508,7 +582,7 @@ class DrawContour(bpy.types.Operator):
 
         return location 
         
-    def draw_verts(self,context,obj):
+    def draw_verts(self,context,obj,position):
         bm = bmesh.from_edit_mesh(obj.data)
         
         selected_verts_count = 0
@@ -531,8 +605,9 @@ class DrawContour(bpy.types.Operator):
         for vert in bm.verts:
             if vert.select:
                 selected_vert.append(vert)
-        new_vert = bm.verts.new(obj.matrix_world.inverted() * context.scene.cursor_location)
+        new_vert = bm.verts.new(obj.matrix_world.inverted() * position)
         new_vert.select = True
+        bm.select_history.add(new_vert)
         if len(selected_vert) > 0:
             bm.edges.new([selected_vert[0],new_vert])
         for vert in selected_vert:
@@ -577,11 +652,52 @@ class DrawContour(bpy.types.Operator):
         for vert in verts:
             vert.co = context.active_object.matrix_world.inverted() * self.limit_cursor_by_bounds(context,event,context.active_object.matrix_world * vert.co)
         bmesh.update_edit_mesh(context.active_object.data)
+    
+    
+    def get_selected_vert_pos(self,context):
+        bm = bmesh.from_edit_mesh(context.active_object.data)
+        for vert in bm.verts:
+            if vert.select == True:
+                bmesh.update_edit_mesh(context.active_object.data)
+                return vert.co
+        bmesh.update_edit_mesh(context.active_object.data)
+        return None
+        
+    def exit(self,context,event):
+        bpy.ops.object.mode_set(mode="EDIT")
+        if self.mode == "DRAW_BONE_SHAPE":
+            self.set_bone_shape_color_and_wireframe(context,self.bone_shape)
+            
+        bpy.context.space_data.show_manipulator = self.show_manipulator
+        bpy.context.window.cursor_set("CROSSHAIR")
+        bpy.ops.object.mode_set(mode="OBJECT")
+        self.sprite_object.coa_edit_mesh = False
+        set_local_view(False)
+        
+            
+        if self.mode == "DRAW_BONE_SHAPE":
+            self.armature.draw_type = self.draw_type
+            context.scene.coa_lock_to_bounds = self.draw_bounds
+            if self.armature != None:
+                context.scene.objects.active = self.armature
+            if len(self.bone_shape.data.vertices) > 1:
+                self.bone.custom_shape = self.bone_shape
+                self.bone.use_custom_shape_bone_size = False
+            else:
+                self.bone.custom_shape = None    
+            
+            self.bone_shape.select = False
+            self.bone_shape.parent = None
+            context.scene.objects.unlink(self.bone_shape)
+            bpy.ops.object.mode_set(mode="POSE")    
+        else:
+            bpy.ops.object.mode_set(mode="OBJECT")    
+        return{'CANCELLED'}
         
     def modal(self, context, event):
         self.in_view_3d = check_region(context,event)
         
-        if event.value == "RELEASE" and context.active_object.mode == "EDIT":
+        if event.value == "RELEASE" and context.active_object.mode == "EDIT" and context.scene.coa_lock_to_bounds:
             self.check_verts(context,event)
         
         if self.in_view_3d and context.active_object != None:
@@ -594,6 +710,8 @@ class DrawContour(bpy.types.Operator):
                 bpy.ops.object.mode_set(mode="OBJECT")
                 self.sprite_object.coa_edit_mesh = False
                 set_local_view(False)
+                
+                self.exit(context,event)
                 return {"FINISHED"}
                 
             scene = context.scene
@@ -617,7 +735,7 @@ class DrawContour(bpy.types.Operator):
             rayStart,rayEnd, ray = self.project_cursor(event)
             if rayEnd != None:
                 bpy.context.scene.cursor_location = rayEnd
-            if scene.coa_lock_to_bounds:
+            if scene.coa_lock_to_bounds and self.mode == "EDIT_MESH":
                 bpy.context.scene.cursor_location = self.limit_cursor_by_bounds(context,event,bpy.context.scene.cursor_location)    
             
             ### Set Mouse click
@@ -627,60 +745,45 @@ class DrawContour(bpy.types.Operator):
             else:
                 mouse_button = 'RIGHTMOUSE'  
             
-            if (event.value == 'PRESS' or event.value == 'CLICK') and event.type == mouse_button:
+            if (event.value == 'PRESS' or event.value == 'CLICK') and event.type == mouse_button and self.mouse_press == False:
                 self.mouse_press = True
-                #return{'RUNNING_MODAL'}
+                
+                ### add vert on first mouse press
+                self.cursor_pos_hist = Vector(context.scene.cursor_location)
+                self.draw_verts(context,ob,self.cursor_pos_hist)
+                if event.alt or scene.coa_automerge:
+                    self.automerge()
+                
+                return{'RUNNING_MODAL'}
             if (event.value == 'RELEASE' and event.type == 'MOUSEMOVE'):
                 self.mouse_press = False
-                
-                   
-            #self.cur_distance = (rayEnd - self.old_coord).magnitude
+            
+            
             self.cur_distance = (context.scene.cursor_location - self.cursor_pos_hist).magnitude
+            self.draw_dir = (context.scene.cursor_location - self.cursor_pos_hist).normalized()
+            
+            ### add verts while mouse is pressed and moved
+            mult = 1.0
             if self.mouse_press and self.inside_area:
-                mult = 1.0
-                if scene.coa_distance_constraint:
-                    mult = bpy.context.space_data.region_3d.view_distance*.05
                 if self.cur_distance > context.scene.coa_distance*mult:
-                    #bpy.ops.mesh.dupli_extrude_cursor('INVOKE_DEFAULT')
-                    self.draw_verts(context,ob)
-                    #self.old_coord = rayEnd
-                    self.cursor_pos_hist = Vector(bpy.context.scene.cursor_location)
-                    if event.alt or scene.coa_automerge:
-                        self.automerge()
+                    if scene.coa_distance_constraint:
+                        mult = bpy.context.space_data.region_3d.view_distance*.05
+                    i = int(self.cur_distance / (context.scene.coa_distance*mult))
+                    
+                    for j in range(i):
+                        new_vertex_pos = self.cursor_pos_hist + (self.draw_dir*context.scene.coa_distance*mult)
+                        self.draw_verts(context,ob,new_vertex_pos)
+
+                        self.cursor_pos_hist = Vector(new_vertex_pos)
+                        if event.alt or scene.coa_automerge:
+                            self.automerge()
             else:
                 self.old_coord = Vector((100000,100000,100000))
-                self.cursor_pos_hist = Vector((100000,100000,100000))
+
             
             scene.tool_settings.double_threshold = scene.coa_snap_distance
             
-            if (event.type in {'ESC'} and self.inside_area) or self.sprite_object.coa_edit_mesh == False:
-                if self.mode == "DRAW_BONE_SHAPE":
-                    self.set_bone_shape_color_and_wireframe(context,self.bone_shape)
-                    
-                bpy.context.space_data.show_manipulator = self.show_manipulator
-                bpy.context.window.cursor_set("CROSSHAIR")
-                bpy.ops.object.mode_set(mode="OBJECT")
-                self.sprite_object.coa_edit_mesh = False
-                set_local_view(False)
-                
-                    
-                if self.mode == "DRAW_BONE_SHAPE":
-                    self.armature.draw_type = self.draw_type
-                    context.scene.coa_lock_to_bounds = self.draw_bounds
-                    if self.armature != None:
-                        context.scene.objects.active = self.armature
-                    if len(self.bone_shape.data.vertices) > 1:
-                        self.bone.custom_shape = self.bone_shape
-                        self.bone.use_custom_shape_bone_size = False
-                    else:
-                        self.bone.custom_shape = None    
-                    
-                    self.bone_shape.select = False
-                    self.bone_shape.parent = None
-                    context.scene.objects.unlink(self.bone_shape)
-                return{'CANCELLED'}
-            
-            if event.type in {'TAB'} and not event.ctrl:
+            if (event.type in {'TAB'} and not event.ctrl) or (event.type in {'ESC'} and self.inside_area):
                 self.sprite_object.coa_edit_mesh = False
                 bpy.ops.object.mode_set(mode='OBJECT')
                 
@@ -694,11 +797,22 @@ class DrawContour(bpy.types.Operator):
             
         return {'PASS_THROUGH'}
     
+    _timer = 0
+    
     def execute(self, context):
+        obj = context.active_object
         #bpy.ops.wm.coa_modal() ### start coa modal mode if not running
         self.sprite_object = get_sprite_object(context.active_object)
         self.sprite_object = bpy.data.objects[self.sprite_object.name]
-        self.bounds = get_bounds_and_center(context.active_object)[1]
+        
+        ### get Sprite Boundaries
+        hide_sprite = obj.data.coa_hide_base_sprite
+        obj.data.coa_hide_base_sprite = False
+        self.bounds = get_bounds_and_center(obj)[1]
+        obj.data.coa_hide_base_sprite = hide_sprite
+        
+        if self.mode == "EDIT_MESH":
+            hide_base_sprite(bpy.context.active_object)
         
         if self.mode == "DRAW_BONE_SHAPE":
             self.draw_bounds = context.scene.coa_lock_to_bounds
@@ -740,7 +854,7 @@ class DrawContour(bpy.types.Operator):
             self.armature = armature
             bone.custom_shape = None#self.bone_shape
             self.draw_type = self.armature.draw_type
-            self.armature.draw_type = "WIRE"
+            self.armature.draw_type = "WIRE"    
 
 
         
@@ -758,7 +872,11 @@ class DrawContour(bpy.types.Operator):
         args = ()
         self.draw_handler = bpy.types.SpaceView3D.draw_handler_add(self.draw_callback_px, args, "WINDOW", "POST_VIEW")
                 
-        context.window_manager.modal_handler_add(self)
+                
+        wm = context.window_manager
+        #self._timer = wm.event_timer_add(0.1, context.window)
+        wm.modal_handler_add(self)        
+        #context.window_manager.modal_handler_add(self)
         return {'RUNNING_MODAL'}
 
     def cancel(self, context):
@@ -815,15 +933,19 @@ class PickEdgeLength(bpy.types.Operator):
         obj = context.active_object
         bm = bmesh.from_edit_mesh(obj.data)
         
+        mult = 1
+        if context.scene.coa_distance_constraint:
+            mult = bpy.context.space_data.region_3d.view_distance*.05
+        
         for edge in bm.edges:
             if edge.select:
-                scene.coa_distance = edge.calc_length()
-        for vert in bm.verts:
-            vert.select = False
-        for edge in bm.edges:
-            edge.select = False    
-        for face in bm.faces:
-            face.select = False            
+                scene.coa_distance = edge.calc_length()/mult
+#        for vert in bm.verts:
+#            vert.select = False
+#        for edge in bm.edges:
+#            edge.select = False    
+#        for face in bm.faces:
+#            face.select = False            
         bmesh.update_edit_mesh(obj.data)    
         return {"FINISHED"}
         

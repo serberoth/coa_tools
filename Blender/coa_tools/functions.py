@@ -105,10 +105,11 @@ def fix_bone_roll(armature):
     
 
 def hide_base_sprite(obj):
-    if "coa_sprite" in obj:
-        context = bpy.context
-        obj = context.active_object
+    context = bpy.context
+    selected_object = bpy.data.objects[context.active_object.name]
+    if "coa_sprite" in obj and obj.type == "MESH":
         orig_mode = obj.mode
+        context.scene.objects.active = obj
         bpy.ops.object.mode_set(mode="OBJECT")
         bpy.ops.object.mode_set(mode="EDIT")
         me = obj.data
@@ -131,16 +132,17 @@ def hide_base_sprite(obj):
                 edge.hide = True
                 edge.select = False
             for face in vert.link_faces:
-                face.hide = obj.coa_hide_base_sprite
+                face.hide = obj.data.coa_hide_base_sprite
                 face.select = False
                 
         if "coa_base_sprite" in obj.modifiers:
             mod = obj.modifiers["coa_base_sprite"]
-            mod.show_viewport = obj.coa_hide_base_sprite
-            mod.show_render = obj.coa_hide_base_sprite
+            mod.show_viewport = obj.data.coa_hide_base_sprite
+            mod.show_render = obj.data.coa_hide_base_sprite
             
         bmesh.update_edit_mesh(me)               
         bpy.ops.object.mode_set(mode=orig_mode)                      
+    context.scene.objects.active = selected_object
     
 def get_uv_from_vert(uv_layer, v):
     for l in v.link_loops:
@@ -569,10 +571,10 @@ def update_verts(context,obj):
         mode_prev = obj.mode
         
         
-        hide = bool(obj.coa_hide_base_sprite)
-        obj.coa_hide_base_sprite = False
+        hide = bool(obj.data.coa_hide_base_sprite)
+        obj.data.coa_hide_base_sprite = False
         obj.coa_dimensions_old = Vector(obj.dimensions)
-        obj.coa_hide_base_sprite = hide    
+        obj.data.coa_hide_base_sprite = hide    
         
         
         spritesheet = obj.material_slots[0].material.texture_slots[0].texture.image
@@ -637,12 +639,25 @@ def display_children(self, context, obj):
     col = box.column(align=True)
     sprite_object = get_sprite_object(obj)
     children = get_children(context,sprite_object,ob_list=[])
+    
+    list1 = []
+    list2 = []
+    for child in children:
+        if child.type != "CAMERA":
+            list1.append(child)
+        else:
+            list2.append(child)
+    children = list1
+    children = sorted(children, key=lambda x: x.type)
+    children += list2
+    
     row = col.row(align=True)
     row.prop(obj,"coa_filter_names",text="",icon="VIEWZOOM")
-    if obj.coa_favorite:
-        row.prop(obj,"coa_favorite",text="",icon="SOLO_ON")
-    else:
-        row.prop(obj,"coa_favorite",text="",icon="SOLO_OFF")
+    if sprite_object != None:
+        if sprite_object.coa_favorite:
+            row.prop(sprite_object,"coa_favorite",text="",icon="SOLO_ON")
+        else:
+            row.prop(sprite_object,"coa_favorite",text="",icon="SOLO_OFF")
     
     col = box.column(align=True)
     if context.active_object.mode == "EDIT":
@@ -694,41 +709,42 @@ def draw_children(self,context,sprite_object,layout,box,row,col,children,obj):
     ### Sprite Object Children Display
     if sprite_object != None and sprite_object.coa_show_children:
         for i,child in enumerate(children):
-            if (obj.coa_favorite and child.coa_favorite) or not obj.coa_favorite or (child.type == "ARMATURE" and (favorite_bones(child))):
+            if (sprite_object.coa_favorite and child.coa_favorite) or not sprite_object.coa_favorite or (child.type == "ARMATURE" and (favorite_bones(child))):
                 if obj.coa_filter_names.upper() in child.name.upper():
-                        
+                    
                     row = col.row(align=True)
                     row.separator()
                     row.separator()
                     row.separator()
                     name = child.name
                     icon = "LAYER_USED"
-                    if child.select:
+                    if child.select and not child.hide:
                         icon = "LAYER_ACTIVE"
                     row.label(text="",icon=icon)
                     if child.type == "ARMATURE":
                         row.label(text="",icon="ARMATURE_DATA")
                     elif child.type == "MESH":
-                        if child.coa_type == "MESH":
-                            row.label(text="",icon="TEXTURE")
-                        elif child.coa_type == "SLOT":
-                            row.label(text="",icon="IMASEL")    
-                    if child.type == "ARMATURE":
-                        if child.coa_show_bones:
-                            row.prop(child,"coa_show_bones",text="",icon="TRIA_DOWN",emboss=False)
-                        else:
-                            row.prop(child,"coa_show_bones",text="",icon="TRIA_RIGHT",emboss=False) 
+                        row.label(text="",icon="TEXTURE")
+                    elif child.type == "CAMERA":
+                        
+                        row.label(text="",icon="CAMERA_DATA")
                     
-                    if child.type == "MESH" and child.coa_type == "SLOT":
-                        if child.coa_slot_show:
-                            row.prop(child,"coa_slot_show",text="",icon="TRIA_DOWN",emboss=False)
-                        else:
-                            row.prop(child,"coa_slot_show",text="",icon="TRIA_RIGHT",emboss=False)    
                     
                     op = row.operator("object.coa_select_child",text=name,emboss=False)
                     op.mode = "object"
                     op.ob_name = child.name
                     
+                    if child.type == "ARMATURE":
+                        if child.coa_show_bones:
+                            row.prop(child,"coa_show_bones",text="",icon="TRIA_DOWN",emboss=False)
+                        else:
+                            row.prop(child,"coa_show_bones",text="",icon="TRIA_LEFT",emboss=False) 
+                    
+                    if child.type == "MESH" and child.coa_type == "SLOT":
+                        if child.coa_slot_show:
+                            row.prop(child,"coa_slot_show",text="",icon="TRIA_DOWN",emboss=False)
+                        else:
+                            row.prop(child,"coa_slot_show",text="",icon="TRIA_LEFT",emboss=False)    
 #                    if child.type == "MESH":
 #                        op = row.operator("import.coa_reimport_sprite",text="",icon="FILE_REFRESH",emboss=False)
 #                        op.name = child.name
@@ -785,7 +801,7 @@ def draw_children(self,context,sprite_object,layout,box,row,col,children,obj):
                     if child.type == "ARMATURE":
                         if (not sprite_object.coa_favorite and child.coa_show_bones) or sprite_object.coa_favorite:
                             for bone in child.data.bones:
-                                if (sprite_object.coa_favorite and bone.coa_favorite or not sprite_object.coa_favorite) or sprite_object.coa_filter_names.upper() in bone.name.upper():
+                                if (sprite_object.coa_favorite and bone.coa_favorite or not sprite_object.coa_favorite):# or (sprite_object.coa_filter_names != "" and sprite_object.coa_filter_names.upper() in bone.name.upper() or sprite_object.coa_filter_names == ""):
                                     row = col.row(align=True)
                                     row.separator()
                                     row.separator()

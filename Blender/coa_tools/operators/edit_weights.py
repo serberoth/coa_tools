@@ -45,6 +45,7 @@ class EditWeights(bpy.types.Operator):
     def __init__(self):
         self.sprite_object = None
         self.obj = None
+        self.shadeless = False
         self.armature = None
         self.active_object = None
         self.selected_objects = []
@@ -102,6 +103,7 @@ class EditWeights(bpy.types.Operator):
             sprite_object.coa_edit_weights = False
             bpy.ops.ed.undo_push(message="Exit Edit Weights")
             self.disable_object_color(False)
+            context.active_object.active_material.use_shadeless = self.shadeless
             return {"FINISHED"}
           
         return {"PASS_THROUGH"}
@@ -147,6 +149,9 @@ class EditWeights(bpy.types.Operator):
         sprite_object = bpy.data.objects[self.sprite_object]
         self.armature = get_armature(sprite_object).name
         armature = bpy.data.objects[self.armature]
+        
+        self.shadeless = context.active_object.active_material.use_shadeless
+        context.active_object.active_material.use_shadeless = True
         
         if armature == None or not armature in context.visible_objects:
             self.report({'WARNING'},'No Armature Available or Visible')

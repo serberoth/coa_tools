@@ -337,7 +337,6 @@ class QuickArmature(bpy.types.Operator):
                     self.drag_bone(context,event,self.current_bone)
                     if context.active_bone != None:
                         bpy.ops.armature.calculate_roll(type='GLOBAL_POS_Y')
-                
                 ### mouse pressed
                 elif self.mouse_press_hist and self.mouse_press:
                     #print("pressed")
