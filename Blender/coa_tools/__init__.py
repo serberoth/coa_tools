@@ -228,7 +228,10 @@ def scene_update(dummy):
 def hide_base_sprite_version_fix():
     for obj in bpy.data.objects:
         if obj.type == "MESH":
-            obj.data.coa_hide_base_sprite = obj.coa_hide_base_sprite
+            if "coa_hide_base_sprite" in obj:
+                obj.data.coa_hide_base_sprite = obj.coa_hide_base_sprite
+                del(obj["coa_hide_base_sprite"])
+                
 
 ### start modal operator 
 def scene_update_callback(scene):

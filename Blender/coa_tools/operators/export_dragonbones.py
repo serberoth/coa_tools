@@ -83,7 +83,8 @@ display = [
                 "width": 480,
                 "triangles": [],
                 "height": 480,
-                "name": "output_file"
+                "name": "output_file",
+                "path": ""
             }
         ]
 
@@ -112,6 +113,23 @@ def get_uv_bounds(uv):
     scale_x = 1/(right-left)
     scale_y = 1/(top-bottom)
     return ((left,top),(right,bottom)),(scale_x,scale_y)
+
+def uv_unwrap(obj,unwrap_method,island_margin,atlas):
+    bpy.ops.object.mode_set(mode="EDIT")
+    bpy.ops.uv.unwrap(method='ANGLE_BASED', margin=island_margin)
+
+    bpy.ops.object.mode_set(mode="OBJECT")
+    
+    for vert in obj.data.uv_textures["COA_ATLAS"].data:
+        vert.image = atlas
+        
+    bpy.ops.object.mode_set(mode="EDIT")
+    if unwrap_method == "ANGLE_BASED":
+        bpy.ops.uv.unwrap(method='ANGLE_BASED', margin=island_margin)
+    elif unwrap_method == "SMART_UV":
+        bpy.ops.uv.smart_project(island_margin=island_margin,use_aspect=True, stretch_to_bounds=False)
+
+    bpy.ops.object.mode_set(mode="OBJECT")
 
 def generate_texture_atlas(context,objs,atlas_name,width,height,atlas_size,unwrap_method,island_margin):
     ### create new atlas Image
@@ -179,21 +197,7 @@ def generate_texture_atlas(context,objs,atlas_name,width,height,atlas_size,unwra
     obj.data.uv_textures.active = uv_map
     
     ### create uv layout
-    bpy.ops.uv.unwrap(method='ANGLE_BASED', margin=island_margin)
-
-    bpy.ops.object.mode_set(mode="OBJECT")
-    
-    for vert in obj.data.uv_textures["COA_ATLAS"].data:
-        vert.image = atlas
-        
-    bpy.ops.object.mode_set(mode="EDIT")
-    if unwrap_method == "ANGLE_BASED":
-        bpy.ops.uv.unwrap(method='ANGLE_BASED', margin=island_margin)
-    elif unwrap_method == "SMART_UV":
-        bpy.ops.uv.smart_project(island_margin=island_margin,use_aspect=True, stretch_to_bounds=False)
-
-    
-    bpy.ops.object.mode_set(mode="OBJECT")
+    uv_unwrap(obj,unwrap_method,island_margin,atlas)
     
     ### separate mesh parts into single objects and copy uv data to original sprites
     bpy.ops.object.mode_set(mode="EDIT")
@@ -274,7 +278,7 @@ def generate_texture_atlas(context,objs,atlas_name,width,height,atlas_size,unwra
     ### bake texture into new uv layout
     for vert in obj.data.uv_textures["COA_ATLAS"].data:
         vert.image = atlas
-        
+    
     context.scene.render.bake_type = "TEXTURE"
     bpy.ops.object.bake_image()
     bpy.context.scene.update()
@@ -390,10 +394,11 @@ def get_animation_data(context,sprite_object,armature,bake_anim,bake_interval):
                                 bone_data["name"] = bone.name
                                 bone_data["frame"] = []
                                 ### loop over action framerange
+                                #for f in range(0,anim.frame_end+1):
                                 for f in range(0,anim.frame_end+1):
                                     bpy.context.scene.frame_set(f)
                                     ### if bone has a keyframe on frame -> store data
-                                    if (action != None and (bone_key_on_frame(bone,f,action)) or (bake_anim and f%bake_interval == 0) or f == 0):
+                                    if (action != None and (bone_key_on_frame(bone,f,action)) or (bake_anim and f%bake_interval == 0) or f == 0 or f == anim.frame_end):
                                         
                                         frame_data = {}
                                         frame_data["duration"] = f
@@ -493,7 +498,7 @@ def get_animation_data(context,sprite_object,armature,bake_anim,bake_interval):
                     for f in range(0,anim.frame_end+1):
                         bpy.context.scene.frame_set(f)
                         
-                        if f in keyframes or f == 0 or (bake_anim and f%bake_interval == 0 and len(keyframes)>0):
+                        if f in keyframes or f == 0 or f == anim.frame_end or (bake_anim and f%bake_interval == 0 and len(keyframes)>0):
                             ffd_frame_data = {}
                             ffd_frame_data["duration"] = f
                             ffd_frame_data["tweenEasing"] = 0
@@ -611,13 +616,14 @@ def get_skin_data(obj,tex_path,scale,armature,texture_atlas=False):
     d = OrderedDict()
     d["type"] = "mesh"
     d["name"] = tex_path
-    d["user_edges"] = []
+    d["path"] = tex_path
+    d["userEdges"] = []
     if not texture_atlas:
-        d["width"] = get_img_tex(obj).size[0]
-        d["height"] = get_img_tex(obj).size[1]
+        d["width"] = int(get_img_tex(obj).size[0])
+        d["height"] = int(get_img_tex(obj).size[1])
     else:
-        d["width"] = bpy.data.images[tex_path.split("/")[1]].size[0]
-        d["height"] = bpy.data.images[tex_path.split("/")[1]].size[1]
+        d["width"] = int(bpy.data.images[tex_path.split("/")[1]].size[0])
+        d["height"] = int(bpy.data.images[tex_path.split("/")[1]].size[1])
     
     verts = get_mixed_vertex_data(obj,store_tmp=True)
     d["vertices"] = convert_vertex_data(verts)
@@ -745,7 +751,7 @@ def get_uv_data(bm):
             if i == 1:
                 uvs.append(-val + 1)
             else:
-                uvs.append(val)    
+                uvs.append(val)
     return uvs
 
 def get_bone_matrix(armature,bone,relative=True):
@@ -799,6 +805,14 @@ def get_bone_pos(armature,bone,scale):
 def get_bone_scale(armature,bone):
     loc, rot, scale = get_bone_matrix(armature,bone).decompose()
     return Vector((round(scale[0],2),round(scale[1],2),round(scale[2],2)))
+
+def get_max_bone_length(armature,scale):
+    length = 0
+    for bone in armature.data.bones:
+        bone_length = (bone.head - bone.tail).length*scale
+        if bone_length > length:
+            length = bone_length
+    return length        
  
 def get_bone_data(armature,bone,scale):
     data = {}
@@ -896,8 +910,8 @@ class DragonBonesExport(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
     bake_interval = IntProperty(name="Bake Interval",default=1,min=1)
     reduce_size = BoolProperty(name="Reduce Export Size", description="Reduces the export size by writing all data into one row.",default=False)
     generate_atlas = BoolProperty(name="Generate Texture Atlas",description="Generates a Texture Atlas to reduce size and bundle all graphics in one Image",default=False)
-    atlas_size = EnumProperty(name="Atlas Size",items=(("AUTOMATIC","Automatic","Automatic"),("MANUAL","Manual","Manual")))
-    atlas_dimension = IntVectorProperty(name="Dimension",size=2,default=(512,512))
+    atlas_size = EnumProperty(name="Atlas Size",items=(("AUTOMATIC","Automatic","Automatic"),("MANUAL","Manual","Manual")),default="MANUAL")
+    atlas_dimension = IntVectorProperty(name="Dimension",size=2,default=(1024,1024))
     unwrap_method = EnumProperty(name="Unwrap Method",items=(("SMART_UV","Smart UV","Smart UV"),("ANGLE_BASED","Angle Based","Angle Based")))
     island_margin = FloatProperty(default=.01,min=0.0,step=.1)
     
@@ -924,7 +938,7 @@ class DragonBonesExport(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
         box.prop(self,"generate_atlas",text="Generate Texture Atlas")
         if self.generate_atlas:
             row = box.row()
-            row.prop(self,"atlas_size",text="Atlas Size",expand=True)
+            #row.prop(self,"atlas_size",text="Atlas Size",expand=True)
             if self.atlas_size == "MANUAL":
                 row = box.row()
                 row.prop(self,"atlas_dimension",text="")
@@ -942,6 +956,10 @@ class DragonBonesExport(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
         self.sprites = sorted(self.sprites, key=lambda obj: obj.location[1], reverse=True) ### sort objects based on the z depth. needed for draw order
         export_path = os.path.dirname(self.filepath)
         texture_path = os.path.join(export_path,"texture","sprites")
+        
+        if self.armature != None:
+            bone_scale = 500/get_max_bone_length(self.armature,self.scale)
+        #self.scale *= 500/bone_scale
         
         if len(self.sprite_object.coa_anim_collections) > 0:
             set_action(context,item=self.sprite_object.coa_anim_collections[1]) # set animation to restpose
