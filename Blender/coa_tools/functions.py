@@ -617,7 +617,8 @@ def change_slot_mesh_data(context,obj):
         slot = obj.coa_slot[idx]
         obj = slot.id_data
         mesh_name = obj.coa_slot[obj.coa_slot_index].name
-        obj.data = bpy.data.meshes[mesh_name]
+        if mesh_name in bpy.data.meshes:
+            obj.data = bpy.data.meshes[mesh_name]
         set_alpha(obj,context,obj.coa_alpha)
         for slot2 in obj.coa_slot:
             if slot != slot2:

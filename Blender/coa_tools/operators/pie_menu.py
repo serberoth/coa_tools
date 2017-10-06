@@ -18,8 +18,9 @@ class VIEW3D_PIE_coa_menu(Menu):
         if context.area.type == "NLA_EDITOR ":
             return True
         
-        if (obj != None and ("coa_sprite" in obj or "sprite_object" in obj)) or (sprite_object != None and obj.type == "ARMATURE"):
-            return True
+        if sprite_object != None:
+            if (obj != None and ("coa_sprite" in obj or "sprite_object" in obj)) or (sprite_object != None and obj.type == "ARMATURE"):
+                return True
     
     def draw(self, context):
         obj = context.active_object
@@ -48,7 +49,10 @@ class VIEW3D_PIE_coa_menu(Menu):
                 pie.operator("wm.call_menu_pie", icon="SPACE3", text="Delete Keyframe(s)").name = "view3d.coa_pie_keyframe_menu_remove"
             elif obj.type == "EMPTY":
                 pie.operator("import.coa_import_sprites",text="Import Sprites",icon="IMASEL")
-                pie.operator("coa_tools.export_dragon_bones",text="Export Dragonbones",icon_value=db_icon.icon_id)
+                if get_addon_prefs(context).dragon_bones_export:
+                    pie.operator("coa_tools.export_dragon_bones",text="Export Dragonbones",icon_value=db_icon.icon_id)
+                else:
+                    pie.row()    
                 pie.operator("wm.coa_create_ortho_cam",text="Create Ortho Camera",icon="CAMERA_DATA")
                 pie.operator("coa_tools.batch_render",text="Batch Render Animations",icon="CLIP")
 

@@ -894,8 +894,8 @@ class DragonBonesExport(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
     filter_glob = StringProperty(default="*.json",options={'HIDDEN'},)
     bake_anim = BoolProperty(name="Bake Animation", description="If checked, keyframes will be set for each frame. This is good if the Animation has to look exactly as in Blender.",default=False)
     bake_interval = IntProperty(name="Bake Interval",default=1,min=1)
-    reduce_size = BoolProperty(name="Reduce Export Size", description="Reduces the export size by writing all data into one row.",default=True)
-    generate_atlas = BoolProperty(name="Generate Texture Atlas",description="Generates a Texture Atlas to reduce size and bundle all graphics in one Image",default=True)
+    reduce_size = BoolProperty(name="Reduce Export Size", description="Reduces the export size by writing all data into one row.",default=False)
+    generate_atlas = BoolProperty(name="Generate Texture Atlas",description="Generates a Texture Atlas to reduce size and bundle all graphics in one Image",default=False)
     atlas_size = EnumProperty(name="Atlas Size",items=(("AUTOMATIC","Automatic","Automatic"),("MANUAL","Manual","Manual")))
     atlas_dimension = IntVectorProperty(name="Dimension",size=2,default=(512,512))
     unwrap_method = EnumProperty(name="Unwrap Method",items=(("SMART_UV","Smart UV","Smart UV"),("ANGLE_BASED","Angle Based","Angle Based")))
@@ -943,8 +943,8 @@ class DragonBonesExport(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
         export_path = os.path.dirname(self.filepath)
         texture_path = os.path.join(export_path,"texture","sprites")
         
-        
-        set_action(context,item=self.sprite_object.coa_anim_collections[1]) # set animation to restpose
+        if len(self.sprite_object.coa_anim_collections) > 0:
+            set_action(context,item=self.sprite_object.coa_anim_collections[1]) # set animation to restpose
         
         create_texture_dir(texture_path)
         

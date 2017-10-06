@@ -201,12 +201,12 @@ class ReprojectSpriteTexture(bpy.types.Operator):
                 face.select = True        
         bpy.ops.uv.project_from_view(camera_bounds=False, correct_aspect=True, scale_to_bounds=True)        
         
+        for edge in selected_edges:
+            edge.select = True
         for vert in unselected_verts:
             vert.select = False
         for face in unselected_faces:
             face.select = False
-        for edge in selected_edges:
-            edge.select = True
         bmesh.update_edit_mesh(obj.data)    
         obj.data.coa_hide_base_sprite = hide_base_sprite
     
@@ -470,17 +470,28 @@ class DrawContour(bpy.types.Operator):
     mode = StringProperty(default="EDIT_MESH")
     
     def __init__(self):
+        self.type = ""
+        self.value = ""
         self.distance = .1
         self.cur_distance = 0
         self.draw_dir = Vector((0,0,0))
         self.old_coord = Vector((0,0,0))
         self.mouse_press = False
         self.mouse_press_hist = False
+        self.mouse_pos = Vector((0,0,0))
         self.inside_area = False
         self.show_manipulator = False
         self.cursor_pos_hist = Vector((1000000000,0,1000000))
         self.sprite_object = None
         self.in_view_3d = False
+        self.nearest_vertex_co = Vector((0,0,0))
+        self.contour_length = 0
+        
+        self.selected_vert_coord = None
+        self.visible_verts = []
+        self.visible_edges = []
+        self.selected_verts_count = 0
+        self.cut_edge = False
         
         self.bone = None
         self.armature = None
@@ -489,6 +500,9 @@ class DrawContour(bpy.types.Operator):
         self.draw_type = ""
         self.draw_handler_removed = False
         self.bounds = []
+        self.type_prev = ""
+        self.value_prev = ""
+        self.prev_coa_view = ""
     
     def project_cursor(self, event):
         coord = mathutils.Vector((event.mouse_region_x, event.mouse_region_y))
@@ -516,43 +530,6 @@ class DrawContour(bpy.types.Operator):
         
         return start, end, ray
 
-    def automerge(self):
-        ob = bpy.context.active_object
-        me = ob.data
-        scene = bpy.context.scene
-        
-        merge_distance = scene.coa_snap_distance * bpy.context.space_data.region_3d.view_distance
-        bm = bmesh.from_edit_mesh(me)
-        
-        verts_added = []
-        for vert in bm.verts:
-            if vert.select:
-                verts_added.append(vert)
-        
-        for vert in verts_added:
-            tmp_distance = 100000000
-            vert_to_merge = None
-            for vert2 in bm.verts:
-                if vert2 not in verts_added:
-                    vec = Vector((vert2.co - vert.co))
-                    if vec.magnitude < tmp_distance:
-                        tmp_distance = vec.magnitude
-                        vert_to_merge = vert2
-            
-            if vert_to_merge != None:           
-                vec = Vector((vert_to_merge.co - vert.co))
-                if vec.magnitude > merge_distance:
-                    vert_to_merge = None
-                
-            if vert_to_merge != None:
-                vert.co = vert_to_merge.co
-                verts_to_merge = []
-                verts_to_merge.append(vert)
-                verts_to_merge.append(vert_to_merge)
-    
-                bmesh.ops.pointmerge(bm,verts=verts_to_merge,merge_co=Vector((vert.co)))
-                bmesh.update_edit_mesh(me)
-
     def set_paint_distance(self,context,ray):
         ob = context.active_object
         scene = context.scene
@@ -567,7 +544,7 @@ class DrawContour(bpy.types.Operator):
         bpy.ops.object.mode_set(mode='EDIT')
         return distance
     
-    def limit_cursor_by_bounds(self,context,event,location):
+    def limit_cursor_by_bounds(self,context,location):
         obj = context.active_object
         bounds = self.bounds#get_bounds_and_center(obj)[1]
         if location[0] < bounds[0][0]:
@@ -580,9 +557,10 @@ class DrawContour(bpy.types.Operator):
             location[2] = bounds[1][2]
         location[1] = bounds[0][1]
 
-        return location 
-        
-    def draw_verts(self,context,obj,position):
+        return location
+            
+    
+    def draw_verts(self,context,obj,position,use_snap=False):
         bm = bmesh.from_edit_mesh(obj.data)
         
         selected_verts_count = 0
@@ -605,14 +583,67 @@ class DrawContour(bpy.types.Operator):
         for vert in bm.verts:
             if vert.select:
                 selected_vert.append(vert)
-        new_vert = bm.verts.new(obj.matrix_world.inverted() * position)
-        new_vert.select = True
-        bm.select_history.add(new_vert)
-        if len(selected_vert) > 0:
-            bm.edges.new([selected_vert[0],new_vert])
-        for vert in selected_vert:
-            vert.select = False
         
+        snap_position, point_type = self.snap_vert_location(position)
+        if point_type == "VERT" and use_snap:
+            snap_vert = None
+            
+            for vert in bm.verts:
+                if obj.matrix_world * vert.co == snap_position:
+                    snap_vert = vert
+                    break
+            if len(bm.select_history) > 0 and bm.select_history[0] != snap_vert:
+                try:   
+                    bm.edges.new([bm.select_history[0],snap_vert])
+                except:
+                    print("Edge is irgnored. It exists already")    
+                
+            if len(selected_vert) == 0:
+                if snap_vert != None:
+                    snap_vert.select = True
+                    bm.select_history.add(snap_vert)
+                    
+            if self.contour_length == 0:
+                self.contour_length = 1
+                if snap_vert != None:
+                    self.selected_vert_coord = obj.matrix_world * snap_vert.co
+            else:
+                self.selected_vert_coord = None    
+                
+        elif point_type == "EDGE" and use_snap:
+            for edge in bm.edges:
+                sub_edge = None
+                edge_center = obj.matrix_world * ((edge.verts[0].co + edge.verts[1].co) * .5)
+                if (edge_center - snap_position).magnitude < 0.001:
+                    sub_edge = edge
+                    break
+            if sub_edge != None:
+                bmesh.ops.subdivide_edges(bm,edges=[sub_edge],cuts=1)
+            bmesh.update_edit_mesh(context.active_object.data)    
+            new_vert = None
+            for vert in bm.verts:
+                vert.select = False
+#                if obj.matrix_world * vert.co == edge_center:
+#                    new_vert = vert
+#                    new_vert.select = True
+#                    bm.select_history = [new_vert]
+            
+            ### triangulate faces
+            self.cut_edge = True
+            bmesh.ops.triangulate(bm,faces=vert.link_faces)
+        else:
+            new_vert = bm.verts.new(obj.matrix_world.inverted() * position)
+            new_vert.select = True
+            bm.select_history.add(new_vert)
+            self.selected_vert_coord = position
+            if len(selected_vert) > 0 and self.contour_length > 0:
+                bm.edges.new([selected_vert[0],new_vert])
+            self.contour_length += 1
+        for vert in selected_vert:
+            try:
+                vert.select = False
+            except:
+                pass    
         bmesh.update_edit_mesh(obj.data)
     
     def set_bone_shape_color_and_wireframe(self,context,obj):
@@ -650,7 +681,7 @@ class DrawContour(bpy.types.Operator):
             if vert.select:
                 verts.append(vert)
         for vert in verts:
-            vert.co = context.active_object.matrix_world.inverted() * self.limit_cursor_by_bounds(context,event,context.active_object.matrix_world * vert.co)
+            vert.co = context.active_object.matrix_world.inverted() * self.limit_cursor_by_bounds(context,context.active_object.matrix_world * vert.co)
         bmesh.update_edit_mesh(context.active_object.data)
     
     
@@ -664,6 +695,7 @@ class DrawContour(bpy.types.Operator):
         return None
         
     def exit(self,context,event):
+        context.screen.coa_view = self.prev_coa_view
         bpy.ops.object.mode_set(mode="EDIT")
         if self.mode == "DRAW_BONE_SHAPE":
             self.set_bone_shape_color_and_wireframe(context,self.bone_shape)
@@ -694,13 +726,65 @@ class DrawContour(bpy.types.Operator):
             bpy.ops.object.mode_set(mode="OBJECT")    
         return{'CANCELLED'}
         
-    def modal(self, context, event):
-        self.in_view_3d = check_region(context,event)
+    def check_selected_verts(self,context):
+        bm = bmesh.from_edit_mesh(context.active_object.data)
+        return bm.select_history
+    
+    def get_visible_verts(self,context):
+        obj = context.active_object
+        bm = bmesh.from_edit_mesh(context.active_object.data)
+        self.visible_verts = []
+        self.visible_edges = []
+        self.selected_verts_count = 0
         
+        active_vert = None
+        if len(bm.select_history)>0 and type(bm.select_history[0]) == bmesh.types.BMVert:
+            active_vert = bm.select_history[0]
+        
+        for edge in bm.edges:
+            if not edge.hide:# and (edge.is_wire or edge.is_boundary):
+                self.visible_edges.append([obj.matrix_world * edge.verts[0].co,obj.matrix_world * edge.verts[1].co])
+        
+        for vert in bm.verts:
+            if vert.select:
+                self.selected_verts_count += 1
+            if not vert.hide and (vert.is_boundary or vert.is_wire or len(vert.link_edges)==0):# and len(vert.link_edges) <= 1:
+                if self.contour_length == 0 or vert != active_vert and self.contour_length > 0:
+                    self.visible_verts.append(obj.matrix_world * vert.co)
+    
+    def snap_vert_location(self,coord):
+        obj = bpy.context.active_object
+        scene = bpy.context.scene
+        distance = scene.coa_snap_distance * bpy.context.space_data.region_3d.view_distance
+        snap_coord = coord
+        point_type = None
+        
+        points = []
+        if self.contour_length == 0:
+            for edge_coords in self.visible_edges:
+                edge_center = (edge_coords[0] + edge_coords[1]) * .5
+                points.append([edge_center,"EDGE"])
+        for vert in self.visible_verts:
+            points.append([vert,"VERT"])
+        
+        #for vert in self.visible_verts:
+        for vert,type in points:
+            if (vert - coord).magnitude < distance:
+                distance = (vert - coord).magnitude
+                snap_coord = vert
+                point_type = type    
+        return [snap_coord,point_type]
+    
+    def modal(self, context, event):
+        obj = context.active_object
+        self.type = str(event.type)
+        self.value = str(event.value)
+        self.in_view_3d = check_region(context,event)
         if event.value == "RELEASE" and context.active_object.mode == "EDIT" and context.scene.coa_lock_to_bounds:
             self.check_verts(context,event)
         
         if self.in_view_3d and context.active_object != None:
+            
             if (context.active_object.mode != "EDIT" and not self.draw_handler_removed) or self.sprite_object.coa_edit_mesh == False:
                 self.draw_handler_removed = True
                 self.sprite_object.coa_edit_mesh = False
@@ -717,8 +801,21 @@ class DrawContour(bpy.types.Operator):
             scene = context.scene
             ob = context.active_object
             
+                
+            ### get visible boundary and wire vertices
+            self.get_visible_verts(context)
+            
+            ### set mouse press history
             self.mouse_press_hist = self.mouse_press
             
+            ### Cast Ray from mousePosition and set Cursor to hitPoint
+            rayStart,rayEnd, ray = self.project_cursor(event)
+            if rayEnd != None:
+                bpy.context.scene.cursor_location = rayEnd
+                self.mouse_pos = rayEnd
+            if scene.coa_lock_to_bounds and self.mode == "EDIT_MESH":
+                bpy.context.scene.cursor_location = self.limit_cursor_by_bounds(context,bpy.context.scene.cursor_location)    
+                
             ### check if mouse is in 3d View
             coord = mathutils.Vector((event.mouse_region_x, event.mouse_region_y))
             if coord[0] < 0 or coord[0] > bpy.context.area.width:
@@ -729,14 +826,13 @@ class DrawContour(bpy.types.Operator):
                 bpy.context.window.cursor_set("DEFAULT")
             else:
                 self.inside_area = True
-                bpy.context.window.cursor_set("PAINT_BRUSH")
                 
-            ### Cast Ray from mousePosition and set Cursor to hitPoint
-            rayStart,rayEnd, ray = self.project_cursor(event)
-            if rayEnd != None:
-                bpy.context.scene.cursor_location = rayEnd
-            if scene.coa_lock_to_bounds and self.mode == "EDIT_MESH":
-                bpy.context.scene.cursor_location = self.limit_cursor_by_bounds(context,event,bpy.context.scene.cursor_location)    
+                snap_vert, point_type = self.snap_vert_location(rayEnd)
+                if point_type == "EDGE":
+                    bpy.context.window.cursor_set("KNIFE")
+                else:
+                    bpy.context.window.cursor_set("PAINT_BRUSH")
+              
             
             ### Set Mouse click
             mouse_button = None
@@ -750,13 +846,12 @@ class DrawContour(bpy.types.Operator):
                 
                 ### add vert on first mouse press
                 self.cursor_pos_hist = Vector(context.scene.cursor_location)
-                self.draw_verts(context,ob,self.cursor_pos_hist)
-                if event.alt or scene.coa_automerge:
-                    self.automerge()
+                self.draw_verts(context,ob,self.cursor_pos_hist,use_snap=True)
                 
                 return{'RUNNING_MODAL'}
             if (event.value == 'RELEASE' and event.type == 'MOUSEMOVE'):
                 self.mouse_press = False
+                self.cut_edge = False
             
             
             self.cur_distance = (context.scene.cursor_location - self.cursor_pos_hist).magnitude
@@ -764,37 +859,53 @@ class DrawContour(bpy.types.Operator):
             
             ### add verts while mouse is pressed and moved
             mult = 1.0
-            if self.mouse_press and self.inside_area:
-                if self.cur_distance > context.scene.coa_distance*mult:
-                    if scene.coa_distance_constraint:
-                        mult = bpy.context.space_data.region_3d.view_distance*.05
-                    i = int(self.cur_distance / (context.scene.coa_distance*mult))
-                    
-                    for j in range(i):
-                        new_vertex_pos = self.cursor_pos_hist + (self.draw_dir*context.scene.coa_distance*mult)
-                        self.draw_verts(context,ob,new_vertex_pos)
+            if not self.cut_edge:
+                if self.mouse_press and self.inside_area:
+                    if self.cur_distance > context.scene.coa_distance*mult:
+                        if scene.coa_distance_constraint:
+                            mult = bpy.context.space_data.region_3d.view_distance*.05
+                        i = int(self.cur_distance / (context.scene.coa_distance*mult))
+                        
+                        for j in range(i):
+                            new_vertex_pos = (self.cursor_pos_hist + (self.draw_dir*context.scene.coa_distance*mult))
+                            self.draw_verts(context,ob,new_vertex_pos,use_snap=False)
 
-                        self.cursor_pos_hist = Vector(new_vertex_pos)
-                        if event.alt or scene.coa_automerge:
-                            self.automerge()
-            else:
-                self.old_coord = Vector((100000,100000,100000))
+                            self.cursor_pos_hist = Vector(new_vertex_pos)
+                else:
+                    self.old_coord = Vector((100000,100000,100000))
 
+            ### check selected verts
+            select_history = self.check_selected_verts(context)
+            if len(select_history) == 0 or self.selected_verts_count != 1:
+                self.selected_vert_coord = None
+                self.contour_length = 0
             
             scene.tool_settings.double_threshold = scene.coa_snap_distance
             
-            if (event.type in {'TAB'} and not event.ctrl) or (event.type in {'ESC'} and self.inside_area):
+            #context.area.tag_redraw()
+            
+            ### deselect verts
+            if event.type in ["ESC"] and self.selected_verts_count > 0:
+                bm = bmesh.from_edit_mesh(context.active_object.data)
+                bm.select_history = []
+                for vert in bm.verts:
+                    vert.select = False
+                for edge in bm.edges:
+                    edge.select = False        
+                for face in bm.faces:
+                    face.select = False    
+            
+            if (event.type in {'TAB'} and not event.ctrl):# or (event.type in {'ESC'} and self.inside_area and self.selected_verts_count == 0):
                 self.sprite_object.coa_edit_mesh = False
                 bpy.ops.object.mode_set(mode='OBJECT')
-                
-                
-                #return{'CANCELLED'}
             
             if self.mouse_press_hist and not self.mouse_press:
                 bpy.ops.ed.undo_push(message="Stroke")
                 bpy.ops.object.mode_set(mode="OBJECT")
                 bpy.ops.object.mode_set(mode="EDIT")
             
+        self.type_prev = str(event.type)
+        self.value_prev = str(event.value)    
         return {'PASS_THROUGH'}
     
     _timer = 0
@@ -803,13 +914,15 @@ class DrawContour(bpy.types.Operator):
         obj = context.active_object
         #bpy.ops.wm.coa_modal() ### start coa modal mode if not running
         self.sprite_object = get_sprite_object(context.active_object)
-        self.sprite_object = bpy.data.objects[self.sprite_object.name]
+        if self.sprite_object != None:
+            self.sprite_object = bpy.data.objects[self.sprite_object.name]
         
         ### get Sprite Boundaries
-        hide_sprite = obj.data.coa_hide_base_sprite
-        obj.data.coa_hide_base_sprite = False
-        self.bounds = get_bounds_and_center(obj)[1]
-        obj.data.coa_hide_base_sprite = hide_sprite
+        if obj.type == "MESH":
+            hide_sprite = obj.data.coa_hide_base_sprite
+            obj.data.coa_hide_base_sprite = False
+            self.bounds = get_bounds_and_center(obj)[1]
+            obj.data.coa_hide_base_sprite = hide_sprite
         
         if self.mode == "EDIT_MESH":
             hide_base_sprite(bpy.context.active_object)
@@ -863,17 +976,20 @@ class DrawContour(bpy.types.Operator):
         bpy.ops.object.mode_set(mode="EDIT")
         bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT')
 
-
-        self.sprite_object.coa_edit_mesh = True
+        if self.sprite_object != None:
+            self.sprite_object.coa_edit_mesh = True
+        
+        wm = context.window_manager
         
         if self.mode == "EDIT_MESH":
             set_local_view(True)
+        self.prev_coa_view = str(context.screen.coa_view)
+        context.screen.coa_view = "2D"
         
         args = ()
         self.draw_handler = bpy.types.SpaceView3D.draw_handler_add(self.draw_callback_px, args, "WINDOW", "POST_VIEW")
                 
-                
-        wm = context.window_manager
+        bpy.ops.view3d.viewnumpad(type="FRONT")        
         #self._timer = wm.event_timer_add(0.1, context.window)
         wm.modal_handler_add(self)        
         #context.window_manager.modal_handler_add(self)
@@ -886,31 +1002,65 @@ class DrawContour(bpy.types.Operator):
     
     def draw_callback_px(self):
         obj = bpy.context.active_object
-#        vec1 = obj.matrix_world * Vector(obj.bound_box[0])
-#        vec2 = obj.matrix_world * Vector(obj.bound_box[2])
-#        vec3 = obj.matrix_world * Vector(obj.bound_box[5])
-#        vec4 = obj.matrix_world * Vector(obj.bound_box[4])
         
-        vec1 = Vector(self.bounds[0])
-        vec2 = Vector(self.bounds[1])
-        vec3 = Vector(self.bounds[3])
-        vec4 = Vector(self.bounds[2])
+        y_offset = Vector((0,-0.1,0))
         
-        color = [1,.7,.5]
-        bgl.glEnable(bgl.GL_BLEND)
-        bgl.glColor4f(color[0], color[1], color[2], .3)
-        bgl.glLineWidth(1)
+        vertex_vec_new = self.mouse_pos
         
-        bgl.glEnable(bgl.GL_LINE_SMOOTH)
+        if len(self.bounds) > 3:
+            vec1 = Vector(self.bounds[0]) + y_offset
+            vec2 = Vector(self.bounds[1]) + y_offset
+            vec3 = Vector(self.bounds[3]) + y_offset
+            vec4 = Vector(self.bounds[2]) + y_offset
+            
+            color = [1,.7,.5]
+            bgl.glEnable(bgl.GL_BLEND)
+            bgl.glColor4f(color[0], color[1], color[2], 1.0)
+            bgl.glLineWidth(1)
+            
+            bgl.glEnable(bgl.GL_LINE_SMOOTH)
+            
+            bgl.glBegin(bgl.GL_LINE_STRIP)
+            bgl.glVertex3f(vec1[0],vec1[1],vec1[2])
+            bgl.glVertex3f(vec2[0],vec2[1],vec2[2])
+            bgl.glVertex3f(vec3[0],vec3[1],vec3[2])
+            bgl.glVertex3f(vec4[0],vec4[1],vec4[2])
+            bgl.glVertex3f(vec1[0],vec1[1],vec1[2])
+            bgl.glEnd()
         
-        bgl.glBegin(bgl.GL_LINE_STRIP)
-        bgl.glVertex3f(vec1[0],vec1[1],vec1[2])
-        bgl.glVertex3f(vec2[0],vec2[1],vec2[2])
-        bgl.glVertex3f(vec3[0],vec3[1],vec3[2])
-        bgl.glVertex3f(vec4[0],vec4[1],vec4[2])
-        bgl.glVertex3f(vec1[0],vec1[1],vec1[2])
-        bgl.glEnd()
         
+        ### draw lines and dots
+        if self.type not in ["K","C","B","R","G","S"] and self.in_view_3d:
+            vertex_vec_new = self.limit_cursor_by_bounds(bpy.context,self.mouse_pos)
+            point_type = None
+            snapped_vert_coord, point_type = self.snap_vert_location(vertex_vec_new)
+            if self.value != "PRESS":
+                vertex_vec_new =  snapped_vert_coord + y_offset
+            
+            if self.selected_vert_coord != None:
+                bgl.glEnable(bgl.GL_LINE_SMOOTH)
+                vertex_vec = self.selected_vert_coord + y_offset
+                    
+                color = [1,0,0]
+                bgl.glColor4f(color[0], color[1], color[2], 1.0)
+                bgl.glBegin(bgl.GL_LINE_STRIP)
+                bgl.glVertex3f(vertex_vec[0],vertex_vec[1],vertex_vec[2])
+                bgl.glVertex3f(vertex_vec_new[0],vertex_vec_new[1],vertex_vec_new[2])
+                bgl.glEnd()
+            
+            if point_type == "VERT":
+                color = [0,1,0]
+            elif point_type == "EDGE":
+                color = [0,0,1]
+            else:
+                color = [1,1,0]
+            bgl.glColor4f(color[0], color[1], color[2], 1.0)
+            bgl.glPointSize(8)
+            bgl.glBegin(bgl.GL_POINTS)
+            bgl.glVertex3f(vertex_vec_new[0],vertex_vec_new[1],vertex_vec_new[2])
+            bgl.glEnd()
+            
+                    
         # restore opengl defaults
         bgl.glLineWidth(1)
         bgl.glDisable(bgl.GL_BLEND)

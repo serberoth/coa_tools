@@ -493,7 +493,7 @@ class CutoutAnimationTools(bpy.types.Panel):
     bpy.types.Scene.coa_snap_distance = FloatProperty(description="Snap Distance",default = 0.01,min=0)
     bpy.types.Scene.coa_surface_snap = BoolProperty(default=False,description="Snap Vertices on Surface",update=snapping)
     bpy.types.Scene.coa_automerge = BoolProperty(default=False)
-    bpy.types.Scene.coa_distance_constraint = BoolProperty(default=True,description="Constraint Distance to Viewport", update=update_stroke_distance)
+    bpy.types.Scene.coa_distance_constraint = BoolProperty(default=False,description="Constraint Distance to Viewport", update=update_stroke_distance)
     bpy.types.Scene.coa_lock_to_bounds = BoolProperty(default=True,description="Lock Cursor to Object Bounds")
     bpy.types.Scene.coa_frame_last = IntProperty(description="Stores last frame Number",default=0)
     

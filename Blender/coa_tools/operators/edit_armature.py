@@ -63,6 +63,8 @@ class QuickArmature(bpy.types.Operator):
         self.armature = None
         self.emulate_3_button = False
         
+        self.cursor_location = Vector((0,0,0))
+        
     def project_cursor(self, event):
         coord = mathutils.Vector((event.mouse_region_x, event.mouse_region_y))
         transform = bpy_extras.view3d_utils.region_2d_to_location_3d
@@ -132,7 +134,7 @@ class QuickArmature(bpy.types.Operator):
             bone["lock_z"] = True
             bone["lock_rot"] = True
             
-            bone.head = self.armature.matrix_world.inverted() * context.scene.cursor_location
+            bone.head = self.armature.matrix_world.inverted() * self.cursor_location
             bone.hide = True
             bone.bbone_x = .05
             bone.bbone_z = .05
@@ -165,10 +167,10 @@ class QuickArmature(bpy.types.Operator):
         if bone != None:
             
             bone.hide = False
-            mouse_vec_norm = (context.scene.cursor_location - self.mouse_click_vec).normalized()
-            mouse_vec = (context.scene.cursor_location - self.mouse_click_vec)
+            mouse_vec_norm = (self.cursor_location - self.mouse_click_vec).normalized()
+            mouse_vec = (self.cursor_location - self.mouse_click_vec)
             angle = (math.atan2(mouse_vec_norm[0], mouse_vec_norm[2])*180/math.pi)
-            cursor_local = self.armature.matrix_world.inverted() * context.scene.cursor_location   
+            cursor_local = self.armature.matrix_world.inverted() * self.cursor_location   
             if event.shift:
                 if angle > -22.5 and angle < 22.5:
                     ### up
@@ -195,7 +197,7 @@ class QuickArmature(bpy.types.Operator):
                     ### left up
                     bone.tail = (bone.head +  Vector((mouse_vec[0],0,-mouse_vec[0])))
             else:
-                bone.tail = self.armature.matrix_world.inverted() * context.scene.cursor_location
+                bone.tail = self.armature.matrix_world.inverted() * self.cursor_location
                  
     def set_parent(self,context,obj):
         obj.select = True
@@ -298,8 +300,10 @@ class QuickArmature(bpy.types.Operator):
                 mouse_button = 'LEFTMOUSE' 
             else:
                 mouse_button = 'RIGHTMOUSE'    
-            ### Set Mouse click 
-            if (event.value == 'PRESS') and event.type == mouse_button:
+            ### Set Mouse click
+            
+                 
+            if (event.value == 'PRESS') and event.type == mouse_button and self.mouse_press == False:
                 self.mouse_press = True
                 #return {'RUNNING_MODAL'}
             elif event.value in ['RELEASE','NOTHING'] and (event.type == mouse_button):
@@ -309,10 +313,13 @@ class QuickArmature(bpy.types.Operator):
             rayStart,rayEnd, ray = self.project_cursor(event)
             
             if ray[0] == True and ray[1] != None:
-                bpy.context.scene.cursor_location = ray[3]
+                #bpy.context.scene.cursor_location = ray[3]
+                self.cursor_location = ray[3]
             elif rayEnd != None:
-                bpy.context.scene.cursor_location = rayEnd
-            bpy.context.scene.cursor_location[1] = context.active_object.location[1]
+                #bpy.context.scene.cursor_location = rayEnd
+                self.cursor_location = rayEnd
+            self.cursor_location[1] = context.active_object.location[1]    
+            #bpy.context.scene.cursor_location[1] = context.active_object.location[1]
             
             if event.value in ["RELEASE"]:
                 if self.object_hover_hist != None :
@@ -331,7 +338,7 @@ class QuickArmature(bpy.types.Operator):
                 ### mouse just pressed
                 if not self.mouse_press_hist and self.mouse_press and self.in_view_3d:
                     #print("just pressed")
-                    self.mouse_click_vec = Vector(context.scene.cursor_location)
+                    self.mouse_click_vec = Vector(self.cursor_location)
                     self.create_bones(context,context.active_object)
                     
                     self.drag_bone(context,event,self.current_bone)
@@ -397,7 +404,7 @@ class QuickArmature(bpy.types.Operator):
             
                     
             ### cancel  
-            if (event.type in {'ESC'} and self.in_view_3d) or (context.active_object.mode != "EDIT" and context.active_object.type == "ARMATURE" and self.set_waits == False) or not self.sprite_object.coa_edit_armature:
+            if (context.active_object.mode != "EDIT" and context.active_object.type == "ARMATURE" and self.set_waits == False) or not self.sprite_object.coa_edit_armature:# or (event.type in {'ESC'} and self.in_view_3d):
                 bpy.context.space_data.show_manipulator = self.show_manipulator
                 bpy.context.window.cursor_set("CROSSHAIR")
                 bpy.ops.object.mode_set(mode=self.armature_mode)
@@ -519,7 +526,10 @@ class SetIK(bpy.types.Operator):
         bpy.ops.object.mode_set(mode="POSE")
         context.active_object.data.bones[ik_target_name].select = True
         context.active_object.data.bones.active = context.active_object.data.bones[ik_target_name]
-
+        
+        ik_bone.lock_ik_x = True
+        ik_bone.lock_ik_y = True
+        ik_bone.ik_stiffness_z = .9
         ik_const = ik_bone.constraints.new("IK")
         ik_const.target = context.active_object
         ik_const.subtarget = ik_target_name
