@@ -879,6 +879,11 @@ class DrawContour(bpy.types.Operator):
             if len(select_history) == 0 or self.selected_verts_count != 1:
                 self.selected_vert_coord = None
                 self.contour_length = 0
+            elif len(select_history) > 0 and type(select_history[0]) == bmesh.types.BMVert:
+                self.selected_vert_coord = obj.matrix_world* select_history[0].co
+                if self.contour_length == 0:
+                    self.contour_length = 1
+                
             
             scene.tool_settings.double_threshold = scene.coa_snap_distance
             
