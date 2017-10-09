@@ -829,19 +829,18 @@ class DrawContour(bpy.types.Operator):
         snapped_pos,type,bm_ob = self.snap_vert_location(position)
         obj = bpy.context.active_object
         bm = bmesh.from_edit_mesh(context.active_object.data)
-        for vert in bm.verts:
-            if not vert.hide:
-                if type == "VERT":
+        if type == "VERT":
+            for vert in bm.verts:
+                if not vert.hide:
                     if obj.matrix_world * vert.co == snapped_pos:
-                        if not single_vert:
-                            if len(vert.link_edges) == 2:
-                                bmesh.ops.dissolve_verts(bm,verts=[vert])
-                            elif len(vert.link_edges) <= 1:
-                                bm.verts.remove(vert)
-                            elif len(vert.link_edges) > 2:
-                                bmesh.ops.collapse(bm,edges=[vert.link_edges[2]])
-                        elif single_vert:
-                            bmesh.ops.dissolve_verts(bm,verts=[vert])
+                        bmesh.ops.pointmerge(bm,verts = [vert,vert.link_edges[0].other_vert(vert)],merge_co = vert.link_edges[0].other_vert(vert).co)
+        elif type == "EDGE":
+            for edge in bm.edges:
+                c = self.get_projected_point(edge)
+                if (c - snapped_pos).magnitude < 0.001:
+                    #bmesh.ops.collapse(bm,edges=[edge])
+                    bmesh.ops.pointmerge(bm,verts = [edge.verts[0]],merge_co = edge.verts[1].co)
+                
                         
     
     def modal(self, context, event):
