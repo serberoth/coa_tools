@@ -44,7 +44,7 @@ def remove_base_mesh(obj):
     bm.verts.ensure_lookup_table()
     verts = []
         
-    if "coa_base_sprite" in obj.vertex_groups:
+    if "coa_base_sprite" in obj.vertex_groups:hide_base_sprite(obj)   
         v_group_idx = obj.vertex_groups["coa_base_sprite"].index
         for i,vert in enumerate(obj.data.vertices):
             for g in vert.groups:
@@ -632,6 +632,7 @@ def change_slot_mesh_data(context,obj):
                 slot2["active"] = False
             else:
                 slot2["active"] = True 
+        hide_base_sprite(obj)   
 
 #def change_slot_mesh(obj,context,index):
 #    slot_len = len(obj.coa_slot)-1
