@@ -44,7 +44,7 @@ def remove_base_mesh(obj):
     bm.verts.ensure_lookup_table()
     verts = []
         
-    if "coa_base_sprite" in obj.vertex_groups:hide_base_sprite(obj)   
+    if "coa_base_sprite" in obj.vertex_groups:
         v_group_idx = obj.vertex_groups["coa_base_sprite"].index
         for i,vert in enumerate(obj.data.vertices):
             for g in vert.groups:
