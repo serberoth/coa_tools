@@ -66,6 +66,13 @@ class SelectFrameThumb(bpy.types.Operator):
                 
             wm = context.window_manager 
             return wm.invoke_popup(self,100)
+        elif obj.coa_type == "SLOT" and len(obj.coa_slot) > 0:
+            wm = context.window_manager
+            try:
+                obj.coa_sprite_frame_previews = str(obj.coa_slot_index)
+            except:
+                pass    
+            return wm.invoke_popup(self,100)
         else:
             self.report({'INFO'},"Object has no Sprites.")
             return {"FINISHED"}

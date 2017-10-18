@@ -39,6 +39,20 @@ armature_mode = None
 armature_select = False
 tmp_active_object = None
 
+class ChangeShadingMode(bpy.types.Operator):
+    bl_idname = "coa_tools.change_shading_mode"
+    bl_label = "Change Shading Mode"
+    bl_description = ""
+    bl_options = {"REGISTER"}
+
+    @classmethod
+    def poll(cls, context):
+        return True
+
+    def execute(self, context):
+        bpy.context.space_data.viewport_shade = 'MATERIAL'
+        return {"FINISHED"}
+        
 
 class UVData(bpy.types.PropertyGroup):
     uv = FloatVectorProperty(default=(0,0),size=2)
@@ -53,7 +67,9 @@ class SlotData(bpy.types.PropertyGroup):
             for slot in obj.coa_slot:
                 if slot != self:
                     slot["active"] = False
-                    
+    
+    mesh = bpy.props.PointerProperty(type=bpy.types.Mesh)
+    offset = FloatVectorProperty()               
     name = StringProperty()
     active = BoolProperty(update=change_slot_mesh)
     index = IntProperty()
@@ -144,31 +160,37 @@ class CutoutAnimationInfo(bpy.types.Panel):
 def enum_sprite_previews(self, context):
     """EnumProperty callback"""
     enum_items = []
-    
     if context is None:
         return enum_items
+    if self.coa_type == "MESH":
 
-    # Get the preview collection (defined in register func).
-    coa_pcoll = preview_collections["coa_thumbs"]
-    
-    #thumb_dir_path = bpy.utils.user_resource("DATAFILES","coa_thumbs")
-    thumb_dir_path = os.path.join(context.user_preferences.filepaths.temporary_directory,"coa_thumbs")
-    
-    if os.path.exists(thumb_dir_path):
-        # Scan the directory for png files
-        image_paths = []
-        for fn in os.listdir(thumb_dir_path):
-            if fn.lower().endswith(".png") and self.name in fn:
-                image_paths.append(fn)      
-        for i, name in enumerate(image_paths):
-            if i < self.coa_tiles_x * self.coa_tiles_y:
-                filepath = os.path.join(thumb_dir_path, name)
+        # Get the preview collection (defined in register func).
+        coa_pcoll = preview_collections["coa_thumbs"]
+        
+        #thumb_dir_path = bpy.utils.user_resource("DATAFILES","coa_thumbs")
+        thumb_dir_path = os.path.join(context.user_preferences.filepaths.temporary_directory,"coa_thumbs")
+        
+        if os.path.exists(thumb_dir_path):
+            # Scan the directory for png files
+            image_paths = []
+            for fn in os.listdir(thumb_dir_path):
+                if fn.lower().endswith(".png") and self.name in fn:
+                    image_paths.append(fn)      
+            for i, name in enumerate(image_paths):
+                if i < self.coa_tiles_x * self.coa_tiles_y:
+                    filepath = os.path.join(thumb_dir_path, name)
 
-                if name in coa_pcoll:
-                    thumb = coa_pcoll[name]
-                else:    
-                    thumb = coa_pcoll.load(name, filepath, 'IMAGE')
-                enum_items.append((str(i), name, "", thumb.icon_id, i))
+                    if name in coa_pcoll:
+                        thumb = coa_pcoll[name]
+                    else:    
+                        thumb = coa_pcoll.load(name, filepath, 'IMAGE')
+                    enum_items.append((str(i), name, "", thumb.icon_id, i))
+    elif self.coa_type == "SLOT":
+        for i,slot in enumerate(self.coa_slot):
+            if slot.mesh != None:
+                img = slot.mesh.materials[0].texture_slots[0].texture.image
+                icon = bpy.types.UILayout.icon(img)
+                enum_items.append((str(i), slot.mesh.name, "", icon, i))
  
     return enum_items
     
@@ -247,10 +269,13 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
                     set_modulate_color(obj,context,self.coa_modulate_color)
             
     def set_sprite_frame(self,context):
-        self.coa_sprite_frame_last = -1
-        self.coa_sprite_frame = int(self.coa_sprite_frame_previews)
-        if context.scene.tool_settings.use_keyframe_insert_auto:
-            bpy.ops.my_operator.add_keyframe(prop_name="coa_sprite_frame",interpolation="CONSTANT")
+        if self.coa_type == "MESH":
+            self.coa_sprite_frame_last = -1
+            self.coa_sprite_frame = int(self.coa_sprite_frame_previews)
+            if context.scene.tool_settings.use_keyframe_insert_auto:
+                bpy.ops.my_operator.add_keyframe(prop_name="coa_sprite_frame",interpolation="CONSTANT")
+        elif self.coa_type == "SLOT":
+            self.coa_slot_index = int(self.coa_sprite_frame_previews)
     
     
     def exit_edit_weights(self,context):
@@ -267,6 +292,7 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
         self.coa_slot_index_last = -1
         self.coa_slot_index_last = self.coa_slot_index
         change_slot_mesh_data(context,self)
+        self.data.coa_hide_base_sprite = self.data.coa_hide_base_sprite
     
     def change_edit_mode(self,context):
         if self.coa_edit_mesh == False:
@@ -317,6 +343,8 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
     bpy.types.Object.coa_slot_reset_index = bpy.props.IntProperty(default=0,min=0)
     bpy.types.Object.coa_slot_show = bpy.props.BoolProperty(default=False)
     
+    bpy.types.Area.coa_anim_window = bpy.props.BoolProperty(default=False)
+    
     bpy.types.WindowManager.coa_running_modal = BoolProperty(default=False)
                 
     def draw(self, context):
@@ -326,7 +354,9 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
         scene = context.scene
         
         
-        
+        if context.space_data.viewport_shade not in ['MATERIAL','RENDERED','TEXTURED']:
+            layout.operator("coa_tools.change_shading_mode",text="Set Proper Shading Mode",icon="ERROR")
+
         #if len(sprite_object.children) > 0:
         display_children(self,context,obj)
 #        if sprite_object != None:
@@ -368,20 +398,22 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
             if obj != None and obj.type == "MESH" and obj.mode == "OBJECT":
                 
                 row = layout.row(align=True)
-                text = str(obj.coa_tiles_x * obj.coa_tiles_y) + " Frame(s) total"
-                row.label(text=text)
+                if obj.coa_type == "MESH":
+                    text = str(obj.coa_tiles_x * obj.coa_tiles_y) + " Frame(s) total"
+                    row.label(text=text)
+                elif obj.coa_type == "SLOT":    
+                    text = str(len(obj.coa_slot)) + " Slot(s) total"
+                    row.label(text=text)
                     
-                if obj.coa_type == "MESH":    
+                if obj.coa_type == "MESH" and get_addon_prefs(context).enable_spritesheets:    
                     row = layout.row(align=True)
                     row.prop(obj,'coa_tiles_x',text="Tiles X")
                     row.prop(obj,'coa_tiles_y',text="Tiles Y")
                     
                     row = layout.row(align=True)
                     row.prop(obj,'coa_sprite_frame',text="Frame Index",icon="UV_FACESEL")
-                
-                    if obj.coa_tiles_x * obj.coa_tiles_y > 1:
+                    if obj.coa_tiles_x * obj.coa_tiles_y > 1:                    
                         op = row.operator("my_operator.select_frame_thumb",text="",icon="IMAGE_COL")
-                        
                         op = row.operator("my_operator.add_keyframe",text="",icon="SPACE2")
                         op.prop_name = "coa_sprite_frame"
                         op.add_keyframe = True
@@ -390,10 +422,11 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
                         op.prop_name = "coa_sprite_frame"
                         op.add_keyframe = False
                         #row.template_icon_view(obj, "coa_sprite_frame_previews")
-                else:
+                elif obj.coa_type == "SLOT" and len(obj.coa_slot) > 0:
                     row = layout.row(align=True)
+                    slot_text = "Slot Index (" + str(len(obj.coa_slot)) + ")"
                     row.prop(obj,'coa_slot_index',text="Slot Index") 
-                    
+                    op = row.operator("my_operator.select_frame_thumb",text="",icon="IMAGE_COL")
                     op = row.operator("my_operator.add_keyframe",text="",icon="SPACE2")
                     op.prop_name = "coa_slot_index"
                     op.add_keyframe = True
@@ -491,7 +524,7 @@ class CutoutAnimationTools(bpy.types.Panel):
     bpy.types.Scene.coa_distance = FloatProperty(description="Set the asset distance for each Paint Stroke",default = 1.0,min=-.0, max=30.0)
     bpy.types.Scene.coa_detail = FloatProperty(description="Detail",default = .3,min=0,max=1.0)
     bpy.types.Scene.coa_snap_distance = FloatProperty(description="Snap Distance",default = 0.01,min=0)
-    bpy.types.Scene.coa_surface_snap = BoolProperty(default=False,description="Snap Vertices on Surface",update=snapping)
+    bpy.types.Scene.coa_surface_snap = BoolProperty(default=True,description="Snap Vertices on Surface",update=snapping)
     bpy.types.Scene.coa_automerge = BoolProperty(default=False)
     bpy.types.Scene.coa_distance_constraint = BoolProperty(default=False,description="Constraint Distance to Viewport", update=update_stroke_distance)
     bpy.types.Scene.coa_lock_to_bounds = BoolProperty(default=True,description="Lock Cursor to Object Bounds")
@@ -554,6 +587,10 @@ class CutoutAnimationTools(bpy.types.Panel):
                     row = layout.row()
                     row.operator("coa_tools.create_slot_object",text="Merge to Slot Object",icon="IMASEL",emboss=True)  
                     
+                    if operator_exists("object.create_driver_constraint") and len(context.selected_objects)>1:
+                        row = layout.row()
+                        row.operator("object.create_driver_constraint",text="Driver Constraint",icon="DRIVER")
+                    
                     if get_addon_prefs(context).dragon_bones_export:
                         row = layout.row()
                         row.operator("coa_tools.export_dragon_bones",text="Export Dragonbones",icon_value=db_icon.icon_id,emboss=True)
@@ -608,43 +645,49 @@ class CutoutAnimationTools(bpy.types.Panel):
                     row.prop(tool_settings.unified_paint_settings,"use_pressure_strength",text="")
                     row = col.row(align=True)
                     row.prop(tool_settings,"use_auto_normalize",text="Auto Normalize")
-                    
-        if context.active_object != None and "coa_sprite" in obj and context.active_object.mode == "EDIT" and context.active_object.type == "MESH" and sprite_object.coa_edit_mesh:
+                   
+        if context.active_object != None and ("coa_sprite" in obj or "coa_bone_shape" in context.active_object) and context.active_object.mode == "EDIT" and context.active_object.type == "MESH" and sprite_object.coa_edit_mesh:
             row = layout.row(align=True)
             row.label(text="Mesh Tools:")
             
-            row = layout.row(align=True)
-            operator = row.operator("object.coa_fill",text="Normal Fill",icon="OUTLINER_OB_SURFACE")
-            operator.triangulate = False
+            if "coa_sprite" in obj:
+                row = layout.row(align=True)
+                operator = row.operator("object.coa_fill",text="Normal Fill",icon="OUTLINER_OB_SURFACE")
+                operator.triangulate = False
+                
+                row = layout.row(align=True)
+                operator = row.operator("object.coa_fill",text="Triangle Fill",icon="OUTLINER_OB_SURFACE")
+                operator.triangulate = True
             
-            row = layout.row(align=True)
-            operator = row.operator("object.coa_fill",text="Triangle Fill",icon="OUTLINER_OB_SURFACE")
-            operator.triangulate = True
             
             col = layout.column(align=True)
-            row2 = col.row(align=True)
-            row2.prop(scene,'coa_snap_distance',text="Merge Distance")
             
             row2 = col.row(align=True)
             row2.prop(scene,'coa_distance',text="Stroke Distance")
             row2.operator("coa_tools.pick_edge_length",text="",icon="EYEDROPPER")
-            row2.row(align=True).prop(scene,'coa_distance_constraint',text="",icon="CONSTRAINT")
+            #row2.row(align=True).prop(scene,'coa_distance_constraint',text="",icon="CONSTRAINT")
             
             row2 = col.row(align=True)
-            row2.prop(scene,'coa_surface_snap',text="Snap Vertices",icon="SNAP_SURFACE")
-            
+            row2.prop(scene,'coa_snap_distance',text="Snap Distance")
             row2 = col.row(align=True)
-            row2.prop(scene,'coa_automerge',text="Merge Vertices",toggle=True,icon="AUTOMERGE_ON")
-            
-            row2 = col.row(align=True)
-            if scene.coa_lock_to_bounds:
-                row2.prop(scene,"coa_lock_to_bounds",text="Draw only within Bounds",icon="LOCKVIEW_ON")
+            if scene.coa_surface_snap:
+                row2.prop(scene,'coa_surface_snap',text="Snap Vertices",icon="SNAP_ON")
             else:
-                row2.prop(scene,"coa_lock_to_bounds",text="Draw everywhere",icon="LOCKVIEW_OFF")
+                row2.prop(scene,'coa_surface_snap',text="Snap Vertices",icon="SNAP_OFF")    
+            
+#            row2 = col.row(align=True)
+#            row2.prop(scene,'coa_automerge',text="Merge Vertices",toggle=True,icon="AUTOMERGE_ON")
+#            
+#            row2 = col.row(align=True)
+#            if scene.coa_lock_to_bounds:
+#                row2.prop(scene,"coa_lock_to_bounds",text="Draw only within Bounds",icon="LOCKVIEW_ON")
+#            else:
+#                row2.prop(scene,"coa_lock_to_bounds",text="Draw everywhere",icon="LOCKVIEW_OFF")
             
             col = layout.column(align=True)
             operator = col.operator("mesh.knife_tool", text="Knife")
-            operator = col.operator("coa_tools.reproject_sprite_texture", text="Reproject Sprite")
+            if "coa_sprite" in obj:
+                operator = col.operator("coa_tools.reproject_sprite_texture", text="Reproject Sprite")
 
 ### Custom template_list look
 class UIListAnimationCollections(bpy.types.UIList):
@@ -886,6 +929,7 @@ class CutoutAnimationCollections(bpy.types.Panel):
         scene = context.scene
         sprite_object = get_sprite_object(obj)
         if obj != None and sprite_object != None:
+
             
             row = layout.row()
             row.prop(sprite_object,"coa_animation_loop",text="Wrap Animation Playback")
@@ -904,6 +948,8 @@ class CutoutAnimationCollections(bpy.types.Panel):
             col.operator("my_operator.add_animation_collection",text="",icon="ZOOMIN")
             col.operator("my_operator.remove_animation_collection",text="",icon="ZOOMOUT")
             
+            if not "-nonnormal" in context.screen.name:
+                col.operator("coa_tools.toggle_animation_area",text="",icon="ACTION")            
             
             if  len(sprite_object.coa_anim_collections) > 0 and sprite_object.coa_anim_collections[sprite_object.coa_anim_collections_index].action_collection:
                 row = layout.row(align=True)

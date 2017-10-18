@@ -61,8 +61,14 @@ class ExampleAddonPreferences(bpy.types.AddonPreferences):
     sprite_thumb_size = bpy.props.IntProperty(name="Sprite thumbnail size",default=48)
     json_export = bpy.props.BoolProperty(name="Experimental Json export",default=False)
     dragon_bones_export = bpy.props.BoolProperty(name="Dragonbones Export",default=False)
+    enable_spritesheets = bpy.props.BoolProperty(name="Enable Spritesheets",default=False, description="This feature is deprecated and should not be used for future projects. Use this only for older projects.")
     def draw(self, context):
         layout = self.layout
+        row = layout.row()
+        row.alignment = "LEFT"
+        row.prop(self,"enable_spritesheets",text="")
+        row.prop(self,"enable_spritesheets",icon="ERROR",emboss=False)
+        #row.label(text="",icon="ERROR")
         layout.prop(self, "show_donate_icon")
         layout.prop(self,"json_export")
         layout.prop(self,"dragon_bones_export")
@@ -233,6 +239,13 @@ def hide_base_sprite_version_fix():
                 del(obj["coa_hide_base_sprite"])
                 
 
+def coa_fix_slots():
+    for obj in bpy.data.objects:
+        if obj.coa_type == "SLOT":
+            for slot in obj.coa_slot:
+                if slot.name in bpy.data.meshes and slot.mesh == None:
+                    slot.mesh = bpy.data.meshes[slot.name]
+
 ### start modal operator 
 def scene_update_callback(scene):
     bpy.app.handlers.scene_update_pre.remove(scene_update_callback)
@@ -253,6 +266,7 @@ def coa_startup(dummy):
     hide_base_sprite_version_fix()
     
     ### version fix
+    coa_fix_slots() ### fix coa_slots to point to mesh data
     for obj in bpy.data.objects:
         if obj.type == "MESH":
             if "sprite" in obj:

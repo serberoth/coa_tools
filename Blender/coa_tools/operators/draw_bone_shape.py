@@ -63,7 +63,15 @@ class DrawBoneShape(bpy.types.Operator):
         row.prop(self,"bone_shapes")
     
     def invoke(self,context,event):
+        
+        
         self.bone_shapes = "NEW_SHAPE"
+        shape_name = context.active_pose_bone.name + "_custom_shape"
+        if context.active_object.type == "ARMATURE" and (context.active_pose_bone.custom_shape != None or shape_name in bpy.data.objects):
+            shape_name = context.active_pose_bone.custom_shape.name if context.active_pose_bone.custom_shape != None else context.active_pose_bone.name + "_custom_shape"
+            print(shape_name)
+            self.bone_shapes = shape_name
+        
         wm = context.window_manager
         return wm.invoke_props_dialog(self)
     

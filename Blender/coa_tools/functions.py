@@ -33,6 +33,11 @@ import json
 from bpy.app.handlers import persistent
 
 
+def operator_exists(idname):
+    op_name = idname.split(".")
+    name = op_name[0].upper()+"_OT_"+op_name[1]
+    return hasattr(bpy.types,name)
+
 def remove_base_mesh(obj):
     bpy.ops.object.mode_set(mode="EDIT")
     bm = bmesh.from_edit_mesh(obj.data)
@@ -214,23 +219,24 @@ def unwrap_with_bounds(obj,uv_idx):
     bpy.ops.object.mode_set(mode="OBJECT")
 
 def get_local_dimension(obj):
-    x0 = 10000000000*10000000000
-    x1 = -10000000000*10000000000
-    y0 = 10000000000*10000000000
-    y1 = -100000000000*10000000000
-    
-    for vert in obj.data.vertices:
-        if vert.co[0] < x0:
-            x0 = vert.co[0]
-        if vert.co[0] > x1:
-            x1 = vert.co[0]
-        if vert.co[2] < y0:
-            y0 = vert.co[2]
-        if vert.co[2] > y1:
-            y1 = vert.co[2]
-            
-    offset = [x0,y1]        
-    return [(x1-x0)*obj.coa_tiles_x,(y1-y0)*obj.coa_tiles_y,offset]
+    if obj.type == "MESH":
+        x0 = 10000000000*10000000000
+        x1 = -10000000000*10000000000
+        y0 = 10000000000*10000000000
+        y1 = -100000000000*10000000000
+        
+        for vert in obj.data.vertices:
+            if vert.co[0] < x0:
+                x0 = vert.co[0]
+            if vert.co[0] > x1:
+                x1 = vert.co[0]
+            if vert.co[2] < y0:
+                y0 = vert.co[2]
+            if vert.co[2] > y1:
+                y1 = vert.co[2]
+                
+        offset = [x0,y1]        
+        return [(x1-x0)*obj.coa_tiles_x,(y1-y0)*obj.coa_tiles_y,offset]
 
 def get_addon_prefs(context):
     addon_name = __name__.split(".")[0]
@@ -616,9 +622,10 @@ def change_slot_mesh_data(context,obj):
         
         slot = obj.coa_slot[idx]
         obj = slot.id_data
-        mesh_name = obj.coa_slot[obj.coa_slot_index].name
-        if mesh_name in bpy.data.meshes:
-            obj.data = bpy.data.meshes[mesh_name]
+#        mesh_name = obj.coa_slot[obj.coa_slot_index].name
+#        if mesh_name in bpy.data.meshes:
+#            obj.data = bpy.data.meshes[mesh_name]
+        obj.data = slot.mesh
         set_alpha(obj,context,obj.coa_alpha)
         for slot2 in obj.coa_slot:
             if slot != slot2:
@@ -777,10 +784,15 @@ def draw_children(self,context,sprite_object,layout,box,row,col,children,obj):
                             subrow.separator()
                             subrow.separator()
                             subrow.separator()
-                            if slot.active:
-                                subrow.prop(slot,"active",text=slot.name,icon="RADIOBUT_ON",emboss=False)
+                            if slot.mesh != None:
+                                name = slot.mesh.name
                             else:
-                                subrow.prop(slot,"active",text=slot.name,icon="RADIOBUT_OFF",emboss=False)
+                                name = "No Data found"    
+                                subrow.label(text="",icon="ERROR")
+                            if slot.active:
+                                subrow.prop(slot,"active",text=name,icon="RADIOBUT_ON",emboss=False)
+                            else:
+                                subrow.prop(slot,"active",text=name,icon="RADIOBUT_OFF",emboss=False)
                             
                             subrow = row.row(align=True)
                             

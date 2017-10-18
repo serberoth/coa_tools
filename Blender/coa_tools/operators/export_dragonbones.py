@@ -147,7 +147,7 @@ def generate_texture_atlas(context,objs,atlas_name,width,height,atlas_size,unwra
             mesh_data.append(obj.data.name)
         elif obj.coa_type == "SLOT":
             for slot in obj.coa_slot:
-                mesh_data.append(slot.name)
+                mesh_data.append(slot.mesh.name)
         ### loop over all mesh names        
         for i,name in enumerate(mesh_data):
             obj.data = bpy.data.meshes[name]

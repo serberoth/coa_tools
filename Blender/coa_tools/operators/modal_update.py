@@ -173,7 +173,9 @@ class COAModal(bpy.types.Operator):
                     ### Store sprite dimension in coa_sprite_dimension when mesh is rescaled
                     for obj in context.selected_objects:
                         if obj != None and "coa_sprite":
-                            obj.coa_sprite_dimension = Vector((get_local_dimension(obj)[0],0,get_local_dimension(obj)[1]))
+                            local_dimensions = get_local_dimension(obj)
+                            if local_dimensions != None:
+                                obj.coa_sprite_dimension = Vector((local_dimensions[0],0,local_dimensions[1]))
             
             ### will be executed when leaving armature edit mode                
             if get_sprite_object(obj)!= None and obj.type == "ARMATURE" and self.obj_mode_hist == "EDIT" and obj.mode != "EDIT":

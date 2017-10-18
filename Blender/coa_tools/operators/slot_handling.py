@@ -56,15 +56,26 @@ class CreateSlotObject(bpy.types.Operator):
     def execute(self, context):
         #obj = bpy.data.objects[context.active_object.name]
         init_obj = bpy.data.objects[context.active_object.name] 
+        objs = context.selected_objects[:]
         obj = context.active_object.copy()
         context.scene.objects.link(obj)
         context.scene.objects.active = obj
         if obj.coa_type == "MESH":
             obj.name = self.slot_name    
+        for slot in obj.coa_slot:
+            obj.coa_slot.remove(slot)    
         
-        objs = context.selected_objects
+        for sprite in objs:
+            if sprite != obj:
+                sprite.location[1] = obj.location[1]
+        
+        cursor_location = Vector(context.scene.cursor_location)
+        context.scene.cursor_location = obj.matrix_world.to_translation()
+        bpy.ops.object.origin_set(type='ORIGIN_CURSOR')
+        context.scene.cursor_location = cursor_location
+        
         obj.coa_type = "SLOT"
-        for sprite in context.selected_objects:
+        for sprite in objs:
             if sprite != obj:
                 if sprite.type == "MESH":
                     item = None
@@ -73,7 +84,8 @@ class CreateSlotObject(bpy.types.Operator):
                             item = obj.coa_slot.add()
                         else:
                             item = obj.coa_slot[sprite.data.name]
-                        item.name = sprite.data.name
+                        item.mesh = sprite.data    
+                        #item.name = sprite.data.name
                         item.index = len(obj.coa_slot)-1
                         if sprite == init_obj:
                             obj.coa_slot_index =  item.index
@@ -81,21 +93,15 @@ class CreateSlotObject(bpy.types.Operator):
                     elif sprite.coa_type == "SLOT" and sprite != init_obj:
                         for slot in sprite.coa_slot:
                             item = obj.coa_slot.add()
-                            item.name = slot.name
-                                    
-                        
+                            #item.name = slot.name
+                            item.mesh = slot.mesh
                     if item != None:
                         item["active"] = False
-        for sprite in objs:        
-            if sprite != obj:
-                sprite.parent = None
-                sprite.location = [0,0,0]
-                sprite.layers[19] = True
-                for i,layer in enumerate(sprite.layers):
-                    if i < 19:
-                        sprite.layers[i] = False
-                #bpy.context.scene.objects.unlink(sprite)
-                #bpy.data.objects.remove(sprite)
+        obj.coa_slot[0].active = True    
+        ### delete original sprite
+        for sprite in objs:
+            context.scene.objects.unlink(sprite)
+            bpy.data.objects.remove(sprite,do_unlink=True)
         for i,s in enumerate(obj.coa_slot):
             s.index = i
         return {"FINISHED"}

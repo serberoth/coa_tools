@@ -392,11 +392,26 @@ class QuickArmature(bpy.types.Operator):
                     selected_bones = context.selected_editable_bones
                     if ray[0] and ray[1] != None and len(selected_bones) == 1:
                         obj = ray[1]
-                        self.set_weights(context,self.object_hover)
+                        if self.object_hover.coa_type == "MESH":
+                            self.set_weights(context,self.object_hover)
+                        elif self.object_hover.coa_type == "SLOT":
+                            prev_index = int(self.object_hover.coa_slot_index)
+                            for i,slot in enumerate(self.object_hover.coa_slot):
+                                self.object_hover.coa_slot_index = i
+                                self.set_weights(context,self.object_hover)
+                            self.object_hover.coa_slot_index = prev_index
                         #self.set_parent(context,self.object_hover)
                     if ray[0] and ray[1] != None and len(selected_bones) > 1:
                         obj = ray[1]
-                        self.set_weights(context,self.object_hover)
+                        #self.set_weights(context,self.object_hover)
+                        if self.object_hover.coa_type == "MESH":
+                            self.set_weights(context,self.object_hover)
+                        elif self.object_hover.coa_type == "SLOT":
+                            prev_index = int(self.object_hover.coa_slot_index)
+                            for i,slot in enumerate(self.object_hover.coa_slot):
+                                self.object_hover.coa_slot_index = i
+                                self.set_weights(context,self.object_hover)
+                            self.object_hover.coa_slot_index = prev_index 
                 return{'RUNNING_MODAL'}
 
             
