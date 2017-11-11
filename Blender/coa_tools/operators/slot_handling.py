@@ -44,6 +44,7 @@ class CreateSlotObject(bpy.types.Operator):
         return True
     
     slot_name = StringProperty(name="Slot Name")
+    keep_sprite_position = BoolProperty(name="Keep Sprite Position",description="Keeps the sprite at current position by applying a new origin.",default=True)
     
     def invoke(self,context,event):
         wm = context.window_manager
@@ -53,8 +54,25 @@ class CreateSlotObject(bpy.types.Operator):
             self.execute(context)
             return{"FINISHED"}
     
+    def objects_are_valid(self,context):
+        count = 0
+        for obj in context.selected_objects:
+            if obj.type != "MESH":
+                return False
+            else:
+                count += 1
+        if count > 1:
+            return True
+        else:
+            return False
+                
+    
     def execute(self, context):
-        #obj = bpy.data.objects[context.active_object.name]
+        if not self.objects_are_valid(context):
+            self.report({'INFO'},"Please select at least to Sprites to combine into a slot.")
+            return{"CANCELLED"}
+        
+        
         init_obj = bpy.data.objects[context.active_object.name] 
         objs = context.selected_objects[:]
         obj = context.active_object.copy()
@@ -62,17 +80,18 @@ class CreateSlotObject(bpy.types.Operator):
         context.scene.objects.active = obj
         if obj.coa_type == "MESH":
             obj.name = self.slot_name    
-        for slot in obj.coa_slot:
-            obj.coa_slot.remove(slot)    
+#        for slot in obj.coa_slot:
+#            obj.coa_slot.remove(0)
         
         for sprite in objs:
             if sprite != obj:
                 sprite.location[1] = obj.location[1]
         
-        cursor_location = Vector(context.scene.cursor_location)
-        context.scene.cursor_location = obj.matrix_world.to_translation()
-        bpy.ops.object.origin_set(type='ORIGIN_CURSOR')
-        context.scene.cursor_location = cursor_location
+        if self.keep_sprite_position:
+            cursor_location = Vector(context.scene.cursor_location)
+            context.scene.cursor_location = obj.matrix_world.to_translation()
+            bpy.ops.object.origin_set(type='ORIGIN_CURSOR')
+            context.scene.cursor_location = cursor_location
         
         obj.coa_type = "SLOT"
         for sprite in objs:

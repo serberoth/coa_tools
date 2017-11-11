@@ -182,7 +182,12 @@ def update_sprites(dummy):
             if obj.coa_modulate_color != obj.coa_modulate_color_last:
                 set_modulate_color(obj,context,obj.coa_modulate_color)
                 obj.coa_modulate_color_last = obj.coa_modulate_color
-
+        
+        if "sprite_object" in obj:
+            if obj.coa_flip_direction != obj.coa_flip_direction_last:
+                set_direction(obj)    
+                obj.coa_flip_direction_last = obj.coa_flip_direction
+                
         if update_scene:
             bpy.context.scene.update()
 
@@ -218,6 +223,9 @@ def scene_update(dummy):
                     if obj.coa_slot_index != obj.coa_slot_index_last:
                         change_slot_mesh_data(context,obj)
                         obj.coa_slot_index_last = obj.coa_slot_index
+                    if obj.coa_z_value != obj.coa_z_value_last:
+                        set_z_value(context,obj,obj.coa_z_value)
+                        obj.coa_z_value_last = obj.coa_z_value    
                     if ticker%5 == 0:
                         if obj.coa_alpha != obj.coa_alpha_last:
                             set_alpha(obj,bpy.context,obj.coa_alpha)

@@ -43,7 +43,8 @@ class AddKeyframe(bpy.types.Operator):
     add_keyframe = BoolProperty(default=True)
     interpolation = EnumProperty(default="BEZIER",items=(("BEZIER","BEZIER","BEZIER","IPO_BEZIER",0),("LINEAR","LINEAR","LINEAR","IPO_LINEAR",1),("CONSTANT","CONSTANT","CONSTANT","IPO_CONSTANT",2)))
     default_interpolation = StringProperty()
-    
+    obj = StringProperty(default="")
+    key_obj = None
     @classmethod
     def poll(cls, context):
         return True
@@ -58,16 +59,17 @@ class AddKeyframe(bpy.types.Operator):
             if data_path in fcurve.data_path:
                 for key in fcurve.keyframe_points:
                     if key.co[0] == context.scene.frame_current:
-                        print(self.interpolation)
                         key.interpolation = self.interpolation
     
     def create_keyframe(self,context,event,data_path,group=""):
         sprite = context.active_object
         sprite_object = get_sprite_object(sprite)
         
+        sprites = context.selected_objects if self.key_obj == None else [self.key_obj]
         if sprite_object.coa_anim_collections_index > 1:
             if self.add_keyframe:
-                for sprite in context.selected_objects:
+                #for sprite in context.selected_objects:
+                for sprite in sprites:    
                     if sprite.animation_data != None and sprite.animation_data.action != None:
                         if group != "":
                             sprite.keyframe_insert(data_path,group=group)
@@ -84,7 +86,7 @@ class AddKeyframe(bpy.types.Operator):
                             
                 self.report({'INFO'},str("Keyframe added at frame "+str(context.scene.frame_current)+"."))    
             else:
-                for sprite in context.selected_objects:
+                for sprite in sprites:#context.selected_objects:
                     if sprite.animation_data != None and sprite.animation_data.action != None:
                         sprite.keyframe_delete(data_path)
                         
@@ -94,7 +96,7 @@ class AddKeyframe(bpy.types.Operator):
                             action = bpy.data.actions[action_name]
                             if len(action.fcurves) == 0:
                                 action.use_fake_user = False
-                                action.user_clear()   
+                                action.user_clear()
                         self.report({'INFO'},str("Keyframe deleted at frame "+str(context.scene.frame_current)+"."))
                         set_action(context)
                     else:
@@ -104,7 +106,7 @@ class AddKeyframe(bpy.types.Operator):
     
     
     def create_bone_keyframe(self,context,event,prop_name):
-        obj = context.active_object
+        obj = context.active_object if self.key_obj == None else self.key_obj
         if obj != None and obj.type == "ARMATURE" and obj.mode == "POSE":
             for pose_bone in context.selected_pose_bones:
                 data_path = 'pose.bones["'+str(pose_bone.name)+'"].'+prop_name
@@ -119,16 +121,25 @@ class AddKeyframe(bpy.types.Operator):
     
     def invoke(self,context,event):
         wm = context.window_manager
-        if event.ctrl:
+        if event.ctrl and self.add_keyframe:
             
             return wm.invoke_props_dialog(self)
         else:
-            self.interpolation = self.default_interpolation
+            try:
+                self.interpolation = self.default_interpolation
+            except:
+                pass    
             self.execute(context)
+            self.obj = ""
+            self.key_obj = None
             return {'FINISHED'}
             
         
     def execute(self,context):
+        
+        if self.obj != "":
+            self.key_obj = bpy.data.objects[self.obj]
+            
         event = None
         obj = context.active_object
         sprite_object = get_sprite_object(obj)
@@ -151,7 +162,8 @@ class AddKeyframe(bpy.types.Operator):
                 self.create_keyframe(context,event,self.prop_name)
         else:
             self.report({'WARNING'},"First create an animation collection.")        
-                
+        self.obj = ""
+        self.key_obj = None    
         return {"FINISHED"}   
 
 class AddAnimationCollection(bpy.types.Operator):
@@ -411,6 +423,7 @@ class BatchRender(bpy.types.Operator):
         obj = context.active_object
         sprite_object = get_sprite_object(obj)
         if sprite_object != None:
+            
             idx = int(sprite_object.coa_anim_collections_index)
             
             for i in range(len(sprite_object.coa_anim_collections)):

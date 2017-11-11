@@ -301,6 +301,14 @@ def clear_pose(obj):
         obj["coa_slot_index"] = max(0,len(obj.coa_slot)-1)
         #obj["coa_slot_index"] = obj.coa_slot_reset_index
         #obj.coa_slot_index = obj.coa_slot_reset_index
+
+def set_direction(obj):
+    if obj.coa_flip_direction:
+        if obj.scale.x > 0:
+            obj.scale.x *= -1
+    else:
+        if obj.scale.x < 0:
+            obj.scale.x *= -1
         
 def set_action(context,item=None):
     sprite_object = get_sprite_object(context.active_object)
@@ -622,9 +630,6 @@ def change_slot_mesh_data(context,obj):
         
         slot = obj.coa_slot[idx]
         obj = slot.id_data
-#        mesh_name = obj.coa_slot[obj.coa_slot_index].name
-#        if mesh_name in bpy.data.meshes:
-#            obj.data = bpy.data.meshes[mesh_name]
         obj.data = slot.mesh
         set_alpha(obj,context,obj.coa_alpha)
         for slot2 in obj.coa_slot:
@@ -632,19 +637,25 @@ def change_slot_mesh_data(context,obj):
                 slot2["active"] = False
             else:
                 slot2["active"] = True 
-        hide_base_sprite(obj)   
+        if "coa_base_sprite" in obj.modifiers:
+            if slot.mesh.coa_hide_base_sprite:
+                obj.modifiers["coa_base_sprite"].show_render = True
+                obj.modifiers["coa_base_sprite"].show_viewport = True
+            else:
+                obj.modifiers["coa_base_sprite"].show_render = False
+                obj.modifiers["coa_base_sprite"].show_viewport = False
 
-#def change_slot_mesh(obj,context,index):
-#    slot_len = len(obj.coa_slot)-1
-#    if obj.coa_slot_index <= len(obj.coa_slot)-1:
-#        slot = obj.coa_slot[obj.coa_slot_index]
-#        mesh_name = obj.coa_slot[obj.coa_slot_index].name
-#        obj.data = bpy.data.meshes[mesh_name]
-#        set_alpha(obj,context,obj.coa_alpha)
-            
 def display_children(self, context, obj):
     layout = self.layout
-    box = layout.box()
+    col = layout.column(align=True)
+    row = col.row(align=True)
+    if context.scene.coa_display_all:
+        row.prop(context.scene,"coa_display_all",text="",toggle=True,icon="DISCLOSURE_TRI_RIGHT")
+    else:    
+        row.prop(context.scene,"coa_display_all",text="",toggle=True,icon="DISCLOSURE_TRI_DOWN")
+        row.prop(context.scene,"coa_display_length",text="Length")
+        row.prop(context.scene,"coa_display_page",text="Page")
+    box = col.box()
     col = box.column(align=True)
     sprite_object = get_sprite_object(obj)
     children = get_children(context,sprite_object,ob_list=[])
@@ -674,32 +685,36 @@ def display_children(self, context, obj):
     else:
         col.enabled = True
     
-    
+    current_display_item = 0
     ### Sprite Objects display for all that are in active Scene
     for obj2 in context.scene.objects:
-        #if ((obj.coa_filter_names == "" and "sprite_object" in obj2) or (sprite_object != None and obj2 == sprite_object and obj.coa_filter_names != "")) or sprite_object == obj2 or bpy.context.active_object == None:
         if get_sprite_object(obj2) == obj2:
-            row = col.row(align=True)
-            icon = "LAYER_USED"
-            if obj2.select:
-                icon = "LAYER_ACTIVE"
-            row.label(text="",icon=icon)
-            row.label(text="",icon="EMPTY_DATA")
-            if get_sprite_object(obj2) == sprite_object:
-                if obj2.coa_show_children and get_sprite_object(obj2) == sprite_object:
-                    row.prop(obj2,"coa_show_children",text="",icon="TRIA_DOWN",emboss=False)
-                else:
-                    row.prop(obj2,"coa_show_children",text="",icon="TRIA_RIGHT",emboss=False) 
-            op = row.operator("object.coa_select_child",text=obj2.name,emboss=False)
-            op.mode = "object"
-            op.ob_name = obj2.name
+            in_range = current_display_item in range(context.scene.coa_display_page * context.scene.coa_display_length , context.scene.coa_display_page * context.scene.coa_display_length + context.scene.coa_display_length)
             
-            op = row.operator("coa_tools.view_sprite",icon="ZOOM_SELECTED",text="",emboss=False)
-            op.type = "VIEW_ALL"
-            op.name = obj2.name
+            if in_range or context.scene.coa_display_all:
+                row = col.row(align=True)
+                icon = "LAYER_USED"
+                if obj2.select:
+                    icon = "LAYER_ACTIVE"
+                row.label(text="",icon=icon)
+                row.label(text="",icon="EMPTY_DATA")
+                if get_sprite_object(obj2) == sprite_object:
+                    if obj2.coa_show_children and get_sprite_object(obj2) == sprite_object:
+                        row.prop(obj2,"coa_show_children",text="",icon="TRIA_DOWN",emboss=False)
+                    else:
+                        row.prop(obj2,"coa_show_children",text="",icon="TRIA_RIGHT",emboss=False) 
+                op = row.operator("object.coa_select_child",text=obj2.name,emboss=False)
+                op.mode = "object"
+                op.ob_name = obj2.name
+                
+                op = row.operator("coa_tools.view_sprite",icon="ZOOM_SELECTED",text="",emboss=False)
+                op.type = "VIEW_ALL"
+                op.name = obj2.name
             
+            current_display_item += 1
             if obj2 == sprite_object:
-                draw_children(self,context,sprite_object,layout,box,row,col,children,obj)
+                draw_children(self,context,sprite_object,layout,box,row,col,children,obj,current_display_item)
+            
 
 def favorite_bones(armature):
     for bone in armature.data.bones:
@@ -713,135 +728,140 @@ def filter_bone_name(armature,filter):
             return True
     return False    
 
-def draw_children(self,context,sprite_object,layout,box,row,col,children,obj):    
+def draw_children(self,context,sprite_object,layout,box,row,col,children,obj,current_display_item):    
     
     ### Sprite Object Children Display
     if sprite_object != None and sprite_object.coa_show_children:
         for i,child in enumerate(children):
-            if (sprite_object.coa_favorite and child.coa_favorite) or not sprite_object.coa_favorite or (child.type == "ARMATURE" and (favorite_bones(child))):
-                if obj.coa_filter_names.upper() in child.name.upper():
-                    
-                    row = col.row(align=True)
-                    row.separator()
-                    row.separator()
-                    row.separator()
-                    name = child.name
-                    icon = "LAYER_USED"
-                    if child.select and not child.hide:
-                        icon = "LAYER_ACTIVE"
-                    row.label(text="",icon=icon)
-                    if child.type == "ARMATURE":
-                        row.label(text="",icon="ARMATURE_DATA")
-                    elif child.type == "MESH":
-                        row.label(text="",icon="TEXTURE")
-                    elif child.type == "CAMERA":
+            in_range = current_display_item in range(context.scene.coa_display_page * context.scene.coa_display_length , context.scene.coa_display_page * context.scene.coa_display_length + context.scene.coa_display_length)
+            
+            name_found = obj.coa_filter_names.upper() in child.name.upper() and not obj.coa_filter_names == ""
+            current_display_item += 1
+            if in_range or context.scene.coa_display_all or name_found:
+                if (sprite_object.coa_favorite and child.coa_favorite) or not sprite_object.coa_favorite or (child.type == "ARMATURE" and (favorite_bones(child))):
+                    if obj.coa_filter_names.upper() in child.name.upper():
                         
-                        row.label(text="",icon="CAMERA_DATA")
-                    
-                    
-                    op = row.operator("object.coa_select_child",text=name,emboss=False)
-                    op.mode = "object"
-                    op.ob_name = child.name
-                    
-                    if child.type == "ARMATURE":
-                        if child.coa_show_bones:
-                            row.prop(child,"coa_show_bones",text="",icon="TRIA_DOWN",emboss=False)
-                        else:
-                            row.prop(child,"coa_show_bones",text="",icon="TRIA_LEFT",emboss=False) 
-                    
-                    if child.type == "MESH" and child.coa_type == "SLOT":
-                        if child.coa_slot_show:
-                            row.prop(child,"coa_slot_show",text="",icon="TRIA_DOWN",emboss=False)
-                        else:
-                            row.prop(child,"coa_slot_show",text="",icon="TRIA_LEFT",emboss=False)    
-#                    if child.type == "MESH":
-#                        op = row.operator("import.coa_reimport_sprite",text="",icon="FILE_REFRESH",emboss=False)
-#                        op.name = child.name
-                    
-                    if child.coa_favorite:
-                        row.prop(child,"coa_favorite",emboss=False,text="",icon="SOLO_ON")
-                    else:
-                        row.prop(child,"coa_favorite",emboss=False,text="",icon="SOLO_OFF")
+                        row = col.row(align=True)
+                        row.separator()
+                        row.separator()
+                        row.separator()
+                        name = child.name
+                        icon = "LAYER_USED"
+                        if child.select and not child.hide:
+                            icon = "LAYER_ACTIVE"
+                        row.label(text="",icon=icon)
+                        if child.type == "ARMATURE":
+                            row.label(text="",icon="ARMATURE_DATA")
+                        elif child.type == "MESH":
+                            row.label(text="",icon="TEXTURE")
+                        elif child.type == "CAMERA":
+                            
+                            row.label(text="",icon="CAMERA_DATA")
                         
                         
-                    if child.coa_hide:  
-                        row.prop(child,"coa_hide",emboss=False,text="",icon="VISIBLE_IPO_OFF")
-                    else:   
-                        row.prop(child,"coa_hide",emboss=False,text="",icon="VISIBLE_IPO_ON")
-                    if child.coa_hide_select:   
-                        row.prop(child,"coa_hide_select",emboss=False,text="",icon="RESTRICT_SELECT_ON")
-                    else:   
-                        row.prop(child,"coa_hide_select",emboss=False,text="",icon="RESTRICT_SELECT_OFF")   
-                    #row.prop(child,"hide_select",emboss=False,text="")
-                    
-                    if child.type == "MESH" and child.coa_type == "SLOT" and child.coa_slot_show:
-                        for i,slot in enumerate(child.coa_slot):
-                            row = col.row()
-                            subrow = row.row(align=True)
-                            subrow.alignment = "LEFT"
-                            subrow.separator()
-                            subrow.separator()
-                            subrow.separator()
-                            subrow.separator()
-                            subrow.separator()
-                            subrow.separator()
-                            if slot.mesh != None:
-                                name = slot.mesh.name
+                        op = row.operator("object.coa_select_child",text=name,emboss=False)
+                        op.mode = "object"
+                        op.ob_name = child.name
+                        
+                        if child.type == "ARMATURE":
+                            if child.coa_show_bones:
+                                row.prop(child,"coa_show_bones",text="",icon="TRIA_DOWN",emboss=False)
                             else:
-                                name = "No Data found"    
-                                subrow.label(text="",icon="ERROR")
-                            if slot.active:
-                                subrow.prop(slot,"active",text=name,icon="RADIOBUT_ON",emboss=False)
+                                row.prop(child,"coa_show_bones",text="",icon="TRIA_LEFT",emboss=False) 
+                        
+                        if child.type == "MESH" and child.coa_type == "SLOT":
+                            if child.coa_slot_show:
+                                row.prop(child,"coa_slot_show",text="",icon="TRIA_DOWN",emboss=False)
                             else:
-                                subrow.prop(slot,"active",text=name,icon="RADIOBUT_OFF",emboss=False)
+                                row.prop(child,"coa_slot_show",text="",icon="TRIA_LEFT",emboss=False)    
+    #                    if child.type == "MESH":
+    #                        op = row.operator("import.coa_reimport_sprite",text="",icon="FILE_REFRESH",emboss=False)
+    #                        op.name = child.name
+                        
+                        if child.coa_favorite:
+                            row.prop(child,"coa_favorite",emboss=False,text="",icon="SOLO_ON")
+                        else:
+                            row.prop(child,"coa_favorite",emboss=False,text="",icon="SOLO_OFF")
                             
-                            subrow = row.row(align=True)
                             
-                            op = subrow.operator("coa_tools.move_slot_item",icon="TRIA_DOWN",emboss=False,text="")
-                            op.idx = i
-                            op.ob_name = child.name
-                            op.mode = "DOWN"
-                            op = subrow.operator("coa_tools.move_slot_item",icon="TRIA_UP",emboss=False,text="")
-                            op.idx = i
-                            op.ob_name = child.name
-                            op.mode = "UP"
-                            
-                            subrow.alignment = "RIGHT"
-                            op = subrow.operator("coa_tools.remove_from_slot",icon="PANEL_CLOSE",emboss=False,text="")
-                            op.idx = i
-                            op.ob_name = child.name
-                            
-                    
-                    if child.type == "ARMATURE":
-                        if (not sprite_object.coa_favorite and child.coa_show_bones) or sprite_object.coa_favorite:
-                            for bone in child.data.bones:
-                                if (sprite_object.coa_favorite and bone.coa_favorite or not sprite_object.coa_favorite):# or (sprite_object.coa_filter_names != "" and sprite_object.coa_filter_names.upper() in bone.name.upper() or sprite_object.coa_filter_names == ""):
-                                    row = col.row(align=True)
-                                    row.separator()
-                                    row.separator()
-                                    row.separator()
-                                    row.separator()
-                                    row.separator()
-                                    row.separator()
-                                    icon = "LAYER_USED"
-                                    if bone.select:
-                                        icon = "LAYER_ACTIVE"   
-                                    row.label(text="",icon=icon)
-                                    row.label(text="",icon="BONE_DATA")
-                                    bone_name = ""+bone.name
-                                    op = row.operator("object.coa_select_child",text=bone_name,emboss=False)
-                                    op.mode = "bone"
-                                    op.ob_name = child.name
-                                    op.bone_name = bone.name
-                                    if bone.coa_favorite:
-                                        row.prop(bone,"coa_favorite",emboss=False,text="",icon="SOLO_ON")
-                                    else:
-                                        row.prop(bone,"coa_favorite",emboss=False,text="",icon="SOLO_OFF")
-                                    if bone.hide:
-                                        row.prop(bone,"coa_hide",text="",emboss=False,icon="VISIBLE_IPO_OFF")
-                                    else:   
-                                        row.prop(bone,"coa_hide",text="",emboss=False,icon="VISIBLE_IPO_ON")
-                                    if bone.hide_select:
-                                        row.prop(bone,"coa_hide_select",text="",emboss=False,icon="RESTRICT_SELECT_ON")
-                                    else:   
-                                        row.prop(bone,"coa_hide_select",text="",emboss=False,icon="RESTRICT_SELECT_OFF")            
+                        if child.coa_hide:  
+                            row.prop(child,"coa_hide",emboss=False,text="",icon="VISIBLE_IPO_OFF")
+                        else:   
+                            row.prop(child,"coa_hide",emboss=False,text="",icon="VISIBLE_IPO_ON")
+                        if child.coa_hide_select:   
+                            row.prop(child,"coa_hide_select",emboss=False,text="",icon="RESTRICT_SELECT_ON")
+                        else:   
+                            row.prop(child,"coa_hide_select",emboss=False,text="",icon="RESTRICT_SELECT_OFF")   
+                        #row.prop(child,"hide_select",emboss=False,text="")
+                        
+                        if child.type == "MESH" and child.coa_type == "SLOT" and child.coa_slot_show:
+                            for i,slot in enumerate(child.coa_slot):
+                                row = col.row()
+                                subrow = row.row(align=True)
+                                subrow.alignment = "LEFT"
+                                subrow.separator()
+                                subrow.separator()
+                                subrow.separator()
+                                subrow.separator()
+                                subrow.separator()
+                                subrow.separator()
+                                if slot.mesh != None:
+                                    name = slot.mesh.name
+                                else:
+                                    name = "No Data found"    
+                                    subrow.label(text="",icon="ERROR")
+                                if slot.active:
+                                    subrow.prop(slot,"active",text=name,icon="RADIOBUT_ON",emboss=False)
+                                else:
+                                    subrow.prop(slot,"active",text=name,icon="RADIOBUT_OFF",emboss=False)
+                                
+                                subrow = row.row(align=True)
+                                
+                                op = subrow.operator("coa_tools.move_slot_item",icon="TRIA_DOWN",emboss=False,text="")
+                                op.idx = i
+                                op.ob_name = child.name
+                                op.mode = "DOWN"
+                                op = subrow.operator("coa_tools.move_slot_item",icon="TRIA_UP",emboss=False,text="")
+                                op.idx = i
+                                op.ob_name = child.name
+                                op.mode = "UP"
+                                
+                                subrow.alignment = "RIGHT"
+                                op = subrow.operator("coa_tools.remove_from_slot",icon="PANEL_CLOSE",emboss=False,text="")
+                                op.idx = i
+                                op.ob_name = child.name
+                                
+                        
+                        if child.type == "ARMATURE":
+                            if (not sprite_object.coa_favorite and child.coa_show_bones) or sprite_object.coa_favorite:
+                                for bone in child.data.bones:
+                                    if (sprite_object.coa_favorite and bone.coa_favorite or not sprite_object.coa_favorite):# or (sprite_object.coa_filter_names != "" and sprite_object.coa_filter_names.upper() in bone.name.upper() or sprite_object.coa_filter_names == ""):
+                                        row = col.row(align=True)
+                                        row.separator()
+                                        row.separator()
+                                        row.separator()
+                                        row.separator()
+                                        row.separator()
+                                        row.separator()
+                                        icon = "LAYER_USED"
+                                        if bone.select:
+                                            icon = "LAYER_ACTIVE"   
+                                        row.label(text="",icon=icon)
+                                        row.label(text="",icon="BONE_DATA")
+                                        bone_name = ""+bone.name
+                                        op = row.operator("object.coa_select_child",text=bone_name,emboss=False)
+                                        op.mode = "bone"
+                                        op.ob_name = child.name
+                                        op.bone_name = bone.name
+                                        if bone.coa_favorite:
+                                            row.prop(bone,"coa_favorite",emboss=False,text="",icon="SOLO_ON")
+                                        else:
+                                            row.prop(bone,"coa_favorite",emboss=False,text="",icon="SOLO_OFF")
+                                        if bone.hide:
+                                            row.prop(bone,"coa_hide",text="",emboss=False,icon="VISIBLE_IPO_OFF")
+                                        else:   
+                                            row.prop(bone,"coa_hide",text="",emboss=False,icon="VISIBLE_IPO_ON")
+                                        if bone.hide_select:
+                                            row.prop(bone,"coa_hide_select",text="",emboss=False,icon="RESTRICT_SELECT_ON")
+                                        else:   
+                                            row.prop(bone,"coa_hide_select",text="",emboss=False,icon="RESTRICT_SELECT_OFF")            

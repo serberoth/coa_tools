@@ -134,7 +134,10 @@ class QuickArmature(bpy.types.Operator):
             bone["lock_z"] = True
             bone["lock_rot"] = True
             
-            bone.head = self.armature.matrix_world.inverted() * self.cursor_location
+
+            head_position = (self.armature.matrix_world.inverted() * self.cursor_location)
+            head_position[1] = 0
+            bone.head = head_position
             bone.hide = True
             bone.bbone_x = .05
             bone.bbone_z = .05
@@ -170,34 +173,35 @@ class QuickArmature(bpy.types.Operator):
             mouse_vec_norm = (self.cursor_location - self.mouse_click_vec).normalized()
             mouse_vec = (self.cursor_location - self.mouse_click_vec)
             angle = (math.atan2(mouse_vec_norm[0], mouse_vec_norm[2])*180/math.pi)
-            cursor_local = self.armature.matrix_world.inverted() * self.cursor_location   
+            cursor_local = self.armature.matrix_world.inverted() * self.cursor_location
+            cursor_local[1] = 0
             if event.shift:
                 if angle > -22.5 and angle < 22.5:
                     ### up
-                    bone.tail =  Vector((bone.head[0],0,cursor_local[2]))
+                    bone.tail =  Vector((bone.head[0],cursor_local[1],cursor_local[2]))
                 elif angle > 22.5 and angle < 67.5:
                     ### up right
                     bone.tail = (bone.head +  Vector((mouse_vec[0],0,mouse_vec[0])))
                 elif angle > 67.5 and angle < 112.5:
                     ### right
-                    bone.tail = Vector((cursor_local[0],0,bone.head[2]))
+                    bone.tail = Vector((cursor_local[0],cursor_local[1],bone.head[2]))
                 elif angle > 112.5 and angle < 157.5:
                     ### down right
                     bone.tail = (bone.head +  Vector((mouse_vec[0],0,-mouse_vec[0])))
                 elif angle > 157.5 or angle < -157.5:   
                     ### down
-                    bone.tail = Vector((bone.head[0],0,cursor_local[2]))
+                    bone.tail = Vector((bone.head[0],cursor_local[1],cursor_local[2]))
                 elif angle > -157.5 and angle < -112.5:
                     ### down left
                         bone.tail = (bone.head +  Vector((mouse_vec[0],0,mouse_vec[0])))
                 elif angle > -112.5 and angle < -67.5:
                     ### left
-                    bone.tail = Vector((cursor_local[0],0,bone.head[2]))
+                    bone.tail = Vector((cursor_local[0],cursor_local[1],bone.head[2]))
                 elif angle > -67.5 and angle < -22.5:       
                     ### left up
                     bone.tail = (bone.head +  Vector((mouse_vec[0],0,-mouse_vec[0])))
             else:
-                bone.tail = self.armature.matrix_world.inverted() * self.cursor_location
+                bone.tail = cursor_local
                  
     def set_parent(self,context,obj):
         obj.select = True
@@ -208,33 +212,46 @@ class QuickArmature(bpy.types.Operator):
         bpy.ops.ed.undo_push(message="Sprite "+obj.name+ " set parent")
     
     def set_weights(self,context,obj):
+        if len(context.selected_bones) == 0:
+            return {'RUNNING_MODAL'}
+        
         self.set_waits = True
         bone_data = []
-        orig_armature = context.active_object
-        
+        orig_armature = self.armature#context.active_object
         ### remove bone vertex_groups
         for weight in obj.vertex_groups:
             if weight.name in orig_armature.data.bones:
                 obj.vertex_groups.remove(weight)
         ###         
         use_deform = []
+        bone_pos = {}
         selected_bones = []
+        
         for i,bone in enumerate(orig_armature.data.edit_bones):
             if bone.select and (bone.select_head or bone.select_tail):
                 selected_bones.append(bone)
             use_deform.append(orig_armature.data.bones[i].use_deform)
             if bone.select and (bone.select_head or bone.select_tail):
+                bone_pos[bone] = {"tail":bone.tail[1],"head":bone.head[1]}
+                bone.tail[1] = 0
+                bone.head[1] = 0
                 orig_armature.data.bones[i].use_deform = True
             else:
                 orig_armature.data.bones[i].use_deform = False
         orig_armature.select = True     
         obj.select = True       
         
+        #return{'FINISHED'}
+        
+        parent = bpy.data.objects[obj.parent.name]
         obj_orig_location = Vector(obj.location)
         obj.location[1] = 0
         bpy.ops.object.parent_set(type='ARMATURE_AUTO')
         obj.location = obj_orig_location
         
+        for bone in bone_pos:
+            bone.tail[1] = bone_pos[bone]["tail"]
+            bone.head[1] = bone_pos[bone]["head"]
         for i,bone in enumerate(orig_armature.data.edit_bones):
             orig_armature.data.bones[i].use_deform = use_deform[i]
         i = 0
@@ -246,13 +263,16 @@ class QuickArmature(bpy.types.Operator):
         for modifier in obj.modifiers:
             if modifier.type == "ARMATURE":
                 modifier.object = orig_armature
-        obj.parent = orig_armature
+        #obj.parent = orig_armature
+        obj.parent = parent
         orig_armature.select = True
         context.scene.objects.active = orig_armature
         obj.select = False
         
         bpy.ops.object.mode_set(mode='EDIT')
-        self.set_waits = False  
+        self.set_waits = False
+        
+        return {'RUNNING_MODAL'} 
         
     def return_ray_sprites(self,context,event):
         coord = mathutils.Vector((event.mouse_region_x, event.mouse_region_y))
@@ -322,7 +342,7 @@ class QuickArmature(bpy.types.Operator):
             #bpy.context.scene.cursor_location[1] = context.active_object.location[1]
             
             if event.value in ["RELEASE"]:
-                if self.object_hover_hist != None :
+                if self.object_hover_hist != None:
                     self.object_hover_hist.show_x_ray = False
                     self.object_hover_hist.select = False
                     self.object_hover_hist.show_name = False
@@ -362,7 +382,7 @@ class QuickArmature(bpy.types.Operator):
                     bpy.ops.object.mode_set(mode='EDIT')
                     self.set_waits = False 
             
-            elif (event.alt or "ALT" in event.type) and not event.ctrl:
+            elif (event.alt or "ALT" in event.type) and not event.ctrl and not event.type == "P":
                 self.object_hover_hist = self.object_hover
                 
                 hover_objects = self.return_ray_sprites(context,event)
@@ -390,20 +410,8 @@ class QuickArmature(bpy.types.Operator):
                 ### mouse just pressed
                 if not self.mouse_press_hist and self.mouse_press and self.in_view_3d and self.object_hover != None:
                     selected_bones = context.selected_editable_bones
-                    if ray[0] and ray[1] != None and len(selected_bones) == 1:
+                    if ray[0] and ray[1] != None:
                         obj = ray[1]
-                        if self.object_hover.coa_type == "MESH":
-                            self.set_weights(context,self.object_hover)
-                        elif self.object_hover.coa_type == "SLOT":
-                            prev_index = int(self.object_hover.coa_slot_index)
-                            for i,slot in enumerate(self.object_hover.coa_slot):
-                                self.object_hover.coa_slot_index = i
-                                self.set_weights(context,self.object_hover)
-                            self.object_hover.coa_slot_index = prev_index
-                        #self.set_parent(context,self.object_hover)
-                    if ray[0] and ray[1] != None and len(selected_bones) > 1:
-                        obj = ray[1]
-                        #self.set_weights(context,self.object_hover)
                         if self.object_hover.coa_type == "MESH":
                             self.set_weights(context,self.object_hover)
                         elif self.object_hover.coa_type == "SLOT":
@@ -544,7 +552,7 @@ class SetIK(bpy.types.Operator):
         
         ik_bone.lock_ik_x = True
         ik_bone.lock_ik_y = True
-        ik_bone.ik_stiffness_z = .9
+        #ik_bone.ik_stiffness_z = .9
         ik_const = ik_bone.constraints.new("IK")
         ik_const.target = context.active_object
         ik_const.subtarget = ik_target_name

@@ -301,7 +301,16 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
     
     def update_filter(self,context):
         pass
-        
+    
+    def change_direction(self,context):
+        set_direction(self)
+        self.coa_flip_direction_last = self.coa_flip_direction
+#            if self.scale.x > 0:
+#                self.scale.x *= -1
+#        else:
+#            if self.scale.x < 0:
+#                self.scale.x *= -1
+            
     bpy.types.Object.coa_dimensions_old = FloatVectorProperty()
     bpy.types.Object.coa_sprite_dimension = FloatVectorProperty()
     bpy.types.Object.coa_tiles_x = IntProperty(description="X Tileset",default = 1,min=1,update=change_tilesize)
@@ -342,7 +351,11 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
     bpy.types.Object.coa_slot_index_last = bpy.props.IntProperty()
     bpy.types.Object.coa_slot_reset_index = bpy.props.IntProperty(default=0,min=0)
     bpy.types.Object.coa_slot_show = bpy.props.BoolProperty(default=False)
-    
+    bpy.types.Object.coa_flip_direction = bpy.props.BoolProperty(default=False,update=change_direction)
+    bpy.types.Object.coa_flip_direction_last = bpy.props.BoolProperty(default=False)
+    bpy.types.Scene.coa_display_all = bpy.props.BoolProperty(default=True)
+    bpy.types.Scene.coa_display_page = bpy.props.IntProperty(default=0,min=0,name="Display Page",description="Defines which page is displayed")
+    bpy.types.Scene.coa_display_length = bpy.props.IntProperty(default=10,min=0,name="Page Length",description="Defines how Many Items are displayed")
     bpy.types.Area.coa_anim_window = bpy.props.BoolProperty(default=False)
     
     bpy.types.WindowManager.coa_running_modal = BoolProperty(default=False)
@@ -364,8 +377,8 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
 #            display_children(self,context,obj)
         
         if sprite_object != None:
-            
             row = layout.row(align=True)
+            
             row.label(text="",icon="OBJECT_DATA")
             row.separator()
             row.prop(obj,"name",text="")
@@ -396,7 +409,6 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
                 row.prop(obj.data,'coa_hide_base_sprite',text="Hide Base Sprite")
             
             if obj != None and obj.type == "MESH" and obj.mode == "OBJECT":
-                
                 row = layout.row(align=True)
                 if obj.coa_type == "MESH":
                     text = str(obj.coa_tiles_x * obj.coa_tiles_y) + " Frame(s) total"
@@ -435,9 +447,21 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
                     op.prop_name = "coa_slot_index"
                     op.add_keyframe = False   
             
+            row = layout.row(align=True)                    
+            row.prop(sprite_object,"coa_flip_direction",text="")
+            row.prop(sprite_object,"coa_flip_direction",icon="ARROW_LEFTRIGHT",text="Flip Direction")
+            op = row.operator("my_operator.add_keyframe",text="",icon="SPACE2")
+            op.prop_name = "coa_flip_direction"
+            op.obj = sprite_object.name
+            op.add_keyframe = True
+            op.default_interpolation = "CONSTANT"
+            op = row.operator("my_operator.add_keyframe",text="",icon="SPACE3")
+            op.prop_name = "coa_flip_direction"
+            op.obj = sprite_object.name
+            op.add_keyframe = False
+            
             if obj != None and obj.type == "MESH" and obj.mode == "OBJECT":
                 
-                    
                 
                 row = layout.row(align=True)
                 row.prop(obj,'coa_z_value',text="Z Depth")

@@ -142,20 +142,30 @@ class EditWeights(bpy.types.Operator):
         for bone in self.non_deform_bones:
             bone.hide = False
     
+    
+    def create_armature_modifier(self,context,obj,armature):
+        for mod in obj.modifiers:
+            if mod.type == "ARMATURE":
+                return mod
+        mod = obj.modifiers.new("Armature","ARMATURE")    
+        mod.object = armature
+        return mod
                                     
     def invoke(self, context, event):
+        obj = context.active_object
         self.obj = context.active_object.name
         self.sprite_object = get_sprite_object(context.active_object).name
         sprite_object = bpy.data.objects[self.sprite_object]
+        if get_armature(sprite_object) == None or get_armature(sprite_object) not in context.visible_objects:
+            self.report({'WARNING'},'No Armature Available or Visible')    
+            return{"CANCELLED"}
         self.armature = get_armature(sprite_object).name
         armature = bpy.data.objects[self.armature]
         
         self.shadeless = context.active_object.active_material.use_shadeless
         context.active_object.active_material.use_shadeless = True
         
-        if armature == None or not armature in context.visible_objects:
-            self.report({'WARNING'},'No Armature Available or Visible')
-            return{"CANCELLED"}
+        self.create_armature_modifier(context,obj,armature)
         
         scene = context.scene
         tool_settings = scene.tool_settings
