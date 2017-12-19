@@ -17,6 +17,8 @@ class ShowHelp(bpy.types.Operator):
     i = 0
     fade_in = False
     scale = .7
+    display_height = 1060 # display height before scaling starts
+    
     @classmethod
     def poll(cls, context):
         return True
@@ -56,7 +58,8 @@ class ShowHelp(bpy.types.Operator):
                 self.region_offset = region.width
             if region.type == "WINDOW":    
                 self.region_height = region.height
-                self.scale = self.region_height/920
+                #self.scale = self.region_height/920
+                self.scale = self.region_height/self.display_height
                 self.scale = min(1.0,max(.7,self.scale))
         
         if context.user_preferences.system.use_region_overlap:
@@ -87,6 +90,7 @@ class ShowHelp(bpy.types.Operator):
         global_pos = self.region_height - 60
         # draw some text
         headline_color = [1.0, 0.9, 0.6, 1.0]
+        headline_color2 = [0.692584, 1.000000, 0.781936, 1.000000]
         
         ### draw gradient overlay
         bgl.glEnable(bgl.GL_BLEND)
@@ -115,39 +119,52 @@ class ShowHelp(bpy.types.Operator):
         
         ### draw hotkeys help
         texts = [
-                ["Hotkeys - Object Mode",20],
-                ["   F   -   Contextual Pie Menu",15],
-                ["Hotkeys - Object Outliner",20],
-                ["   Ctrl + Click    -   Add Item to Selection",15],
-                ["   Shift + Click   -   Multi Selection",15],
-                ["Hotkeys - Keyframing",20],
-                ["   Ctrl + Click on Key Operator    -   Opens Curve Interpolation Options",15],
-                ["   I    -   Keyframe Menu",15],
-                ["Hotkeys - Edit Armature Mode",20],
-                ["   Click + Drag    -   Draw Bone",15],
-                ["   Shift + Click + Drag    -   Draw Bone locked to 45 Angle",15],
-                ["   Alt + Click    -    Bind Sprite to selected Bones",15],
-                ["   ESC/Tab    -    Exit Armature Mode",15],
-                ["Hotkeys - Edit Mesh Mode",20],
-                ["   Click + Drag    -   Draw Vertex Contour",15],
-                ["   K   -   Knife Tool",15],
-                ["   L   -   Select Mesh",15],
-                ["   Alt + Click on Vertex   -   Close Contour",15],
-                ["   ESC/Tab    -    Exit Mesh Mode",15],
+                ["COA Tools Hotkeys Overview",25],
+                
+                ["Object Mode",20],
+                ["      F   -   Contextual Pie Menu",15],
+                
+                ["Object Outliner",20],
+                ["      Ctrl + Click    -   Add Item to Selection",15],
+                ["      Shift + Click   -   Multi Selection",15],
+                
+                ["Keyframing",20],
+                ["      Ctrl + Click on Key Operator    -   Opens Curve Interpolation Options",15],
+                ["      I    -   Keyframe Menu",15],
+                
+                ["Edit Armature Mode",20],
+                ["      Click + Drag    -   Draw Bone",15],
+                ["      Shift + Click + Drag    -   Draw Bone locked to 45 Angle",15],
+                ["      Alt + Click    -    Bind Sprite to selected Bones",15],
+                ["      ESC/Tab    -    Exit Armature Mode",15],
+                ["      Ctrl + P    -    Parent selected Bones to Active",15],
+                ["      Alt + P    -    Clear parenting",15],
+                
+                ["Edit Mesh Mode",20],
+                ["      Click + Drag    -   Draw Vertex Contour",15],
+                ["      Alt + Click    -   Delete Vertex or Edge",15],
+                ["      K   -   Knife Tool",15],
+                ["      L   -   Select Mesh",15],
+                ["      ESC/Tab    -    Exit Mesh Mode",15],
                 ["",15],
-                ["   W    -    Specials Menu",15],
-                ["   Ctrl + V    -    Vertex Menu",15],
-                ["   Ctrl + E    -    Edge Menu",15],
-                ["   Ctrl + F    -    Face Menu",15],
-                ["Hotkeys - Blender General",20],
-                ["   A   -   Select / Deselect All",15],
-                ["   B   -   Border Selection",15],
-                ["   C   -   Paint Selection",15],
-                ["   S   -   Scale Selection",15],
-                ["   G   -   Move Selection",15],
-                ["   R   -   Rotate Selection",15],
+                ["      F   -   Connect Verts, Edges and Faces",15],
+                ["      Alt + F   -   Fill Edge Loop",15],
+                ["      W    -    Specials Menu",15],
+                ["      Ctrl + V    -    Vertex Menu",15],
+                ["      Ctrl + E    -    Edge Menu",15],
+                ["      Ctrl + F    -    Face Menu",15],
+                
+                ["Blender General",20],
+                ["      Right Click   -   Select Object",15],
+                ["      Shift + Right Click   -   Add to Selection",15],
+                ["      A   -   Select / Deselect All",15],
+                ["      B   -   Border Selection",15],
+                ["      C   -   Paint Selection",15],
+                ["      S   -   Scale Selection",15],
+                ["      G   -   Move Selection",15],
+                ["      R   -   Rotate Selection",15],
                 ["",15],
-                ["   W   -   Specials Menu",15]
+                ["      W   -   Specials Menu",15]
                 ]
         
         linebreak_size = 0
@@ -157,11 +174,13 @@ class ShowHelp(bpy.types.Operator):
             if i > 0:
                 linebreak_size += 20
                 if lineheight == 20:
-                    linebreak_size += 40
+                    linebreak_size += 30
         
             color = [1.0,1.0,1.0,1.0]
             if lineheight == 20:
                 color = headline_color
+            elif lineheight == 25:
+                color = headline_color2
             self.write_text(line,size=lineheight,pos_y=linebreak_size,color=color)
         
         

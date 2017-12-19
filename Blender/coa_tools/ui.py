@@ -26,7 +26,7 @@ import mathutils
 from mathutils import Vector, Matrix, Quaternion
 import math
 import bmesh
-from bpy.props import FloatProperty, IntProperty, BoolProperty, StringProperty, CollectionProperty, FloatVectorProperty, EnumProperty, IntVectorProperty
+from bpy.props import FloatProperty, IntProperty, BoolProperty, StringProperty, CollectionProperty, FloatVectorProperty, EnumProperty, IntVectorProperty, PointerProperty
 import os
 from bpy_extras.io_utils import ExportHelper, ImportHelper
 import json
@@ -73,7 +73,7 @@ class SlotData(bpy.types.PropertyGroup):
     name = StringProperty()
     active = BoolProperty(update=change_slot_mesh)
     index = IntProperty()
-
+    
 class Event(bpy.types.PropertyGroup):
     def change_event_order(self,context):
         events = self.id_data.coa_anim_collections[self.id_data.coa_anim_collections_index].event
@@ -273,7 +273,7 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
             self.coa_sprite_frame_last = -1
             self.coa_sprite_frame = int(self.coa_sprite_frame_previews)
             if context.scene.tool_settings.use_keyframe_insert_auto:
-                bpy.ops.my_operator.add_keyframe(prop_name="coa_sprite_frame",interpolation="CONSTANT")
+                bpy.ops.coa_tools.add_keyframe(prop_name="coa_sprite_frame",interpolation="CONSTANT")
         elif self.coa_type == "SLOT":
             self.coa_slot_index = int(self.coa_sprite_frame_previews)
     
@@ -310,7 +310,7 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
 #        else:
 #            if self.scale.x < 0:
 #                self.scale.x *= -1
-            
+    
     bpy.types.Object.coa_dimensions_old = FloatVectorProperty()
     bpy.types.Object.coa_sprite_dimension = FloatVectorProperty()
     bpy.types.Object.coa_tiles_x = IntProperty(description="X Tileset",default = 1,min=1,update=change_tilesize)
@@ -325,7 +325,7 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
     bpy.types.Object.coa_filter_names = StringProperty(update=update_filter,options={'TEXTEDIT_UPDATE'})
     bpy.types.Object.coa_favorite = BoolProperty()
     bpy.types.Object.coa_hide_base_sprite = BoolProperty(default=False,update=hide_base_sprite)
-    bpy.types.Mesh.coa_hide_base_sprite = BoolProperty(default=False,update=hide_base_sprite)
+    bpy.types.Mesh.coa_hide_base_sprite = BoolProperty(default=False,update=hide_base_sprite,description="Make sure to hide base sprite when adding a custom mesh.")
     bpy.types.Object.coa_animation_loop = BoolProperty(default=False,description="Sets the Timeline frame to 0 when it reaches the end of the animation. Also works for changing frame with cursor keys.")
     bpy.types.Bone.coa_favorite = BoolProperty()
     bpy.types.Object.coa_edit_weights = BoolProperty(default=False,update=exit_edit_weights)
@@ -370,24 +370,29 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
         if context.space_data.viewport_shade not in ['MATERIAL','RENDERED','TEXTURED']:
             layout.operator("coa_tools.change_shading_mode",text="Set Proper Shading Mode",icon="ERROR")
 
-        #if len(sprite_object.children) > 0:
         display_children(self,context,obj)
-#        if sprite_object != None:
-#        else:
-#            display_children(self,context,obj)
         
         if sprite_object != None:
             row = layout.row(align=True)
             
-            row.label(text="",icon="OBJECT_DATA")
-            row.separator()
-            row.prop(obj,"name",text="")
+            col = row.column(align=True)
+            
+            icon = "NONE"
+            if obj.type == "ARMATURE":
+                icon = "ARMATURE_DATA"
+            elif obj.type == "MESH":
+                icon = "OBJECT_DATA"
+            elif obj.type == "LAMP":
+                icon="LAMP"
+                
+            col.prop(obj,"name",text="",icon=icon)
+            if obj.type == "MESH" and obj.coa_type == "SLOT":
+                col.prop(obj.coa_slot[obj.coa_slot_index].mesh,"name",text="",icon="OUTLINER_DATA_MESH")
             if obj.type == "ARMATURE":
                 row = layout.row(align=True)
                 if context.active_bone != None:
-                    row.label(text="", icon="BONE_DATA")
-                    row.separator()
-                    row.prop(context.active_bone,'name',text="")
+
+                    col.prop(context.active_bone,'name',text="",icon="BONE_DATA")
                     if context.active_object.mode != "EDIT" and get_addon_prefs(context).json_export:
                         box = layout.box()
                         row = box.row(align=True)
@@ -398,7 +403,21 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
                             row = box.row(align=True)
                         else:
                             row.prop(sprite_object,"coa_show_export_box",text="Json Export Properties",icon="TRIA_RIGHT",emboss=False)    
-            
+                    
+                    if context.active_pose_bone != None and "coa_stretch_ik_data" in context.active_pose_bone:
+                        col = layout.box().column(align=True)
+                        
+                        for bone in obj.pose.bones:
+                            if "coa_stretch_ik_data" in bone:
+                                if eval(bone["coa_stretch_ik_data"])[0] == eval(context.active_pose_bone["coa_stretch_ik_data"])[0]:
+                                    if "c_bone_ctrl" == eval(bone["coa_stretch_ik_data"])[1]:
+                                        row = col.row()
+                                        row.label(text="Stretch IK Constraint",icon="CONSTRAINT_BONE")
+                                        op = row.operator("coa_tools.remove_stretch_ik",icon="X",emboss=False, text="")
+                                        op.stretch_ik_name = eval(bone["coa_stretch_ik_data"])[0]
+                                    elif eval(bone["coa_stretch_ik_data"])[1] in ["ik_bone_ctrl","p_bone_ctrl"]:
+                                        col.prop(bone,"ik_stretch",text=bone.name)
+                    
             if obj != None and obj.type == "MESH" and obj.mode == "OBJECT":
                 row = layout.row(align=True)
                 row.label(text="Sprite Properties:")
@@ -407,6 +426,25 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
                 row = layout.row(align=True)
                 #row.prop(obj,'coa_hide_base_sprite',text="Hide Base Sprite")
                 row.prop(obj.data,'coa_hide_base_sprite',text="Hide Base Sprite")
+                if len(obj.data.vertices) > 4 and obj.data.coa_hide_base_sprite == False:
+                    row.prop(obj.data,'coa_hide_base_sprite',text="",icon="ERROR",emboss=False)
+            
+#            row = layout.row(align=True)                    
+#            #row.prop(sprite_object,"coa_flip_direction",text="")
+#            if sprite_object.coa_flip_direction:
+#                row.prop(sprite_object,"coa_flip_direction",text="",icon="RADIOBUT_ON")
+#            else:
+#                row.prop(sprite_object,"coa_flip_direction",text="",icon="RADIOBUT_OFF")
+#            row.prop(sprite_object,"coa_flip_direction",icon="ARROW_LEFTRIGHT",text="Flip Direction")
+#            op = row.operator("coa_tools.add_keyframe",text="",icon="SPACE2")
+#            op.prop_name = "coa_flip_direction"
+#            op.obj = sprite_object.name
+#            op.add_keyframe = True
+#            op.default_interpolation = "CONSTANT"
+#            op = row.operator("coa_tools.add_keyframe",text="",icon="SPACE3")
+#            op.prop_name = "coa_flip_direction"
+#            op.obj = sprite_object.name
+#            op.add_keyframe = False
             
             if obj != None and obj.type == "MESH" and obj.mode == "OBJECT":
                 row = layout.row(align=True)
@@ -425,12 +463,12 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
                     row = layout.row(align=True)
                     row.prop(obj,'coa_sprite_frame',text="Frame Index",icon="UV_FACESEL")
                     if obj.coa_tiles_x * obj.coa_tiles_y > 1:                    
-                        op = row.operator("my_operator.select_frame_thumb",text="",icon="IMAGE_COL")
-                        op = row.operator("my_operator.add_keyframe",text="",icon="SPACE2")
+                        op = row.operator("coa_tools.select_frame_thumb",text="",icon="IMAGE_COL")
+                        op = row.operator("coa_tools.add_keyframe",text="",icon="SPACE2")
                         op.prop_name = "coa_sprite_frame"
                         op.add_keyframe = True
                         op.default_interpolation = "CONSTANT"
-                        op = row.operator("my_operator.add_keyframe",text="",icon="SPACE3")
+                        op = row.operator("coa_tools.add_keyframe",text="",icon="SPACE3")
                         op.prop_name = "coa_sprite_frame"
                         op.add_keyframe = False
                         #row.template_icon_view(obj, "coa_sprite_frame_previews")
@@ -438,58 +476,45 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
                     row = layout.row(align=True)
                     slot_text = "Slot Index (" + str(len(obj.coa_slot)) + ")"
                     row.prop(obj,'coa_slot_index',text="Slot Index") 
-                    op = row.operator("my_operator.select_frame_thumb",text="",icon="IMAGE_COL")
-                    op = row.operator("my_operator.add_keyframe",text="",icon="SPACE2")
+                    op = row.operator("coa_tools.select_frame_thumb",text="",icon="IMAGE_COL")
+                    op = row.operator("coa_tools.add_keyframe",text="",icon="SPACE2")
                     op.prop_name = "coa_slot_index"
                     op.add_keyframe = True
                     op.default_interpolation = "CONSTANT"
-                    op = row.operator("my_operator.add_keyframe",text="",icon="SPACE3")
+                    op = row.operator("coa_tools.add_keyframe",text="",icon="SPACE3")
                     op.prop_name = "coa_slot_index"
                     op.add_keyframe = False   
-            
-            row = layout.row(align=True)                    
-            row.prop(sprite_object,"coa_flip_direction",text="")
-            row.prop(sprite_object,"coa_flip_direction",icon="ARROW_LEFTRIGHT",text="Flip Direction")
-            op = row.operator("my_operator.add_keyframe",text="",icon="SPACE2")
-            op.prop_name = "coa_flip_direction"
-            op.obj = sprite_object.name
-            op.add_keyframe = True
-            op.default_interpolation = "CONSTANT"
-            op = row.operator("my_operator.add_keyframe",text="",icon="SPACE3")
-            op.prop_name = "coa_flip_direction"
-            op.obj = sprite_object.name
-            op.add_keyframe = False
             
             if obj != None and obj.type == "MESH" and obj.mode == "OBJECT":
                 
                 
                 row = layout.row(align=True)
                 row.prop(obj,'coa_z_value',text="Z Depth")
-                op = row.operator("my_operator.add_keyframe",text="",icon="SPACE2")
+                op = row.operator("coa_tools.add_keyframe",text="",icon="SPACE2")
                 op.prop_name = "coa_z_value"
                 op.add_keyframe = True
                 op.default_interpolation = "CONSTANT"
-                op = row.operator("my_operator.add_keyframe",text="",icon="SPACE3")
+                op = row.operator("coa_tools.add_keyframe",text="",icon="SPACE3")
                 op.prop_name = "coa_z_value"
                 op.add_keyframe = False
                 
                 row = layout.row(align=True)
                 row.prop(obj,'coa_alpha',text="Alpha",icon="TEXTURE")
-                op = row.operator("my_operator.add_keyframe",text="",icon="SPACE2")
+                op = row.operator("coa_tools.add_keyframe",text="",icon="SPACE2")
                 op.prop_name = "coa_alpha"
                 op.add_keyframe = True
                 op.default_interpolation = "BEZIER"
-                op = row.operator("my_operator.add_keyframe",text="",icon="SPACE3")
+                op = row.operator("coa_tools.add_keyframe",text="",icon="SPACE3")
                 op.prop_name = "coa_alpha"
                 op.add_keyframe = False
                 
                 row = layout.row(align=True)
                 row.prop(obj,'coa_modulate_color',text="")
-                op = row.operator("my_operator.add_keyframe",text="",icon="SPACE2")
+                op = row.operator("coa_tools.add_keyframe",text="",icon="SPACE2")
                 op.prop_name = "coa_modulate_color"
                 op.add_keyframe = True
                 op.default_interpolation = "LINEAR"
-                op = row.operator("my_operator.add_keyframe",text="",icon="SPACE3")
+                op = row.operator("coa_tools.add_keyframe",text="",icon="SPACE3")
                 op.prop_name = "coa_modulate_color"
                 op.add_keyframe = False  
             
@@ -608,8 +633,10 @@ class CutoutAnimationTools(bpy.types.Panel):
                         row = layout.row()
                         row.operator("object.export_to_json",text="Export Json",icon="EXPORT",emboss=True)
                     
-                    row = layout.row()
+                    row = layout.row(align=True)
                     row.operator("coa_tools.create_slot_object",text="Merge to Slot Object",icon="IMASEL",emboss=True)  
+                    if obj.coa_type == "SLOT":
+                        row.operator("coa_tools.extract_slots",text="Extract Slots",icon="EXPORT",emboss=True)  
                     
                     if operator_exists("object.create_driver_constraint") and len(context.selected_objects)>1:
                         row = layout.row()
@@ -637,7 +664,10 @@ class CutoutAnimationTools(bpy.types.Panel):
                     row.operator("object.coa_set_ik",text="Create IK Bone",icon="CONSTRAINT_BONE")
                     row = layout.row(align=True)
                     row.operator("bone.coa_set_stretch_bone",text="Create Stretch Bone",icon="CONSTRAINT_BONE")
-
+                    
+                    row = layout.row(align=True)
+                    row.operator("coa_tools.create_stretch_ik",text="Create Stretch IK",icon="CONSTRAINT_BONE")
+                    
             if context.active_object.type == "MESH":
                 if sprite_object.coa_edit_mesh == False and sprite_object.coa_edit_armature == False and sprite_object.coa_edit_weights == False:
                     row = layout.row(align=True)
@@ -675,6 +705,11 @@ class CutoutAnimationTools(bpy.types.Panel):
             row.label(text="Mesh Tools:")
             
             if "coa_sprite" in obj:
+                
+                
+                row = layout.row(align=True)
+                operator = row.operator("coa_tools.generate_mesh_from_edges_and_verts",text="Generate Mesh",icon="OUTLINER_OB_SURFACE")
+                
                 row = layout.row(align=True)
                 operator = row.operator("object.coa_fill",text="Normal Fill",icon="OUTLINER_OB_SURFACE")
                 operator.triangulate = False
@@ -767,7 +802,20 @@ class SelectChild(bpy.types.Operator):
         self.sprite_object = None
     
     mode = EnumProperty(items=(("object","object","object"),("bone","bone","bone")))
+    armature = None
+    
+    def change_object_mode(self,context):
+        obj = context.active_object
+        if self.ob_name != obj.name:
+            if obj.mode == "EDIT" and obj.type == "MESH":
+                bpy.ops.object.mode_set(mode="OBJECT")
+            elif obj.mode == "EDIT" and obj.type == "ARMATURE":
+                bpy.ops.object.mode_set(mode="POSE")    
+            
+    
     def select_child(self,context):
+        self.change_object_mode(context)
+        
         if self.mode == "object":
             ob = bpy.data.objects[self.ob_name]
             ob.coa_hide_select = False
@@ -788,6 +836,8 @@ class SelectChild(bpy.types.Operator):
                 armature.bones.active = None
         
     def shift_select_child(self,context):
+        self.change_object_mode(context)
+        
         sprite_object = get_sprite_object(context.active_object)
         children = []
         armature = None
@@ -839,10 +889,21 @@ class SelectChild(bpy.types.Operator):
             
     def invoke(self,context,event):
         self.sprite_object = get_sprite_object(context.active_object)
+        self.armature = get_armature(self.sprite_object)
         if self.sprite_object != None:
             self.change_weight_mode(context,"OBJECT")
         
-        if self.sprite_object != None:    
+        if self.sprite_object != None:
+            if context.active_object.type == "ARMATURE" and context.active_object.mode == "EDIT" and event.alt:
+                obj = bpy.data.objects[self.ob_name]
+                if obj.type == "MESH":
+                    set_weights(self,context,obj)
+                    msg = '"'+self.ob_name+'"' + " has been bound to selected Bones."
+                    self.report({'INFO'},msg)
+                else:
+                    self.report({'WARNING'},"Can only bind Sprite Meshes to Bones")
+                return{"FINISHED"}
+            
             if event.shift and not self.sprite_object.coa_edit_weights:
                 self.shift_select_child(context)
             if not self.sprite_object.coa_edit_weights or ( self.sprite_object.coa_edit_weights and bpy.data.objects[self.ob_name].type == "MESH"):
@@ -856,6 +917,7 @@ class SelectChild(bpy.types.Operator):
                             bone.select_tail = False
                 if not event.shift:
                     self.select_child(context)
+                    
             if self.sprite_object.coa_edit_weights:     
                 create_armature_parent(context)
             self.change_weight_mode(context,"WEIGHT_PAINT")    
@@ -915,20 +977,23 @@ class CutoutAnimationCollections(bpy.types.Panel):
                     for track in child.animation_data.nla_tracks:
                         track.mute = False
         else:
-            anim_collection = sprite_object.coa_anim_collections[sprite_object.coa_anim_collections_index]
-            context.scene.frame_start = anim_collection.frame_start
-            context.scene.frame_end = anim_collection.frame_end
-            set_action(context)            
-            for obj in context.visible_objects:
-                if obj.type == "MESH" and "coa_sprite" in obj:
-                    update_uv(context,obj)
-                    set_alpha(obj,bpy.context,obj.coa_alpha)
-                    set_z_value(context,obj,obj.coa_z_value)
-                    set_modulate_color(obj,context,obj.coa_modulate_color)
-            for child in children:
-                if child.animation_data != None:
-                    for track in child.animation_data.nla_tracks:
-                        track.mute = True
+            if len(sprite_object.coa_anim_collections) > 0:
+                anim_collection = sprite_object.coa_anim_collections[sprite_object.coa_anim_collections_index]
+                context.scene.frame_start = anim_collection.frame_start
+                context.scene.frame_end = anim_collection.frame_end
+                set_action(context)            
+                for obj in context.visible_objects:
+                    if obj.type == "MESH" and "coa_sprite" in obj:
+                        update_uv(context,obj)
+                        set_alpha(obj,bpy.context,obj.coa_alpha)
+                        set_z_value(context,obj,obj.coa_z_value)
+                        set_modulate_color(obj,context,obj.coa_modulate_color)
+                for child in children:
+                    if child.animation_data != None:
+                        for track in child.animation_data.nla_tracks:
+                            track.mute = True
+        
+        bpy.ops.coa_tools.toggle_animation_area(mode="UPDATE")
                 
     
     
@@ -967,10 +1032,13 @@ class CutoutAnimationCollections(bpy.types.Panel):
                 row.prop(scene,"coa_frame_end")
             
             row = layout.row()
-            row.template_list("UIListAnimationCollections","dummy",sprite_object, "coa_anim_collections", sprite_object, "coa_anim_collections_index",rows=1,maxrows=10,type='DEFAULT')
+            row.template_list("UIListAnimationCollections","dummy",sprite_object, "coa_anim_collections", sprite_object, "coa_anim_collections_index",rows=2,maxrows=10,type='DEFAULT')
             col = row.column(align=True)
-            col.operator("my_operator.add_animation_collection",text="",icon="ZOOMIN")
-            col.operator("my_operator.remove_animation_collection",text="",icon="ZOOMOUT")
+            col.operator("coa_tools.add_animation_collection",text="",icon="ZOOMIN")
+            col.operator("coa_tools.remove_animation_collection",text="",icon="ZOOMOUT")
+            
+            if len(sprite_object.coa_anim_collections) > 2 and sprite_object.coa_anim_collections_index > 1:
+                col.operator("coa_tools.duplicate_animation_collection",text="",icon="COPY_ID")
             
             if not "-nonnormal" in context.screen.name:
                 col.operator("coa_tools.toggle_animation_area",text="",icon="ACTION")            
@@ -991,6 +1059,11 @@ class CutoutAnimationCollections(bpy.types.Panel):
                     #row.prop(sprite_object.coa_anim_collections[sprite_object.coa_anim_collections_index],"frame_end",text="End")    
             
             row = layout.row(align=True)
-            operator = row.operator("coa_tools.batch_render",text="Batch Render Animations",icon="RENDER_ANIMATION")                  
-
+            if context.scene.coa_nla_mode == "ACTION":
+                #row.operator_context = "INVOKE_DEFAULT"
+                operator = row.operator("coa_tools.batch_render",text="Batch Render Animations",icon="RENDER_ANIMATION")
+            else:
+                operator = row.operator("render.render",text="Render Animation",icon="RENDER_ANIMATION")
+                operator.animation = True
+                
 preview_collections = {}

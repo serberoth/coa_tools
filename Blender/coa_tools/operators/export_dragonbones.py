@@ -1020,7 +1020,7 @@ class DragonBonesExport(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
                     data_name = sprite.data.name
                     ### loop over all other slot items
                     for i,slot in enumerate(sprite.coa_slot):
-                        data = bpy.data.meshes[slot.name]
+                        data = slot.mesh#bpy.data.meshes[slot.name]
                         sprite.data = data
                         
                         if not self.generate_atlas:

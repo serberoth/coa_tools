@@ -55,7 +55,8 @@ import traceback
 
 class ExampleAddonPreferences(bpy.types.AddonPreferences):
     bl_idname = __name__
-
+    
+    alpha_update_frequency = bpy.props.IntProperty(name="Alpha Update Frequency",default=1,min=1,description="Updates alpha on each x frame.")
     show_donate_icon = bpy.props.BoolProperty(name="Show Donate Icon",default=False)
     sprite_import_export_scale = bpy.props.FloatProperty(name="Sprite import/export scale",default=0.01)
     sprite_thumb_size = bpy.props.IntProperty(name="Sprite thumbnail size",default=48)
@@ -74,6 +75,7 @@ class ExampleAddonPreferences(bpy.types.AddonPreferences):
         layout.prop(self,"dragon_bones_export")
         layout.prop(self,"sprite_import_export_scale")
         layout.prop(self,"sprite_thumb_size")
+        layout.prop(self,"alpha_update_frequency")
 
 
 addon_keymaps = []
@@ -150,9 +152,12 @@ def unregister():
     bpy.app.handlers.load_post.remove(coa_startup)
     
     unregister_keymaps()
-         
+      
+ticker2 = 0   
 @persistent
 def update_sprites(dummy):
+    global ticker2
+    ticker2 += 1
     update_scene = False
 
     context = bpy.context
@@ -163,7 +168,7 @@ def update_sprites(dummy):
     else:
         objects = bpy.data.objects
     
-        
+    alpha_update_frequency = get_addon_prefs(context).alpha_update_frequency    
     for obj in objects:
         if "coa_sprite" in obj and obj.animation_data != None and obj.type == "MESH":
             if obj.coa_sprite_frame != obj.coa_sprite_frame_last:
@@ -172,7 +177,7 @@ def update_sprites(dummy):
             if obj.coa_slot_index != obj.coa_slot_index_last:
                 change_slot_mesh_data(context,obj)
                 obj.coa_slot_index_last = obj.coa_slot_index
-            if obj.coa_alpha != obj.coa_alpha_last:
+            if obj.coa_alpha != obj.coa_alpha_last and ticker2%alpha_update_frequency==0:
                 set_alpha(obj,bpy.context,obj.coa_alpha)
                 obj.coa_alpha_last = obj.coa_alpha
                 update_scene = True

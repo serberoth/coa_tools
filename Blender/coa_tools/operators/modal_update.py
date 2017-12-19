@@ -168,14 +168,14 @@ class COAModal(bpy.types.Operator):
                     obj.coa_modulate_color_last = obj.coa_modulate_color
                 
                 ### leaving object edit mode
-                if obj.type == "MESH" and self.obj_mode_hist == "EDIT" and obj.mode == "OBJECT":
-                    set_uv_default_coords(context,obj)
-                    ### Store sprite dimension in coa_sprite_dimension when mesh is rescaled
-                    for obj in context.selected_objects:
-                        if obj != None and "coa_sprite":
-                            local_dimensions = get_local_dimension(obj)
-                            if local_dimensions != None:
-                                obj.coa_sprite_dimension = Vector((local_dimensions[0],0,local_dimensions[1]))
+#                if obj.type == "MESH" and self.obj_mode_hist == "EDIT" and obj.mode == "OBJECT":
+#                    set_uv_default_coords(context,obj)
+#                    ### Store sprite dimension in coa_sprite_dimension when mesh is rescaled
+#                    for obj in context.selected_objects:
+#                        if obj != None and "coa_sprite":
+#                            local_dimensions = get_local_dimension(obj)
+#                            if local_dimensions != None:
+#                                obj.coa_sprite_dimension = Vector((local_dimensions[0],0,local_dimensions[1]))
             
             ### will be executed when leaving armature edit mode                
             if get_sprite_object(obj)!= None and obj.type == "ARMATURE" and self.obj_mode_hist == "EDIT" and obj.mode != "EDIT":
@@ -192,10 +192,11 @@ class COAModal(bpy.types.Operator):
                     
         #print("value = ",event.value,"value_hist = ",self.value_hist)
             
-        if self.check_scaling(active_object,event) == "SCALE_APPLIED":
+        if self.check_scaling(active_object,event) == "SCALE_APPLIED" and active_object != None:
             bpy.ops.object.mode_set(mode="OBJECT")
             bpy.ops.object.mode_set(mode="EDIT")
-            active_object.coa_sprite_dimension = Vector((get_local_dimension(active_object)[0],0,get_local_dimension(active_object)[1]))
+            if get_local_dimension(active_object) != None:
+                active_object.coa_sprite_dimension = Vector((get_local_dimension(active_object)[0],0,get_local_dimension(active_object)[1]))
         ###
         self.value_hist = str(event.value)
         self.type_hist = str(event.type)

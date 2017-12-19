@@ -32,6 +32,7 @@ from bpy_extras.io_utils import ExportHelper, ImportHelper
 import json
 from bpy.app.handlers import persistent
 from .. functions import *
+        
 
 ######################################################################################################################################### Quick Armature        
 class QuickArmature(bpy.types.Operator):
@@ -128,12 +129,10 @@ class QuickArmature(bpy.types.Operator):
             
             bpy.ops.object.mode_set(mode='EDIT')
             bone = armature.data.edit_bones.new("Bone")
-            #print(bone.name)
             
             ### tag bones that will be locked
             bone["lock_z"] = True
             bone["lock_rot"] = True
-            
 
             head_position = (self.armature.matrix_world.inverted() * self.cursor_location)
             head_position[1] = 0
@@ -210,69 +209,6 @@ class QuickArmature(bpy.types.Operator):
         bpy.ops.object.mode_set(mode='EDIT')
         obj.select = False
         bpy.ops.ed.undo_push(message="Sprite "+obj.name+ " set parent")
-    
-    def set_weights(self,context,obj):
-        if len(context.selected_bones) == 0:
-            return {'RUNNING_MODAL'}
-        
-        self.set_waits = True
-        bone_data = []
-        orig_armature = self.armature#context.active_object
-        ### remove bone vertex_groups
-        for weight in obj.vertex_groups:
-            if weight.name in orig_armature.data.bones:
-                obj.vertex_groups.remove(weight)
-        ###         
-        use_deform = []
-        bone_pos = {}
-        selected_bones = []
-        
-        for i,bone in enumerate(orig_armature.data.edit_bones):
-            if bone.select and (bone.select_head or bone.select_tail):
-                selected_bones.append(bone)
-            use_deform.append(orig_armature.data.bones[i].use_deform)
-            if bone.select and (bone.select_head or bone.select_tail):
-                bone_pos[bone] = {"tail":bone.tail[1],"head":bone.head[1]}
-                bone.tail[1] = 0
-                bone.head[1] = 0
-                orig_armature.data.bones[i].use_deform = True
-            else:
-                orig_armature.data.bones[i].use_deform = False
-        orig_armature.select = True     
-        obj.select = True       
-        
-        #return{'FINISHED'}
-        
-        parent = bpy.data.objects[obj.parent.name]
-        obj_orig_location = Vector(obj.location)
-        obj.location[1] = 0
-        bpy.ops.object.parent_set(type='ARMATURE_AUTO')
-        obj.location = obj_orig_location
-        
-        for bone in bone_pos:
-            bone.tail[1] = bone_pos[bone]["tail"]
-            bone.head[1] = bone_pos[bone]["head"]
-        for i,bone in enumerate(orig_armature.data.edit_bones):
-            orig_armature.data.bones[i].use_deform = use_deform[i]
-        i = 0
-        for modifier in obj.modifiers:
-            if modifier.type == "ARMATURE":
-                i += 1
-        if i > 1:
-            obj.modifiers.remove(obj.modifiers[len(obj.modifiers)-1])
-        for modifier in obj.modifiers:
-            if modifier.type == "ARMATURE":
-                modifier.object = orig_armature
-        #obj.parent = orig_armature
-        obj.parent = parent
-        orig_armature.select = True
-        context.scene.objects.active = orig_armature
-        obj.select = False
-        
-        bpy.ops.object.mode_set(mode='EDIT')
-        self.set_waits = False
-        
-        return {'RUNNING_MODAL'} 
         
     def return_ray_sprites(self,context,event):
         coord = mathutils.Vector((event.mouse_region_x, event.mouse_region_y))
@@ -288,13 +224,18 @@ class QuickArmature(bpy.types.Operator):
     
     def modal(self, context, event):
         self.in_view_3d = check_region(context,event)
-        if self.in_view_3d:
-            if not event.alt:
-                bpy.context.window.cursor_set("PAINT_BRUSH")
-            else:
-                bpy.context.window.cursor_set("EYEDROPPER") 
+#        if self.in_view_3d:
+#            bpy.context.window.cursor_set("PAINT_BRUSH")
+#        else:
+#            bpy.context.window.cursor_set("DEFAULT")
+            
+        if event.alt:
+            bpy.context.window.cursor_set("EYEDROPPER") 
+        elif not event.alt and self.in_view_3d:    
+            bpy.context.window.cursor_set("PAINT_BRUSH")
         else:
-            bpy.context.window.cursor_set("DEFAULT")
+            bpy.context.window.cursor_set("DEFAULT")    
+            
         scene = context.scene
         ob = context.active_object
         
@@ -413,24 +354,27 @@ class QuickArmature(bpy.types.Operator):
                     if ray[0] and ray[1] != None:
                         obj = ray[1]
                         if self.object_hover.coa_type == "MESH":
-                            self.set_weights(context,self.object_hover)
+                            #self.set_weights(context,self.object_hover)
+                            set_weights(self,context,self.object_hover)
+                            msg = '"'+obj.name+'"' + " has been bound to selected Bones."
+                            self.report({'INFO'},msg)
                         elif self.object_hover.coa_type == "SLOT":
                             prev_index = int(self.object_hover.coa_slot_index)
                             for i,slot in enumerate(self.object_hover.coa_slot):
                                 self.object_hover.coa_slot_index = i
-                                self.set_weights(context,self.object_hover)
+                                set_weights(self,context,self.object_hover)
+                                msg = '"'+self.object_hover.name+'"' + " has been bound to selected Bones."
+                                self.report({'INFO'},msg)
                             self.object_hover.coa_slot_index = prev_index 
                 return{'RUNNING_MODAL'}
 
-            
-            
-            
-                    
+     
             ### cancel  
             if (context.active_object.mode != "EDIT" and context.active_object.type == "ARMATURE" and self.set_waits == False) or not self.sprite_object.coa_edit_armature:# or (event.type in {'ESC'} and self.in_view_3d):
                 bpy.context.space_data.show_manipulator = self.show_manipulator
                 bpy.context.window.cursor_set("CROSSHAIR")
-                bpy.ops.object.mode_set(mode=self.armature_mode)
+                #bpy.ops.object.mode_set(mode=self.armature_mode)
+                bpy.ops.object.mode_set(mode="POSE")
                 
                 for pose_bone in context.active_object.pose.bones:
                     if "default_bones" in context.active_object.pose.bone_groups and pose_bone.bone_group == None:
@@ -572,4 +516,279 @@ class SetIK(bpy.types.Operator):
             context.active_object.data.bones[bone.name].layers[0] = False
             
         bpy.ops.ed.undo_push(message="Set Ik")
-        return{'FINISHED'}    
+        return{'FINISHED'}
+    
+class CreateStretchIK(bpy.types.Operator):
+    bl_idname = "coa_tools.create_stretch_ik"
+    bl_label = "Create Stretch Ik"
+    bl_description = ""
+    bl_options = {"REGISTER"}
+
+    @classmethod
+    def poll(cls, context):
+        return True
+
+    def get_bones(self,context,bones):
+        p_bone = bones[0] ### parent bone
+        c_bone = bones[0] ### control bone
+        ik_bone = bones[0]
+        while p_bone.parent in bones:
+            p_bone = b_bone.parent
+        while len(c_bone.children) > 0 and c_bone.children[0] in bones:
+            c_bone = c_bone.children[0]
+        
+        ik_bones = []
+        ik_bone = p_bone.children[0]
+        while ik_bone not in ik_bones and ik_bone != c_bone:
+            ik_bones.append(ik_bone)
+            for child in ik_bone.children:
+                if child.select:
+                    ik_bone = child
+                    break
+        
+        return [p_bone,c_bone,ik_bones]
+    
+    def duplicate_bones(self,context,bones):
+        bpy.ops.armature.select_all(action='DESELECT')
+        new_bones = []
+        for i,bone in enumerate(bones):
+            new_bone = context.active_object.data.edit_bones.new(bone.name + "_CTRL")
+            new_bone.roll = bone.roll
+            new_bone.tail = bone.tail
+            new_bone.head = bone.head
+            new_bones.append(new_bone)
+            
+            if i == 0:
+                new_bone.parent = bone.parent
+            else:
+                new_bone.use_connect = True
+                new_bone.parent = new_bones[i-1]
+            new_bone.select = True
+            new_bone.select_head = True
+            new_bone.select_tail = True
+        return new_bones         
+        
+        
+    def execute(self, context):
+        obj = context.active_object
+        
+        ####################### create all needed bones #######################
+        bpy.ops.object.mode_set(mode="EDIT")
+        bones = context.selected_bones[:]
+        
+        ### get deform bones
+        p_bone_def, c_bone_def, ik_bones_def = self.get_bones(context,bones)
+        
+        ### duplicate deform bones
+        self.duplicate_bones(context,[p_bone_def]+ik_bones_def+[c_bone_def])
+        ### get control bones
+        bones = context.selected_bones[:]
+        p_bone_ctrl, c_bone_ctrl, ik_bones_ctrl = self.get_bones(context,bones)
+        p_bone_ctrl.name = p_bone_def.name + "_CTRL"
+        c_bone_ctrl.name = c_bone_def.name + "_CTRL"
+        for i,ik_bone in enumerate(ik_bones_ctrl):
+            ik_bone.name = ik_bones_def[i].name + "_CTRL"
+        c_bone_ctrl.use_connect = False
+        c_bone_ctrl.parent = None
+            
+        
+        ### create stretch to bone
+        joint_bones_ctrl = []
+        for i,ik_bone in enumerate(ik_bones_ctrl):
+            joint_bone_ctrl = context.active_object.data.edit_bones.new(ik_bones_def[i].name+ "_JOINT")
+            joint_bone_ctrl.head = ik_bone.head
+            joint_bone_ctrl.tail = ik_bone.head + Vector((-1,0,0))
+            joint_bone_ctrl.parent = ik_bone.parent#p_bone_ctrl
+            joint_bone_ctrl.use_connect = False
+            joint_bone_ctrl.select = True
+            joint_bone_ctrl.select_head = True
+            joint_bone_ctrl.select_tail = True
+            joint_bone_ctrl.use_inherit_scale = False
+            joint_bone_ctrl.use_inherit_rotation = False
+            joint_bones_ctrl.append(joint_bone_ctrl)
+        
+        ####################### create all needed constraints #######################
+        
+        ### get names from edit bone names while in edit mode. Otherwise Editbones will not be available to gather name from
+        p_bone_ctrl_name = str(p_bone_ctrl.name)
+        c_bone_ctrl_name = str(c_bone_ctrl.name)
+        
+        ik_bone_ctrl_names = []
+        for ik_bone in ik_bones_ctrl:
+            ik_bone_ctrl_names.append(str(ik_bone.name))
+        
+        p_bone_def_name = str(p_bone_def.name)
+        c_bone_def_name = str(c_bone_def.name)
+        
+        ik_bone_def_names = []
+        for ik_bone in ik_bones_def:
+            ik_bone_def_names.append(str(ik_bone.name))
+        
+        ik_bone_ctrl_names = []
+        for ik_bone in ik_bones_ctrl:
+            ik_bone_ctrl_names.append(str(ik_bone.name))
+        
+        joint_bone_ctrl_names = []
+        for join_bone in joint_bones_ctrl:
+            joint_bone_ctrl_names.append(str(join_bone.name))
+        
+        ### change mode into pose mode
+        bpy.ops.object.mode_set(mode="OBJECT")
+        bpy.ops.object.mode_set(mode="EDIT")
+        bpy.ops.object.mode_set(mode="POSE")
+
+        ### get pose def bones
+        p_bone_def = obj.pose.bones[p_bone_def_name]
+        c_bone_def = obj.pose.bones[c_bone_def_name]
+        ik_bones_def =  []
+        for ik_bone_name in ik_bone_def_names:
+            ik_bones_def.append(obj.pose.bones[ik_bone_name])
+        
+        ### get pose ctrl bones
+        p_bone_ctrl = obj.pose.bones[p_bone_ctrl_name]
+        c_bone_ctrl = obj.pose.bones[c_bone_ctrl_name]
+        ik_bones_ctrl = []
+        for ik_bone_name in ik_bone_ctrl_names:
+            ik_bones_ctrl.append(obj.pose.bones[ik_bone_name])
+        
+        joint_bones_ctrl = []
+        for joint_bone_name in joint_bone_ctrl_names:
+            joint_bones_ctrl.append(obj.pose.bones[joint_bone_name])
+        
+        ### disable deforming for all ctrl bones
+        ctrl_bones = [p_bone_ctrl, c_bone_ctrl] + ik_bones_ctrl + joint_bones_ctrl
+        for bone in ctrl_bones:
+            bone = obj.data.bones[bone.name]
+            bone.use_deform = False
+        
+        c = p_bone_def.constraints.new("LIMIT_ROTATION")
+        c.owner_space = "POSE"
+        c.use_limit_z = True
+        
+        c = p_bone_def.constraints.new("STRETCH_TO")
+        c.target = obj
+        c.subtarget = joint_bones_ctrl[0].name
+        c.keep_axis = "PLANE_Z"
+        const_p_bone = c
+        
+        
+        c = p_bone_def.constraints.new("LIMIT_SCALE")
+        c.owner_space = "POSE"
+        c.use_min_z = True
+        c.use_max_z = True
+        c.max_z = 1.0
+        c.min_z = 1.0
+        
+        const_ik_bones = []
+        for i,ik_bone_def in enumerate(ik_bones_def):
+            c = ik_bone_def.constraints.new("LIMIT_ROTATION")
+            c.owner_space = "POSE"
+            c.use_limit_z = True
+            
+            c = ik_bone_def.constraints.new("STRETCH_TO")
+            c.target = obj
+            c.keep_axis = "PLANE_Z"
+            const_ik_bones.append(c)
+            if i == len(ik_bones_def)-1:
+                c.subtarget = c_bone_ctrl.name
+            else:    
+                c.subtarget = joint_bones_ctrl[i+1].name
+            
+            c = ik_bone_def.constraints.new("LIMIT_SCALE")
+            c.owner_space = "POSE"
+            c.use_min_z = True
+            c.use_max_z = True
+            c.max_z = 1.0
+            c.min_z = 1.0
+                
+                
+        c = c_bone_def.constraints.new("COPY_TRANSFORMS")
+        c.target = obj
+        c.subtarget = c_bone_ctrl.name
+        const_c_bone = c
+        
+        c = ik_bones_ctrl[len(ik_bones_ctrl)-1].constraints.new("IK")
+        c.target = obj
+        c.subtarget = c_bone_ctrl.name
+        c.chain_count = len(ik_bones_ctrl) + 1
+        const_ik = c
+        
+        for ik_bone_ctrl in ik_bones_ctrl:
+            ik_bone_ctrl.lock_ik_x = True
+            ik_bone_ctrl.lock_ik_y = True
+        
+            ik_bone_ctrl.ik_stretch = .2
+        p_bone_ctrl.ik_stretch = .2
+        
+        ### move bones to other layers
+        hide_bone_names = [p_bone_ctrl_name, p_bone_def_name, c_bone_def_name] + ik_bone_ctrl_names + ik_bone_def_names
+        for bone_name in hide_bone_names:
+            obj.data.bones[bone_name].layers[1] = True
+            obj.data.bones[bone_name].layers[0] = False
+        
+        ### store bones and constraints in Stretch IK Pointer Property
+        p_bone_def["coa_stretch_ik_data"] = str([c_bone_ctrl.name,"p_bone_def"])
+        c_bone_def["coa_stretch_ik_data"] = str([c_bone_ctrl.name,"c_bone_def"])
+        for ik_bone_def in ik_bones_def:
+            ik_bone_def["coa_stretch_ik_data"] = str([c_bone_ctrl.name,"ik_bone_def"])
+        
+        p_bone_ctrl["coa_stretch_ik_data"] = str([c_bone_ctrl.name,"p_bone_ctrl"])
+        c_bone_ctrl["coa_stretch_ik_data"] = str([c_bone_ctrl.name,"c_bone_ctrl"])
+        
+        for ik_bone_ctrl in ik_bones_ctrl:
+            ik_bone_ctrl["coa_stretch_ik_data"] = str([c_bone_ctrl.name,"ik_bone_ctrl"])
+        for joint_bone_ctrl in joint_bones_ctrl:
+            joint_bone_ctrl["coa_stretch_ik_data"] = str([c_bone_ctrl.name,"joint_bone_ctrl"])
+        
+        ### set bone colors
+        set_bone_group(self, obj, c_bone_ctrl,group = "ik_group" ,theme = "THEME09")
+        for joint_bone_ctrl in joint_bones_ctrl:
+            set_bone_group(self, obj, joint_bone_ctrl,group = "ik_group" ,theme = "THEME09")
+        
+        return {"FINISHED"}
+    
+class RemoveStretchIK(bpy.types.Operator):
+    bl_idname = "coa_tools.remove_stretch_ik"
+    bl_label = "Remove Stretch Ik"
+    bl_description = ""
+    bl_options = {"REGISTER"}
+    
+    stretch_ik_name = StringProperty()
+    
+    @classmethod
+    def poll(cls, context):
+        return True
+
+    def execute(self, context):
+        obj = context.active_object
+        bpy.ops.object.mode_set(mode="EDIT")
+        
+        for bone in obj.pose.bones:
+            e_bone = obj.data.edit_bones[bone.name]
+            if "coa_stretch_ik_data" in bone:
+                name = eval(bone["coa_stretch_ik_data"])[0]
+                type = eval(bone["coa_stretch_ik_data"])[1]
+                
+                if name == self.stretch_ik_name:
+                    if "_ctrl" in type:
+                        obj.data.edit_bones.remove(e_bone)
+                    elif "_def" in type:
+                        for const in bone.constraints:
+                            bone.constraints.remove(const)    
+                        
+                        bpy.ops.object.mode_set(mode="POSE") 
+                        
+                        del(bone["coa_stretch_ik_data"])
+                        
+                        bone = obj.data.bones[bone.name]
+                        bone.select = True
+                        obj.data.bones.active = bone
+                        bone.layers[0] = True
+                        bone.layers[1] = False
+                        
+                        bpy.ops.object.mode_set(mode="EDIT")
+        bpy.ops.object.mode_set(mode="POSE")            
+        
+        return {"FINISHED"}
+            
+        

@@ -34,7 +34,7 @@ from bpy.app.handlers import persistent
 from .. functions import *
 
 class AddKeyframe(bpy.types.Operator):
-    bl_idname = "my_operator.add_keyframe"
+    bl_idname = "coa_tools.add_keyframe"
     bl_label = "Add Keyframe"
     bl_description = "Add Keyframe"
     bl_options = {"REGISTER"}
@@ -166,10 +166,56 @@ class AddKeyframe(bpy.types.Operator):
         self.key_obj = None    
         return {"FINISHED"}   
 
+class DuplicateAnimationCollection(bpy.types.Operator):
+    bl_idname = "coa_tools.duplicate_animation_collection"
+    bl_label = "Duplicate Animation Collection"
+    bl_description = "Duplicate Animation Collection"
+    bl_options = {"REGISTER"}
+
+    @classmethod
+    def poll(cls, context):
+        return True
+
+    sprite_object = None
+    
+    def execute(self, context):
+        self.sprite_object = get_sprite_object(context.active_object)
+        
+        if self.sprite_object != None:
+            
+            name_array = []
+            for item in self.sprite_object.coa_anim_collections:
+                name_array.append(item.name)
+            
+            active_anim_collection = self.sprite_object.coa_anim_collections[self.sprite_object.coa_anim_collections_index]
+            active_anim_name = str(active_anim_collection.name)
+            active_anim_frame_end = active_anim_collection.frame_end
+            active_anim_frame_action_collection = active_anim_collection.action_collection
+            
+            new_anim_collection = self.sprite_object.coa_anim_collections.add()
+            
+            new_anim_collection_name = check_name(name_array,active_anim_name)
+            new_anim_collection.name = new_anim_collection_name
+            new_anim_collection.frame_end = active_anim_frame_end
+            new_anim_collection.action_collection = active_anim_frame_action_collection
+            
+            for action in bpy.data.actions:
+                name = active_anim_name + "_"
+                if name in action.name:
+                    
+                    copied_action = action.copy()
+                    new_name = new_anim_collection_name + "_"
+                    new_name = str(action.name).replace(name,new_name)
+                    copied_action.name = new_name
+            self.sprite_object.coa_anim_collections_index = len(self.sprite_object.coa_anim_collections)-1
+            
+        return {"FINISHED"}
+        
+
 class AddAnimationCollection(bpy.types.Operator):
-    bl_idname = "my_operator.add_animation_collection"
+    bl_idname = "coa_tools.add_animation_collection"
     bl_label = "Add Animation Collection"
-    bl_description = ""
+    bl_description = "Add new Animation Collection"
     bl_options = {"REGISTER"}
 
     @classmethod
@@ -225,9 +271,9 @@ class AddAnimationCollection(bpy.types.Operator):
         return {"FINISHED"}
         
 class RemoveAnimationCollection(bpy.types.Operator):
-    bl_idname = "my_operator.remove_animation_collection"
+    bl_idname = "coa_tools.remove_animation_collection"
     bl_label = "Remove Animation Collection"
-    bl_description = ""
+    bl_description = "Delete selected Animation Collection"
     bl_options = {"REGISTER"}
 
     @classmethod
@@ -395,8 +441,8 @@ class CreateNlaTrack(bpy.types.Operator):
                     
         return {"FINISHED"}
     
-    
 class BatchRender(bpy.types.Operator):
+#class BatchRender(bpy.types.RenderEngine):
     bl_idname = "coa_tools.batch_render"
     bl_label = "Batch Render"
     bl_description = ""
@@ -405,8 +451,19 @@ class BatchRender(bpy.types.Operator):
     @classmethod
     def poll(cls, context):
         return True
-
+    
+    def cam_found(self,context):
+        for obj in context.scene.objects:
+            if obj.type == "CAMERA":
+                return True
+        return False    
+    
     def invoke(self, context, event):
+        if not self.cam_found(context):
+            self.report({'WARNING'},"No Camera in scene found.")
+            return {'FINISHED'}
+        
+        wm = context.window_manager
         ### open render path
         path = context.scene.render.filepath.replace("\\","/")
         dirpath = path[:path.rfind("/")]
@@ -427,6 +484,7 @@ class BatchRender(bpy.types.Operator):
             idx = int(sprite_object.coa_anim_collections_index)
             
             for i in range(len(sprite_object.coa_anim_collections)):
+                
                 anim_name = sprite_object.coa_anim_collections[i].name
                 if anim_name not in ["NO ACTION","Restpose"]:
                     sprite_object.coa_anim_collections_index = i
@@ -440,7 +498,8 @@ class BatchRender(bpy.types.Operator):
                     context.scene.render.filepath = final_path
                     
                     bpy.ops.render.render("EXEC_DEFAULT",animation=True,write_still=False,use_viewport=True,scene=context.scene.name)
-
+                    #bpy.ops.render.render("INVOKE_DEFAULT",animation=True,write_still=False,use_viewport=True,scene=context.scene.name)
+        
             sprite_object.coa_anim_collections_index = idx
         return {"FINISHED"}
     
