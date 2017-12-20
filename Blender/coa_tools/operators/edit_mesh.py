@@ -1079,12 +1079,14 @@ class DrawContour(bpy.types.Operator):
         
     def get_intersecting_lines(self,coord,bm):
         scene = bpy.context.scene
-        vertex_vec_new = self.limit_cursor_by_bounds(bpy.context,coord)
         
         if scene.coa_surface_snap:
             coord, point_type, bm_ob = self.snapped_vert_coord , self.point_type , self.bm_objs
         else:    
             coord, point_type, bm_ob = [None,None,None]
+            
+        coord = self.limit_cursor_by_bounds(bpy.context,coord)
+        
         intersection_points = []
         if self.selected_vert_coord != None and coord != None:
             obj = bpy.context.active_object
