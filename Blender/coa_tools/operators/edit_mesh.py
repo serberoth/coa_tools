@@ -242,7 +242,7 @@ class GenerateMeshFromEdgesAndVerts(bpy.types.Operator):
                 outer_verts = new_verts
             return linked_verts
 
-
+        ### delete faces
         faces = []
         for face in bm.faces:
             if not face.hide:
@@ -255,7 +255,29 @@ class GenerateMeshFromEdgesAndVerts(bpy.types.Operator):
                     faces.append(face)
                 
         bmesh.ops.delete(bm,geom=faces,context=3)        
-
+        
+        ### delete intersecting lines and add vertices at intersetionpoints
+        intersection_points = []
+        to_be_deleted = []
+        for e1 in bm.edges:
+            for e2 in bm.edges:
+                edges_not_visible = not e1.hide and not e2.hide
+                
+                if e1 != e2 and edges_not_visible and e1.verts[0] not in e2.verts and e1.verts[1] not in e2.verts:
+                    i = geometry.intersect_line_line_2d(e1.verts[0].co.xz, e1.verts[1].co.xz, e2.verts[0].co.xz, e2.verts[1].co.xz)
+                    if i != None:
+                        if e1 not in to_be_deleted:
+                            to_be_deleted.append(e1)
+                        if e2 not in to_be_deleted:
+                            to_be_deleted.append(e2)
+                        i_3d = Vector((i[0],e1.verts[0].co[1],i[1]))
+                        if i_3d not in intersection_points:
+                            intersection_points.append(i_3d)
+        for edge in to_be_deleted:
+            bm.edges.remove(edge)
+        for p in intersection_points:
+            bm.verts.new(p)
+        
         def get_vertex_loops(bm):
             ### find single vertex loops
             all_verts = []
