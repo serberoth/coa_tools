@@ -1013,7 +1013,6 @@ class DrawContour(bpy.types.Operator):
         context = bpy.context
         obj = context.active_object
         mouse_pos = custom_pos if custom_pos != None else self.mouse_pos_3d
-        
         if type(edge) == bmesh.types.BMEdge:
             v1 = obj.matrix_world * edge.verts[0].co
             v2 = obj.matrix_world * edge.verts[1].co
@@ -1024,6 +1023,7 @@ class DrawContour(bpy.types.Operator):
         dist = min((v1-v2).magnitude*.5 , context.scene.coa_snap_distance * context.space_data.region_3d.view_distance)
         if disable_edge_threshold:
             dist = 0
+        
         p1 = (v1 - v2).normalized()
         p2 = mouse_pos - v2
         l = max(min(p2.dot(p1), (v1 - v2).magnitude - dist),0 + dist)
@@ -1033,6 +1033,8 @@ class DrawContour(bpy.types.Operator):
     def get_edge_slide_points(self,context,bm):
         obj = context.active_object
         
+        snap_distance = context.scene.coa_snap_distance * context.space_data.region_3d.view_distance
+        
         edge_slide_points = []
         for edge in bm.edges:
             bm.edges.ensure_lookup_table()
@@ -1040,10 +1042,10 @@ class DrawContour(bpy.types.Operator):
                 vert_1 = obj.matrix_world * edge.verts[0].co
                 vert_2 = obj.matrix_world * edge.verts[1].co
                 
-                left = min(vert_1.x , vert_2.x)
-                right = max(vert_1.x , vert_2.x)
-                top = max(vert_1.z , vert_2.z)
-                bottom = min(vert_1.z , vert_2.z)
+                left = min(vert_1.x , vert_2.x) - snap_distance
+                right = max(vert_1.x , vert_2.x) + snap_distance
+                top = max(vert_1.z , vert_2.z) + snap_distance
+                bottom = min(vert_1.z , vert_2.z) - snap_distance
                 
                 if self.mouse_pos_3d.x > left and self.mouse_pos_3d.x < right and self.mouse_pos_3d.z < top and self.mouse_pos_3d.z > bottom: 
                     c = self.get_projected_point(edge)
