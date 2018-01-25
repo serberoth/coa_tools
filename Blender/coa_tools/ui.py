@@ -359,6 +359,7 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
     bpy.types.Object.coa_slot_show = bpy.props.BoolProperty(default=False)
     bpy.types.Object.coa_flip_direction = bpy.props.BoolProperty(default=False,update=change_direction)
     bpy.types.Object.coa_flip_direction_last = bpy.props.BoolProperty(default=False)
+    bpy.types.Object.coa_change_z_ordering = bpy.props.BoolProperty(default=False)
     bpy.types.Scene.coa_display_all = bpy.props.BoolProperty(default=True)
     bpy.types.Scene.coa_display_page = bpy.props.IntProperty(default=0,min=0,name="Display Page",description="Defines which page is displayed")
     bpy.types.Scene.coa_display_length = bpy.props.IntProperty(default=10,min=0,name="Page Length",description="Defines how Many Items are displayed")

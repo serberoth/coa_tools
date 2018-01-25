@@ -782,6 +782,11 @@ def display_children(self, context, obj):
                 op = row.operator("coa_tools.view_sprite",icon="ZOOM_SELECTED",text="",emboss=False)
                 op.type = "VIEW_ALL"
                 op.name = obj2.name
+                
+                row2 = row.row()
+                if not obj2.coa_change_z_ordering:
+                    row2.active = False
+                row2.prop(obj2,"coa_change_z_ordering",text="",icon="SORTALPHA",emboss=False)
             
             current_display_item += 1
             if obj2 == sprite_object:
@@ -804,6 +809,7 @@ def draw_children(self,context,sprite_object,layout,box,row,col,children,obj,cur
     
     ### Sprite Object Children Display
     if sprite_object != None and sprite_object.coa_show_children:
+        children = sorted(children, key=lambda x: x.location[1],reverse=False)
         for i,child in enumerate(children):
             in_range = current_display_item in range(context.scene.coa_display_page * context.scene.coa_display_length , context.scene.coa_display_page * context.scene.coa_display_length + context.scene.coa_display_length)
             
@@ -858,20 +864,36 @@ def draw_children(self,context,sprite_object,layout,box,row,col,children,obj,cur
     #                        op = row.operator("import.coa_reimport_sprite",text="",icon="FILE_REFRESH",emboss=False)
     #                        op.name = child.name
                         
-                        if child.coa_favorite:
-                            row.prop(child,"coa_favorite",emboss=False,text="",icon="SOLO_ON")
+                        if not sprite_object.coa_change_z_ordering:
+                            if child.coa_favorite:
+                                row.prop(child,"coa_favorite",emboss=False,text="",icon="SOLO_ON")
+                            else:
+                                row.prop(child,"coa_favorite",emboss=False,text="",icon="SOLO_OFF")
+                                
+                                
+                            if child.coa_hide:  
+                                row.prop(child,"coa_hide",emboss=False,text="",icon="VISIBLE_IPO_OFF")
+                            else:   
+                                row.prop(child,"coa_hide",emboss=False,text="",icon="VISIBLE_IPO_ON")
+                            if child.coa_hide_select:   
+                                row.prop(child,"coa_hide_select",emboss=False,text="",icon="RESTRICT_SELECT_ON")
+                            else:   
+                                row.prop(child,"coa_hide_select",emboss=False,text="",icon="RESTRICT_SELECT_OFF")   
                         else:
-                            row.prop(child,"coa_favorite",emboss=False,text="",icon="SOLO_OFF")
+                            children_names = []
+                            for child in children:
+                                children_names.append(child.name)
+                            op = row.operator("coa_tools.change_z_ordering",text="",icon="TRIA_DOWN")
+                            op.index = i
+                            op.direction = "DOWN"
+                            op.active_sprite = children[i].name
+                            op.all_sprites = str(children_names)
+                            op = row.operator("coa_tools.change_z_ordering",text="",icon="TRIA_UP")
+                            op.index = i
+                            op.direction = "UP"
+                            op.active_sprite = children[i].name
+                            op.all_sprites = str(children_names)
                             
-                            
-                        if child.coa_hide:  
-                            row.prop(child,"coa_hide",emboss=False,text="",icon="VISIBLE_IPO_OFF")
-                        else:   
-                            row.prop(child,"coa_hide",emboss=False,text="",icon="VISIBLE_IPO_ON")
-                        if child.coa_hide_select:   
-                            row.prop(child,"coa_hide_select",emboss=False,text="",icon="RESTRICT_SELECT_ON")
-                        else:   
-                            row.prop(child,"coa_hide_select",emboss=False,text="",icon="RESTRICT_SELECT_OFF")   
                         #row.prop(child,"hide_select",emboss=False,text="")
                         
                         if child.type == "MESH" and child.coa_type == "SLOT" and child.coa_slot_show:

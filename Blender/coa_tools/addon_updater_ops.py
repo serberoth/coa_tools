@@ -72,6 +72,7 @@ class addon_updater_install_popup(bpy.types.Operator):
 
     def draw(self, context):
         layout = self.layout
+        row = layout.row()
         if updater.invalidupdater == True:
             layout.label("Updater module error")
             return
