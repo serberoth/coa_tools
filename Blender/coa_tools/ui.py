@@ -133,12 +133,13 @@ class CutoutAnimationInfo(bpy.types.Panel):
     
     @classmethod
     def poll(cls, context):
-        if not addon_updater_ops.updater.auto_reload_post_update or get_addon_prefs(context).show_donate_icon:
+        ignore_update = addon_updater_ops.updater.json["ignore"] if "ignore" in addon_updater_ops.updater.json else False
+        if (addon_updater_ops.updater.update_ready and not ignore_update) or get_addon_prefs(context).show_donate_icon:
             return context
         
     
     def draw(self, context):
-        addon_updater_ops.check_for_update_background()
+        #addon_updater_ops.check_for_update_background()
         
         layout = self.layout
         
@@ -366,6 +367,7 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
     bpy.types.WindowManager.coa_running_modal = BoolProperty(default=False)
                 
     def draw(self, context):
+        addon_updater_ops.check_for_update_background()
         
         layout = self.layout
         obj = context.active_object
