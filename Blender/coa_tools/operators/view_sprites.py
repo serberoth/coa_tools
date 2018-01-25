@@ -51,25 +51,27 @@ class ChangeZOrdering(bpy.types.Operator):
             next_index = min(self.index + 1 , len(all_sprites)-1)
                
         next_sprite = all_sprites[next_index]
-        active_loc_y = active_sprite.location[1]
-        next_loy_y = next_sprite.location[1]
         
         if active_sprite.coa_z_value == next_sprite.coa_z_value:
             for i,child in enumerate(all_sprites):
+                if child == active_sprite:
+                    child.coa_z_value = child.coa_z_value
                 if self.direction == "DOWN":
-                    if i >= next_index:
+                    if i > self.index:
                         child.coa_z_value -= 1
-                elif self.direction == "UP":
-                    if i <= next_index:
+                if self.direction == "UP":
+                    if i < self.index:
                         child.coa_z_value += 1
+                
         
-        
+        active_loc_y = active_sprite.location[1]
+        next_loy_y = next_sprite.location[1]
         active_sprite.location[1] = next_loy_y
         next_sprite.location[1] = active_loc_y
         active_z = active_sprite.coa_z_value
         next_z = next_sprite.coa_z_value
-        active_sprite["coa_z_value"] = next_z
-        next_sprite["coa_z_value"] = active_z
+        active_sprite.coa_z_value = next_z
+        next_sprite.coa_z_value = active_z
         
         return {"FINISHED"}
         
