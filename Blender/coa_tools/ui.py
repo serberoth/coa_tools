@@ -32,6 +32,7 @@ from bpy_extras.io_utils import ExportHelper, ImportHelper
 import json
 from bpy.app.handlers import persistent
 from . functions import *
+from . import addon_updater_ops
 #from . import preview_collections
 
 bone_layers = []
@@ -125,36 +126,40 @@ class AnimationCollections(bpy.types.PropertyGroup):
 
 class CutoutAnimationInfo(bpy.types.Panel):
     bl_idname = "cutout_animation_social"
-    bl_label = "Cutout Animation Social"
+    bl_label = "Info Panel"
     bl_space_type = "VIEW_3D"
     bl_region_type = "TOOLS"
     bl_category = "Cutout Animation"
     
     @classmethod
     def poll(cls, context):
-        if get_addon_prefs(context).show_donate_icon:
+        if not addon_updater_ops.updater.auto_reload_post_update or get_addon_prefs(context).show_donate_icon:
             return context
+        
     
     def draw(self, context):
-        
+        addon_updater_ops.check_for_update_background()
         
         layout = self.layout
         
-        row = layout.row()
-        row.alignment = "CENTER"
+        if get_addon_prefs(context).show_donate_icon:
+            row = layout.row()
+            row.alignment = "CENTER"
+            
+            pcoll = preview_collections["main"]
+            donate_icon = pcoll["donate_icon"]
+            twitter_icon = pcoll["twitter_icon"]
+            row.operator("coa_operator.coa_donate",text="Show Your Love",icon_value=donate_icon.icon_id,emboss=True)
+            row = layout.row()
+            row.alignment = "CENTER"
+            row.scale_x = 1.75
+            op = row.operator("coa_operator.coa_tweet",text="Tweet",icon_value=twitter_icon.icon_id,emboss=True)
+            op.link = "https://www.youtube.com/ndee85"
+            op.text = "Check out CutoutAnimation Tools Addon for Blender by Andreas Esau."
+            op.hashtags = "b3d,coatools"
+            op.via = "ndee85"
         
-        pcoll = preview_collections["main"]
-        donate_icon = pcoll["donate_icon"]
-        twitter_icon = pcoll["twitter_icon"]
-        row.operator("coa_operator.coa_donate",text="Show Your Love",icon_value=donate_icon.icon_id,emboss=True)
-        row = layout.row()
-        row.alignment = "CENTER"
-        row.scale_x = 1.75
-        op = row.operator("coa_operator.coa_tweet",text="Tweet",icon_value=twitter_icon.icon_id,emboss=True)
-        op.link = "https://www.youtube.com/ndee85"
-        op.text = "Check out CutoutAnimation Tools Addon for Blender by Andreas Esau."
-        op.hashtags = "b3d,coatools"
-        op.via = "ndee85"
+        addon_updater_ops.update_notice_box_ui(self, context)
 
 
 def enum_sprite_previews(self, context):
@@ -361,6 +366,7 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
     bpy.types.WindowManager.coa_running_modal = BoolProperty(default=False)
                 
     def draw(self, context):
+        
         layout = self.layout
         obj = context.active_object
         sprite_object = get_sprite_object(obj)
@@ -536,7 +542,7 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
             
             row = layout.row(align=True)
             col = row.column(align=True)
-            col.prop(obj, "location")    
+            col.prop(obj, "location")
 
 ######################################################################################################################################### Cutout Animation Tools Panel
 class CutoutAnimationTools(bpy.types.Panel):

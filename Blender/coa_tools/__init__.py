@@ -19,11 +19,11 @@ Created by Andreas Esau
 '''
 
 bl_info = {
-    "name": "Cutout Animation Tools",
+    "name": "COA Tools",
     "description": "This Addon provides a Toolset for a 2D Animation Workflow.",
     "author": "Andreas Esau",
-    "version": (1, 0, 0, "Beta"),
-    "blender": (2, 75, 0),
+    "version": (1, 0, 0),
+    "blender": (2, 79, 0),
     "location": "View 3D > Tools > Cutout Animation Tools",
     "warning": "",
     "wiki_url": "https://github.com/ndee85/coa_tools/wiki",
@@ -36,6 +36,7 @@ import os
 import shutil
 import tempfile
 from bpy.app.handlers import persistent
+from . import addon_updater_ops
 
 # load and reload submodules
 ##################################    
@@ -54,7 +55,7 @@ from . functions import *
 import traceback
 
 class ExampleAddonPreferences(bpy.types.AddonPreferences):
-    bl_idname = __name__
+    bl_idname = __package__
     
     alpha_update_frequency = bpy.props.IntProperty(name="Alpha Update Frequency",default=1,min=1,description="Updates alpha on each x frame.")
     show_donate_icon = bpy.props.BoolProperty(name="Show Donate Icon",default=False)
@@ -63,6 +64,39 @@ class ExampleAddonPreferences(bpy.types.AddonPreferences):
     json_export = bpy.props.BoolProperty(name="Experimental Json export",default=False)
     dragon_bones_export = bpy.props.BoolProperty(name="Dragonbones Export",default=False)
     enable_spritesheets = bpy.props.BoolProperty(name="Enable Spritesheets",default=False, description="This feature is deprecated and should not be used for future projects. Use this only for older projects.")
+    
+    auto_check_update = bpy.props.BoolProperty(
+    name = "Auto-check for Update",
+    description = "If enabled, auto-check for updates using an interval",
+    default = True,
+    )
+    updater_intrval_months = bpy.props.IntProperty(
+    name='Months',
+    description = "Number of months between checking for updates",
+    default=0,
+    min=0
+    )
+    updater_intrval_days = bpy.props.IntProperty(
+    name='Days',
+    description = "Number of days between checking for updates",
+    default=1,
+    min=0,
+    )
+    updater_intrval_hours = bpy.props.IntProperty(
+    name='Hours',
+    description = "Number of hours between checking for updates",
+    default=0,
+    min=0,
+    max=23
+    )
+    updater_intrval_minutes = bpy.props.IntProperty(
+    name='Minutes',
+    description = "Number of minutes between checking for updates",
+    default=0,
+    min=0,
+    max=59
+    )
+    
     def draw(self, context):
         layout = self.layout
         row = layout.row()
@@ -76,7 +110,9 @@ class ExampleAddonPreferences(bpy.types.AddonPreferences):
         layout.prop(self,"sprite_import_export_scale")
         layout.prop(self,"sprite_thumb_size")
         layout.prop(self,"alpha_update_frequency")
-
+        
+        
+        addon_updater_ops.update_settings_ui(self,context)
 
 addon_keymaps = []
 def register_keymaps():
@@ -97,6 +133,8 @@ def unregister_keymaps():
 
 
 def register():
+    addon_updater_ops.register(bl_info)
+    
     import bpy.utils.previews
     pcoll2 = bpy.utils.previews.new() 
     pcoll2.my_previews = ()
@@ -135,6 +173,7 @@ def register():
     bpy.app.handlers.load_post.append(coa_startup)
 
     register_keymaps()
+    
     
 def unregister():
     for pcoll in preview_collections.values():
