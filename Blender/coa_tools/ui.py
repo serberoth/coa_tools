@@ -53,7 +53,7 @@ class ChangeShadingMode(bpy.types.Operator):
     def execute(self, context):
         bpy.context.space_data.viewport_shade = 'MATERIAL'
         return {"FINISHED"}
-        
+    
 
 class UVData(bpy.types.PropertyGroup):
     uv = FloatVectorProperty(default=(0,0),size=2)
@@ -633,9 +633,9 @@ class CutoutAnimationTools(bpy.types.Panel):
             if sprite_object.coa_edit_weights == False:
                 if context.active_object.mode != "EDIT":
                     row = layout.row(align=True)
-                    row.operator("import.coa_import_sprites",text="Import Sprites",icon="IMASEL")
-                    if context.active_object.type == "MESH":
-                        row.operator("import.coa_reimport_sprite",text="Reimport Sprite",icon="FILE_REFRESH")
+                    row.operator("coa_tools.coa_import_sprites",text="Re / Import Sprites",icon="IMASEL")
+#                    if context.active_object.type == "MESH":
+#                        row.operator("coa_tools.coa_reimport_sprite",text="Reimport Sprite",icon="FILE_REFRESH")
                         
                     if get_addon_prefs(context).json_export:
                         row = layout.row()
