@@ -33,6 +33,7 @@ import json
 from bpy.app.handlers import persistent
 from .. functions import *
 import bgl
+import blf
 from math import radians, degrees
 
 
@@ -689,6 +690,7 @@ class DrawContour(bpy.types.Operator):
         self.value = ""
         self.ctrl = False
         self.alt = False
+        self.shift = False
         self.distance = .1
         self.cur_distance = 0
         self.draw_dir = Vector((0,0,0))
@@ -696,6 +698,8 @@ class DrawContour(bpy.types.Operator):
         self.mouse_press = False
         self.mouse_press_hist = False
         self.mouse_pos_3d = Vector((0,0,0))
+        self.mouse_2d_x = 0
+        self.mouse_2d_y = 0
         self.inside_area = False
         self.show_manipulator = False
         self.cursor_pos_hist = Vector((1000000000,0,1000000))
@@ -1163,11 +1167,14 @@ class DrawContour(bpy.types.Operator):
     
     def modal(self, context, event):
         ### set variables
+        self.mouse_2d_x = event.mouse_region_x
+        self.mouse_2d_y = event.mouse_region_y
         obj = context.active_object
         self.type = str(event.type)
         self.value = str(event.value)
         self.ctrl = bool(event.ctrl)
         self.alt = bool(event.alt)
+        self.shift = bool(event.shift)
         self.in_view_3d = check_region(context,event)
         scene = context.scene
         
@@ -1190,6 +1197,7 @@ class DrawContour(bpy.types.Operator):
             self.draw_handler_removed = True
             self.sprite_object.coa_edit_mesh = False
             bpy.types.SpaceView3D.draw_handler_remove(self.draw_handler, "WINDOW")
+            bpy.types.SpaceView3D.draw_handler_remove(self.draw_handler2, "WINDOW")
             bpy.context.space_data.show_manipulator = self.show_manipulator
             bpy.context.window.cursor_set("CROSSHAIR")
             bpy.ops.object.mode_set(mode="OBJECT")
@@ -1274,7 +1282,7 @@ class DrawContour(bpy.types.Operator):
                 
             ### Set Mouse click
             
-            if (event.value == 'PRESS' or event.value == 'CLICK') and event.type == click_button and self.mouse_press == False and not self.ctrl and not event.shift:
+            if (event.value == 'PRESS' or event.value == 'CLICK') and event.type == click_button and self.mouse_press == False and not self.ctrl and not self.shift:
                 if not self.alt:
                     self.mouse_press = True
                     
@@ -1336,7 +1344,7 @@ class DrawContour(bpy.types.Operator):
                             break
             
             ### pick edge length
-            if event.shift and self.point_type == "EDGE":
+            if self.shift and self.point_type == "EDGE":
                 bpy.context.window.cursor_set("EYEDROPPER")
                 if self.type == click_button:
                     
@@ -1344,6 +1352,9 @@ class DrawContour(bpy.types.Operator):
                     p2 = obj.matrix_world * self.verts_edges_data[1]
                     length = (p1-p2).magnitude
                     scene.coa_distance = length
+                    
+                    text = "Stroke Distance set to "+str(round(length,2))
+                    self.report({"INFO"},text)
             
             ### remove last selected vert coord if nothing is selected
             if (self.selected_verts_count == 0 and self.selected_vert_coord != None) or self.type in [select_button] or (self.ctrl and self.type in ["Z"]):# or self.type_prev in ["G"]:
@@ -1475,6 +1486,7 @@ class DrawContour(bpy.types.Operator):
         
         args = ()
         self.draw_handler = bpy.types.SpaceView3D.draw_handler_add(self.draw_callback_px, args, "WINDOW", "POST_VIEW")
+        self.draw_handler2 = bpy.types.SpaceView3D.draw_handler_add(self.draw_callback_text, args, "WINDOW", "POST_PIXEL")
                 
         bpy.ops.view3d.viewnumpad(type="FRONT")        
         #self._timer = wm.event_timer_add(0.1, context.window)
@@ -1494,6 +1506,24 @@ class DrawContour(bpy.types.Operator):
         bgl.glBegin(bgl.GL_POINTS)
         bgl.glVertex3f(pos[0],pos[1],pos[2])
         bgl.glEnd()
+    
+    def draw_callback_text(self):
+        obj = bpy.context.active_object
+        ### draw text for edge length detection
+        if self.shift and self.point_type == "EDGE":
+            p1 = obj.matrix_world * self.verts_edges_data[0]
+            p2 = obj.matrix_world * self.verts_edges_data[1]
+            length = (p1-p2).magnitude
+            
+            font_id = 0
+            line = str(round(length,2))
+            bgl.glEnable(bgl.GL_BLEND)
+            bgl.glColor4f(1,1,1,1)
+            
+            blf.position(font_id, self.mouse_2d_x-15, self.mouse_2d_y+30, 0)
+            blf.size(font_id, 20, 72)
+            blf.draw(font_id, line)
+               
     
     def draw_callback_px(self):
         obj = bpy.context.active_object
@@ -1610,13 +1640,15 @@ class DrawContour(bpy.types.Operator):
                         else:
                             self.draw_circle(obj.matrix_world * vert.co,[1,0,0],size=8)
                     
+                    
+            
+            
+                
             # restore opengl defaults
             bgl.glLineWidth(1)
             bgl.glDisable(bgl.GL_BLEND)
             bgl.glDisable(bgl.GL_LINE_SMOOTH)
             bgl.glColor4f(0.0, 0.0, 0.0, 1.0) 
-            
-
 
 class PickEdgeLength(bpy.types.Operator):
     bl_idname = "coa_tools.pick_edge_length"
