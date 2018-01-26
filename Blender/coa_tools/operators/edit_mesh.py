@@ -1274,7 +1274,7 @@ class DrawContour(bpy.types.Operator):
                 
             ### Set Mouse click
             
-            if (event.value == 'PRESS' or event.value == 'CLICK') and event.type == click_button and self.mouse_press == False and not self.ctrl:
+            if (event.value == 'PRESS' or event.value == 'CLICK') and event.type == click_button and self.mouse_press == False and not self.ctrl and not event.shift:
                 if not self.alt:
                     self.mouse_press = True
                     
@@ -1334,6 +1334,16 @@ class DrawContour(bpy.types.Operator):
                             bmesh.ops.dissolve_verts(bm,verts=[vert])
                             bmesh.update_edit_mesh(obj.data)
                             break
+            
+            ### pick edge length
+            if event.shift and self.point_type == "EDGE":
+                bpy.context.window.cursor_set("EYEDROPPER")
+                if self.type == click_button:
+                    
+                    p1 = obj.matrix_world * self.verts_edges_data[0]
+                    p2 = obj.matrix_world * self.verts_edges_data[1]
+                    length = (p1-p2).magnitude
+                    scene.coa_distance = length
             
             ### remove last selected vert coord if nothing is selected
             if (self.selected_verts_count == 0 and self.selected_vert_coord != None) or self.type in [select_button] or (self.ctrl and self.type in ["Z"]):# or self.type_prev in ["G"]:
