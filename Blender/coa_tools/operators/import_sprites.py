@@ -299,7 +299,7 @@ class ImportSprites(bpy.types.Operator, ImportHelper):
     # List of operator properties, the attributes will be assigned
     # to the class instance from the operator settings before calling.
     #use_setting = None
-    replace = BoolProperty(name="Replace Images",default=True)
+    replace = BoolProperty(name="Update Existing",default=True)
     
     def execute(self, context):
         bpy.context.space_data.viewport_shade = "TEXTURED"
@@ -316,7 +316,7 @@ class ImportSprites(bpy.types.Operator, ImportHelper):
         if ext not in [".json"]:
             for i in self.files:
                 filepath = (os.path.join(folder, i.name))
-                if not self.replace:
+                if not self.replace or i.name not in bpy.data.objects:
                     bpy.ops.coa_tools.coa_import_sprite(path=filepath,parent=sprite_object.name,scale=get_addon_prefs(context).sprite_import_export_scale)
                 else:
                     bpy.ops.coa_tools.coa_reimport_sprite(filepath=filepath,name=i.name)
@@ -433,10 +433,17 @@ class ReImportSprite(bpy.types.Operator, ImportHelper):
         obj.coa_tiles_y = 1
         
         img_dimension = img.size
-        sprite_dimension = Vector(obj.coa_sprite_dimension) * (1/scale)
+        
+        obj_dimension = Vector(obj.dimensions)
+        obj_dimension[0] /= obj.scale[0]
+        obj_dimension[1] /= obj.scale[1]
+        obj_dimension[2] /= obj.scale[2]
+        
+        sprite_dimension = Vector(obj_dimension) * (1/scale)
+
         ratio_x = img_dimension[0] / sprite_dimension[0]
         ratio_y = img_dimension[1] / sprite_dimension[2]
         self.move_verts(obj,ratio_x,ratio_y)
-        
+
         bpy.context.scene.objects.active = active_obj
         return {'FINISHED'}
