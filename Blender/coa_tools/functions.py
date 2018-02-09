@@ -810,7 +810,9 @@ def draw_children(self,context,sprite_object,layout,box,row,col,children,obj,cur
     ### Sprite Object Children Display
     if sprite_object != None and sprite_object.coa_show_children:
         children = sorted(children, key=lambda x: x.location[1],reverse=False)
+        children = sorted(children, key=lambda x: x.type,reverse=False)
         for i,child in enumerate(children):
+            child_obj = child
             in_range = current_display_item in range(context.scene.coa_display_page * context.scene.coa_display_length , context.scene.coa_display_page * context.scene.coa_display_length + context.scene.coa_display_length)
             
             name_found = obj.coa_filter_names.upper() in child.name.upper() and not obj.coa_filter_names == ""
@@ -883,16 +885,18 @@ def draw_children(self,context,sprite_object,layout,box,row,col,children,obj,cur
                             children_names = []
                             for child in children:
                                 children_names.append(child.name)
-                            op = row.operator("coa_tools.change_z_ordering",text="",icon="TRIA_DOWN")
-                            op.index = i
-                            op.direction = "DOWN"
-                            op.active_sprite = children[i].name
-                            op.all_sprites = str(children_names)
-                            op = row.operator("coa_tools.change_z_ordering",text="",icon="TRIA_UP")
-                            op.index = i
-                            op.direction = "UP"
-                            op.active_sprite = children[i].name
-                            op.all_sprites = str(children_names)
+                            
+                            if child_obj.type == "MESH":      
+                                op = row.operator("coa_tools.change_z_ordering",text="",icon="TRIA_DOWN")
+                                op.index = i
+                                op.direction = "DOWN"
+                                op.active_sprite = children[i].name
+                                op.all_sprites = str(children_names)
+                                op = row.operator("coa_tools.change_z_ordering",text="",icon="TRIA_UP")
+                                op.index = i
+                                op.direction = "UP"
+                                op.active_sprite = children[i].name
+                                op.all_sprites = str(children_names)
                             
                         #row.prop(child,"hide_select",emboss=False,text="")
                         
