@@ -229,6 +229,7 @@ class GenerateMeshFromEdgesAndVerts(bpy.types.Operator):
     bl_options = {"REGISTER"}
 
     def cleanup_and_fill_mesh(self,obj,bm):
+        context = bpy.context
         def get_linked_verts(vert):
             linked_verts = [vert]
             outer_verts = [vert]
@@ -256,6 +257,18 @@ class GenerateMeshFromEdgesAndVerts(bpy.types.Operator):
                     faces.append(face)
                 
         bmesh.ops.delete(bm,geom=faces,context=3)        
+        
+        ### delete double verts
+        edges_len_average, shortest_edge = get_average_edge_length(bm,context.active_object)
+        verts = []
+        for edge in bm.edges:
+            if not edge.hide:
+                if edge.calc_length() < edges_len_average*.01:
+                    if edge.verts[0] not in verts:
+                        verts.append(edge.verts[0])
+                    if edge.verts[1] not in verts:
+                        verts.append(edge.verts[1])
+        bmesh.ops.remove_doubles(bm,verts=verts,dist=0.01)            
         
         ### delete intersecting lines and add vertices at intersetionpoints
         intersection_points = []
