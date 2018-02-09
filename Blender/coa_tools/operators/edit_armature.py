@@ -407,7 +407,8 @@ class QuickArmature(bpy.types.Operator):
         self.sprite_object.coa_edit_armature = True
         lock_sprites(context,get_sprite_object(context.active_object),False)
         self.armature = self.create_armature(context)
-            
+        
+        self.armature.coa_hide = False    
         self.armature_mode = context.active_object.mode
         bpy.ops.object.mode_set(mode='EDIT')
         self.show_manipulator = bpy.context.space_data.show_manipulator
