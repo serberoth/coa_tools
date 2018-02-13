@@ -33,6 +33,42 @@ import json
 from bpy.app.handlers import persistent
 
 
+def draw_sculpt_ui(self,context,layout):
+    obj = context.active_object
+    if obj != None and obj.mode == "SCULPT":
+        layout = layout.column()
+        toolsettings = context.tool_settings
+        settings = toolsettings.sculpt
+        brush = settings.brush
+
+        if not context.particle_edit_object:
+            col = layout.split().column()
+            col.template_ID_preview(settings, "brush", new="brush.add", rows=3, cols=8)
+            
+        row = layout.row(align=True)
+        settings = toolsettings.unified_paint_settings if toolsettings.unified_paint_settings.use_unified_size else toolsettings.sculpt.brush
+        
+        if settings.use_locked_size:
+            icon = "UNLOCKED"
+        elif not settings.use_locked_size:
+            icon = "LOCKED"
+        
+        col = layout.column(align=True)
+        subrow = col.row(align=True)        
+        subrow.prop(settings,"use_locked_size",text="",toggle=True,icon=icon)
+        subrow.prop(settings,"size",slider=True)    
+        subrow.prop(settings,"use_pressure_size",text="")
+        col.prop(settings,"strength")
+        
+        
+        row = layout.row(align=True)
+        row.label(text="Symmetry:")
+        row = layout.row(align=True)
+        row.prop(toolsettings.sculpt,"use_symmetry_x",text="X",toggle=True)
+        row.prop(toolsettings.sculpt,"use_symmetry_y",text="Y",toggle=True)
+        row.prop(toolsettings.sculpt,"use_symmetry_z",text="Z",toggle=True)
+         
+
 def operator_exists(idname):
     op_name = idname.split(".")
     name = op_name[0].upper()+"_OT_"+op_name[1]
