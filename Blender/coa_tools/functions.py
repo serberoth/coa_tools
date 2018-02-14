@@ -43,11 +43,18 @@ def draw_sculpt_ui(self,context,layout):
         
         col = layout.column(align=True)
         col.separator()
-        col.prop(obj,"coa_selected_shapekey",text="")
-        shapekey_index = int(obj.coa_selected_shapekey)
-        if obj.data.shape_keys != None and shapekey_index > 0:
-            active_shapekey = obj.data.shape_keys.key_blocks[shapekey_index]
-            col.prop(active_shapekey,"value")
+        if obj.data.shape_keys == None:
+            col.label(text="No Shapekeys available yet.",icon="ERROR")
+        subrow = col.row(align=True)
+        subrow.prop(obj,"coa_selected_shapekey",text="")
+        if obj.data.shape_keys == None:
+            op = subrow.operator("coa_tools.shapekey_add",icon="NEW",text="")
+            
+        if obj.data.shape_keys != None:
+            shapekey_index = int(obj.coa_selected_shapekey)
+            if shapekey_index > 0:
+                active_shapekey = obj.data.shape_keys.key_blocks[shapekey_index]
+                col.prop(active_shapekey,"value")        
         
         col = layout.column(align=False)
         subrow = col.row(align=True)

@@ -46,6 +46,39 @@ class LeaveSculptmode(bpy.types.Operator):
         return {"FINISHED"}
         
 
+class ShapekeyAdd(bpy.types.Operator):
+    bl_idname = "coa_tools.shapekey_add"
+    bl_label = "Shapekey Add"
+    bl_description = ""
+    bl_options = {"REGISTER"}
+
+    name = StringProperty(name="Name")
+
+    @classmethod
+    def poll(cls, context):
+        return True
+        
+    def invoke(self,context,event):
+        wm = context.window_manager
+        return wm.invoke_props_dialog(self)
+        
+    def execute(self, context):
+        obj = context.active_object
+        if obj.data.shape_keys == None:
+            obj.shape_key_add(name="Basis",from_mix=False)
+            
+        
+        shape = obj.shape_key_add(name=self.name,from_mix=False)
+        shape_name = shape.name
+        
+        for i,shape in enumerate(obj.data.shape_keys.key_blocks):
+            if shape.name == shape_name:
+                obj.active_shape_key_index = i
+                break
+            
+        return {"FINISHED"}
+        
+
 class EditShapekeyMode(bpy.types.Operator):
     bl_idname = "coa_tools.edit_shapekey"
     bl_label = "Edit Shapekey"
@@ -71,10 +104,9 @@ class EditShapekeyMode(bpy.types.Operator):
     obj_init = None
     armature = None
     sprite_object = None
-    value_init = FloatProperty()
     shape = None
     create_shapekey = BoolProperty(default=False)
-    
+    objs = []
     
     @classmethod
     def poll(cls, context):
@@ -94,7 +126,7 @@ class EditShapekeyMode(bpy.types.Operator):
     def invoke(self,context,event):
         obj = context.active_object
         
-        if obj.data.shape_keys == None or event.ctrl:
+        if event.ctrl:# or obj.data.shape_keys == None:
             wm = context.window_manager
             self.create_shapekey = True
             return wm.invoke_props_dialog(self)
@@ -117,14 +149,6 @@ class EditShapekeyMode(bpy.types.Operator):
                 obj.shape_key_add(name="Basis", from_mix=False)
             shape = obj.shape_key_add(name=self.shapekey_name, from_mix=False)    
             shape_name = shape.name
-        
-        for i,shape in enumerate(obj.data.shape_keys.key_blocks):
-            if shape.name == shape_name:
-                obj.active_shape_key_index = i
-                self.value_init = shape.value
-                shape.value = 1.0
-                self.shape = shape
-                break
             
         self.sprite_object.coa_edit_shapekey = True
         bpy.ops.object.mode_set(mode="SCULPT")
@@ -140,13 +164,11 @@ class EditShapekeyMode(bpy.types.Operator):
     def exit_mode(self,context,event,obj):
         
         self.sprite_object.coa_edit_shapekey = False
-        context.scene.objects.active = self.obj_init
         
-        bpy.ops.object.mode_set(mode=self.mode_init)
-        self.obj_init.show_only_shape_key = False
-        
-        if self.shape != None:
-            self.shape.value = self.value_init
+        for obj in self.objs:
+            context.scene.objects.active = obj
+            bpy.ops.object.mode_set(mode="OBJECT")
+            obj.show_only_shape_key = False
         
         context.scene.objects.active = obj
         if self.armature != None:
@@ -155,13 +177,17 @@ class EditShapekeyMode(bpy.types.Operator):
     
     def modal(self, context, event):
         obj = context.active_object
+        if obj not in self.objs and obj.type == "MESH":
+            self.objs.append(obj)
+        if obj.mode != "SCULPT":
+            bpy.ops.object.mode_set(mode="SCULPT")    
         
-        if obj.data.shape_keys != None:
+        if obj.type == "MESH" and obj.data.shape_keys != None:
             if obj.coa_selected_shapekey != obj.active_shape_key.name:
                 obj.coa_selected_shapekey = str(obj.active_shape_key_index) #obj.active_shape_key.name
         
         
-        if event.type in {"ESC"} or obj != self.obj_init or self.sprite_object.coa_edit_shapekey == False:
+        if self.sprite_object.coa_edit_shapekey == False:
             return self.exit_mode(context,event,obj)
         
         return {"PASS_THROUGH"}
