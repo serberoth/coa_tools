@@ -40,7 +40,20 @@ def draw_sculpt_ui(self,context,layout):
         toolsettings = context.tool_settings
         settings = toolsettings.sculpt
         brush = settings.brush
-
+        
+        col = layout.column(align=True)
+        col.separator()
+        col.prop(obj,"coa_selected_shapekey",text="")
+        shapekey_index = int(obj.coa_selected_shapekey)
+        if obj.data.shape_keys != None and shapekey_index > 0:
+            active_shapekey = obj.data.shape_keys.key_blocks[shapekey_index]
+            col.prop(active_shapekey,"value")
+        
+        col = layout.column(align=False)
+        subrow = col.row(align=True)
+        subrow.prop(obj,"show_wire",toggle=True,icon="MESH_DATA")
+        subrow.prop(obj,"show_all_edges",toggle=True)
+        
         if not context.particle_edit_object:
             col = layout.split().column()
             col.template_ID_preview(settings, "brush", new="brush.add", rows=3, cols=8)
@@ -54,6 +67,7 @@ def draw_sculpt_ui(self,context,layout):
             icon = "LOCKED"
         
         col = layout.column(align=True)
+        
         subrow = col.row(align=True)        
         subrow.prop(settings,"use_locked_size",text="",toggle=True,icon=icon)
         subrow.prop(settings,"size",slider=True)    
@@ -67,6 +81,20 @@ def draw_sculpt_ui(self,context,layout):
         row.prop(toolsettings.sculpt,"use_symmetry_x",text="X",toggle=True)
         row.prop(toolsettings.sculpt,"use_symmetry_y",text="Y",toggle=True)
         row.prop(toolsettings.sculpt,"use_symmetry_z",text="Z",toggle=True)
+        
+
+        brush = toolsettings.sculpt.brush
+
+        layout.template_curve_mapping(brush, "curve", brush=True)
+
+        col = layout.column(align=True)
+        row = col.row(align=True)
+        row.operator("brush.curve_preset", icon='SMOOTHCURVE', text="").shape = 'SMOOTH'
+        row.operator("brush.curve_preset", icon='SPHERECURVE', text="").shape = 'ROUND'
+        row.operator("brush.curve_preset", icon='ROOTCURVE', text="").shape = 'ROOT'
+        row.operator("brush.curve_preset", icon='SHARPCURVE', text="").shape = 'SHARP'
+        row.operator("brush.curve_preset", icon='LINCURVE', text="").shape = 'LINE'
+        row.operator("brush.curve_preset", icon='NOCURVE', text="").shape = 'MAX'
          
 
 def operator_exists(idname):

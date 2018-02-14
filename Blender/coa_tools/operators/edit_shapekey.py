@@ -71,6 +71,10 @@ class EditShapekeyMode(bpy.types.Operator):
     obj_init = None
     armature = None
     sprite_object = None
+    value_init = FloatProperty()
+    shape = None
+    create_shapekey = BoolProperty(default=False)
+    
     
     @classmethod
     def poll(cls, context):
@@ -88,8 +92,15 @@ class EditShapekeyMode(bpy.types.Operator):
         
     
     def invoke(self,context,event):
-        wm = context.window_manager
-        return wm.invoke_props_dialog(self)
+        obj = context.active_object
+        
+        if obj.data.shape_keys == None or event.ctrl:
+            wm = context.window_manager
+            self.create_shapekey = True
+            return wm.invoke_props_dialog(self)
+        else:
+            return self.execute(context)
+            
     
     def execute(self, context):
         obj = context.active_object
@@ -101,23 +112,22 @@ class EditShapekeyMode(bpy.types.Operator):
         
         shape_name = self.shapekeys
         
-        if self.shapekeys == "NEW_KEY":
+        if self.shapekeys == "NEW_KEY" and self.create_shapekey:
             if obj.data.shape_keys == None:
                 obj.shape_key_add(name="Basis", from_mix=False)
             shape = obj.shape_key_add(name=self.shapekey_name, from_mix=False)    
             shape_name = shape.name
         
-        
         for i,shape in enumerate(obj.data.shape_keys.key_blocks):
             if shape.name == shape_name:
                 obj.active_shape_key_index = i
+                self.value_init = shape.value
+                shape.value = 1.0
+                self.shape = shape
                 break
-        obj.show_only_shape_key = True
+            
         self.sprite_object.coa_edit_shapekey = True
         bpy.ops.object.mode_set(mode="SCULPT")
-        
-        if self.armature != None:
-            self.armature.data.pose_position = "REST"
         
         for brush in bpy.data.brushes:
             if brush.sculpt_tool == "GRAB":
@@ -135,6 +145,9 @@ class EditShapekeyMode(bpy.types.Operator):
         bpy.ops.object.mode_set(mode=self.mode_init)
         self.obj_init.show_only_shape_key = False
         
+        if self.shape != None:
+            self.shape.value = self.value_init
+        
         context.scene.objects.active = obj
         if self.armature != None:
             self.armature.data.pose_position = "POSE"
@@ -142,6 +155,11 @@ class EditShapekeyMode(bpy.types.Operator):
     
     def modal(self, context, event):
         obj = context.active_object
+        
+        if obj.data.shape_keys != None:
+            if obj.coa_selected_shapekey != obj.active_shape_key.name:
+                obj.coa_selected_shapekey = str(obj.active_shape_key_index) #obj.active_shape_key.name
+        
         
         if event.type in {"ESC"} or obj != self.obj_init or self.sprite_object.coa_edit_shapekey == False:
             return self.exit_mode(context,event,obj)

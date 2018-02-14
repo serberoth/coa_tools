@@ -311,11 +311,19 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
     def change_direction(self,context):
         set_direction(self)
         self.coa_flip_direction_last = self.coa_flip_direction
-#            if self.scale.x > 0:
-#                self.scale.x *= -1
-#        else:
-#            if self.scale.x < 0:
-#                self.scale.x *= -1
+
+    def get_shapekeys(self,context):
+        SHAPEKEYS = []
+        obj = context.active_object
+        if obj.data.shape_keys != None:
+            for i,shape in enumerate(obj.data.shape_keys.key_blocks):
+                SHAPEKEYS.append((str(i),shape.name,shape.name,"SHAPEKEY_DATA",i))
+        return SHAPEKEYS
+    
+    def select_shapekey(self,context):
+        if self.data.shape_keys != None:
+            self.active_shape_key_index = int(self.coa_selected_shapekey)
+        
     
     bpy.types.Object.coa_dimensions_old = FloatVectorProperty()
     bpy.types.Object.coa_sprite_dimension = FloatVectorProperty()
@@ -361,6 +369,8 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
     bpy.types.Object.coa_flip_direction = bpy.props.BoolProperty(default=False,update=change_direction)
     bpy.types.Object.coa_flip_direction_last = bpy.props.BoolProperty(default=False)
     bpy.types.Object.coa_change_z_ordering = bpy.props.BoolProperty(default=False)
+    bpy.types.Object.coa_selected_shapekey = bpy.props.EnumProperty(items=get_shapekeys,update=select_shapekey,name="Active Shapkey")
+    
     bpy.types.Scene.coa_display_all = bpy.props.BoolProperty(default=True)
     bpy.types.Scene.coa_display_page = bpy.props.IntProperty(default=0,min=0,name="Display Page",description="Defines which page is displayed")
     bpy.types.Scene.coa_display_length = bpy.props.IntProperty(default=10,min=0,name="Page Length",description="Defines how Many Items are displayed")
