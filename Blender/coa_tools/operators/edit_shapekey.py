@@ -179,7 +179,7 @@ class EditShapekeyMode(bpy.types.Operator):
         obj = context.active_object
         if obj not in self.objs and obj.type == "MESH":
             self.objs.append(obj)
-        if obj.mode != "SCULPT":
+        if obj.type == "MESH" and obj.mode != "SCULPT":
             bpy.ops.object.mode_set(mode="SCULPT")    
         
         if obj.type == "MESH" and obj.data.shape_keys != None:
