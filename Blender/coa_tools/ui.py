@@ -621,15 +621,15 @@ class CutoutAnimationTools(bpy.types.Panel):
         else:
             row.prop(wm,"coa_show_help",text="",icon="QUESTION")    
         
-        no_edit_mode_active = sprite_object.coa_edit_shapekey == False and sprite_object.coa_edit_mesh == False and sprite_object.coa_edit_armature == False and sprite_object.coa_edit_weights == False
+        no_edit_mode_active = sprite_object != None and sprite_object.coa_edit_shapekey == False and sprite_object.coa_edit_mesh == False and sprite_object.coa_edit_armature == False and sprite_object.coa_edit_weights == False
         if obj == None or (obj != None):
-            if not no_edit_mode_active:
+            if not no_edit_mode_active and sprite_object != None:
                 row = layout.row(align=True)
                 row.label(text="Edit Operator:")
-            if sprite_object.coa_edit_mesh:
+            if sprite_object != None and sprite_object.coa_edit_mesh:
                 row = layout.row(align=True)
                 row.prop(sprite_object,"coa_edit_mesh", text="Finish Edit Mesh", toggle=True, icon="GREASEPENCIL")
-            elif sprite_object.coa_edit_shapekey:    
+            elif sprite_object != None and sprite_object.coa_edit_shapekey:    
                 row = layout.row(align=True)
                 row.prop(sprite_object,"coa_edit_shapekey", text="Finish Edit Shapekey", toggle=True, icon="SHAPEKEY_DATA")
             
@@ -649,7 +649,7 @@ class CutoutAnimationTools(bpy.types.Panel):
 #            row = layout.row(align=True)
 #            row.operator("coa_tools.align_camera",text="Align 2D Camera",icon="ALIGN")
         
-        if obj == None or (obj != None and obj.mode not in ["EDIT","WEIGHT_PAINT","SCULPT"] and sprite_object != None and sprite_object.coa_edit_shapekey == False):
+        if obj == None or (obj != None and obj.mode not in ["EDIT","WEIGHT_PAINT","SCULPT"]):
             row = layout.row(align=True)
             row.operator("wm.coa_create_sprite_object",text="Create new Sprite Object",icon="TEXTURE_DATA")
         
