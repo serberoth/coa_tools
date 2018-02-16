@@ -38,6 +38,8 @@ class VIEW3D_PIE_coa_menu(Menu):
                 pie.operator("object.coa_edit_weights",text="Edit Weights",icon="MOD_VERTEX_WEIGHT")
                 pie.operator("object.coa_edit_mesh",text="Edit Mesh",icon="GREASEPENCIL")
                 pie.operator("scene.coa_quick_armature",text="Edit Armature",icon="ARMATURE_DATA")
+                pie.operator("coa_tools.edit_shapekey",text="Edit Shapekey",icon="SHAPEKEY_DATA")
+                pie.row()    
                 pie.operator("wm.call_menu_pie", icon="SPACE3", text="Delete Keyframe(s)").name = "view3d.coa_pie_keyframe_menu_remove"
                 
             elif obj.type == "ARMATURE":

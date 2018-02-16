@@ -887,10 +887,17 @@ class SelectChild(bpy.types.Operator):
         armature = None
         if self.mode == "object":
             children = get_children(context,sprite_object,ob_list=[])
+            ### sort children
+            children = sorted(children, key=lambda x: x.location[1] if type(x) == bpy.types.Object else x.name,reverse=False)
+            children = sorted(children, key=lambda x: x.type if type(x) == bpy.types.Object else x.name,reverse=False)
+            if type(children[1]) == bpy.types.Object and children[1].type == "CAMERA":
+                children.insert(0,children.pop(1))
         else:
             armature = bpy.data.armatures[self.ob_name]
             for bone in  armature.bones:
                 children.append(bone)
+        
+                
         from_index = 0
         to_index = 0
         for i,child in enumerate(children):

@@ -167,7 +167,8 @@ class EditShapekeyMode(bpy.types.Operator):
         return {"RUNNING_MODAL"}
     
     def exit_mode(self,context,event,obj):
-        
+        for obj in context.selected_objects:
+            obj.select = False
         self.sprite_object.coa_edit_shapekey = False
         
         for obj in self.objs:
@@ -176,6 +177,7 @@ class EditShapekeyMode(bpy.types.Operator):
             obj.show_only_shape_key = False
         
         context.scene.objects.active = obj
+        obj.select = True
         if self.armature != None:
             self.armature.data.pose_position = "POSE"
             

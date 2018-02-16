@@ -807,7 +807,6 @@ def display_children(self, context, obj):
         else:
             list2.append(child)
     children = list1
-    children = sorted(children, key=lambda x: x.type)
     children += list2
     row = col.row(align=True)
     row.label(text="",icon="OOPS")
@@ -879,8 +878,10 @@ def draw_children(self,context,sprite_object,layout,box,row,col,children,obj,cur
     
     ### Sprite Object Children Display
     if sprite_object != None and sprite_object.coa_show_children:
-        children = sorted(children, key=lambda x: x.location[1],reverse=False)
-        children = sorted(children, key=lambda x: x.type,reverse=False)
+        children = sorted(children, key=lambda x: x.location[1] if type(x) == bpy.types.Object else x.name,reverse=False)
+        children = sorted(children, key=lambda x: x.type if type(x) == bpy.types.Object else x.name,reverse=False)
+        if type(children[1]) == bpy.types.Object and children[1].type == "CAMERA":
+            children.insert(0,children.pop(1))
         for i,child in enumerate(children):
             child_obj = child
             in_range = current_display_item in range(context.scene.coa_display_page * context.scene.coa_display_length , context.scene.coa_display_page * context.scene.coa_display_length + context.scene.coa_display_length)
@@ -1011,6 +1012,7 @@ def draw_children(self,context,sprite_object,layout,box,row,col,children,obj,cur
                         
                         if child.type == "ARMATURE":
                             if (not sprite_object.coa_favorite and child.coa_show_bones) or sprite_object.coa_favorite:
+                                bone_childs = child.data.bones
                                 for bone in child.data.bones:
                                     if (sprite_object.coa_favorite and bone.coa_favorite or not sprite_object.coa_favorite):# or (sprite_object.coa_filter_names != "" and sprite_object.coa_filter_names.upper() in bone.name.upper() or sprite_object.coa_filter_names == ""):
                                         row = col.row(align=True)
