@@ -621,8 +621,20 @@ class CutoutAnimationTools(bpy.types.Panel):
         else:
             row.prop(wm,"coa_show_help",text="",icon="QUESTION")    
         
+        no_edit_mode_active = sprite_object.coa_edit_shapekey == False and sprite_object.coa_edit_mesh == False and sprite_object.coa_edit_armature == False and sprite_object.coa_edit_weights == False
         if obj == None or (obj != None):
-            if obj != None and obj.mode in ["OBJECT","POSE"]:
+            if not no_edit_mode_active:
+                row = layout.row(align=True)
+                row.label(text="Edit Operator:")
+            if sprite_object.coa_edit_mesh:
+                row = layout.row(align=True)
+                row.prop(sprite_object,"coa_edit_mesh", text="Finish Edit Mesh", toggle=True, icon="GREASEPENCIL")
+            elif sprite_object.coa_edit_shapekey:    
+                row = layout.row(align=True)
+                row.prop(sprite_object,"coa_edit_shapekey", text="Finish Edit Shapekey", toggle=True, icon="SHAPEKEY_DATA")
+            
+            
+            if obj != None and obj.mode in ["OBJECT","POSE"] and no_edit_mode_active:
                 row = layout.row(align=True)
                 row.label(text="General Operator:")
             
@@ -642,6 +654,10 @@ class CutoutAnimationTools(bpy.types.Panel):
             row.operator("wm.coa_create_sprite_object",text="Create new Sprite Object",icon="TEXTURE_DATA")
         
         if obj != None and get_sprite_object(obj) != None:
+            if obj.mode in ["OBJECT","SCULPT","POSE"]:
+                if operator_exists("object.create_driver_constraint") and len(context.selected_objects)>1:
+                    row = layout.row()
+                    row.operator("object.create_driver_constraint",text="Driver Constraint",icon="DRIVER")
             if sprite_object.coa_edit_weights == False and sprite_object.coa_edit_shapekey == False:
                 if obj.mode not in ["EDIT","WEIGHT_PAINT","SCULPT"]:
                     row = layout.row(align=True)
@@ -665,9 +681,10 @@ class CutoutAnimationTools(bpy.types.Panel):
                     if get_addon_prefs(context).dragon_bones_export:
                         row = layout.row()
                         row.operator("coa_tools.export_dragon_bones",text="Export Dragonbones",icon_value=db_icon.icon_id,emboss=True)
+                
                     
-                row = layout.row(align=True)
-                row.label(text="Edit Operator:")
+                    row = layout.row(align=True)
+                    row.label(text="Edit Operator:")
                 
                 if obj.type == "ARMATURE" and obj.mode == "POSE":
                     row = layout.row(align=True)
@@ -695,12 +712,6 @@ class CutoutAnimationTools(bpy.types.Panel):
                     
                     row = layout.row(align=True)
                     row.operator("coa_tools.edit_shapekey",text="Edit Shapekey",icon="SHAPEKEY_DATA")
-                elif sprite_object.coa_edit_mesh:
-                    row = layout.row(align=True)
-                    row.prop(sprite_object,"coa_edit_mesh", text="Finish Edit Mesh", toggle=True, icon="GREASEPENCIL")
-                elif sprite_object.coa_edit_shapekey:    
-                    row = layout.row(align=True)
-                    row.prop(sprite_object,"coa_edit_shapekey", text="Finish Edit Shapekey", toggle=True, icon="SHAPEKEY_DATA")
                 
                 if obj != None and obj.mode == "SCULPT":
                     if not sprite_object.coa_edit_shapekey:

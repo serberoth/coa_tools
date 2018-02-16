@@ -32,6 +32,7 @@ from bpy_extras.io_utils import ExportHelper, ImportHelper
 import json
 from bpy.app.handlers import persistent
 from .. functions import *
+from .. functions_draw import *
 import bgl
 import blf
 from math import radians, degrees
@@ -1536,6 +1537,8 @@ class DrawContour(bpy.types.Operator):
             blf.position(font_id, self.mouse_2d_x-15, self.mouse_2d_y+30, 0)
             blf.size(font_id, 20, 72)
             blf.draw(font_id, line)
+        
+        draw_edit_mode(self,bpy.context,color=[1.0, 0.39, 0.41, 1.0],text="Edit Mesh Mode",offset=-20)
                
     
     def draw_callback_px(self):
@@ -1661,7 +1664,8 @@ class DrawContour(bpy.types.Operator):
             bgl.glLineWidth(1)
             bgl.glDisable(bgl.GL_BLEND)
             bgl.glDisable(bgl.GL_LINE_SMOOTH)
-            bgl.glColor4f(0.0, 0.0, 0.0, 1.0) 
+            bgl.glColor4f(0.0, 0.0, 0.0, 1.0)
+            
 
 class PickEdgeLength(bpy.types.Operator):
     bl_idname = "coa_tools.pick_edge_length"

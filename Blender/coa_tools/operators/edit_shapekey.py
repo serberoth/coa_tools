@@ -28,6 +28,8 @@ import math
 import bmesh
 from bpy.props import FloatProperty, IntProperty, BoolProperty, StringProperty, CollectionProperty, FloatVectorProperty, EnumProperty, IntVectorProperty
 from .. functions import *
+from .. functions_draw import *
+import bgl, blf
 
 class LeaveSculptmode(bpy.types.Operator):
     bl_idname = "coa_tools.leave_sculptmode"
@@ -158,6 +160,9 @@ class EditShapekeyMode(bpy.types.Operator):
                 context.scene.tool_settings.sculpt.brush = brush
                 break
         
+        ### run modal operator and draw handler
+        args = ()
+        self.draw_handler = bpy.types.SpaceView3D.draw_handler_add(self.draw_callback_px, args, "WINDOW", "POST_PIXEL")
         context.window_manager.modal_handler_add(self)
         return {"RUNNING_MODAL"}
     
@@ -173,13 +178,16 @@ class EditShapekeyMode(bpy.types.Operator):
         context.scene.objects.active = obj
         if self.armature != None:
             self.armature.data.pose_position = "POSE"
+            
+        ### remove draw handler on exiting modal mode    
+        bpy.types.SpaceView3D.draw_handler_remove(self.draw_handler, "WINDOW")    
         return {"FINISHED"}
     
     def modal(self, context, event):
         obj = context.active_object
         if obj not in self.objs and obj.type == "MESH":
             self.objs.append(obj)
-        if obj.type == "MESH" and obj.mode != "SCULPT":
+        if obj.type == "MESH" and obj.mode in ["OBJECT","WEIGHT_PAINT"]:
             bpy.ops.object.mode_set(mode="SCULPT")    
         
         if obj.type == "MESH" and obj.data.shape_keys != None:
@@ -191,3 +199,7 @@ class EditShapekeyMode(bpy.types.Operator):
             return self.exit_mode(context,event,obj)
         
         return {"PASS_THROUGH"}
+    
+    def draw_callback_px(self):
+        draw_edit_mode(self,bpy.context,offset=2)
+           

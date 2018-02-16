@@ -32,6 +32,7 @@ from bpy_extras.io_utils import ExportHelper, ImportHelper
 import json
 from bpy.app.handlers import persistent
 from .. functions import *
+from .. functions_draw import *
     
 class EditWeights(bpy.types.Operator):
     bl_idname = "object.coa_edit_weights"
@@ -104,6 +105,9 @@ class EditWeights(bpy.types.Operator):
             bpy.ops.ed.undo_push(message="Exit Edit Weights")
             self.disable_object_color(False)
             context.active_object.active_material.use_shadeless = self.shadeless
+            
+            ### remove draw call
+            bpy.types.SpaceView3D.draw_handler_remove(self.draw_handler, "WINDOW")
             return {"FINISHED"}
           
         return {"PASS_THROUGH"}
@@ -203,5 +207,13 @@ class EditWeights(bpy.types.Operator):
         context.scene.tool_settings.use_auto_normalize = True
         
         bpy.ops.object.mode_set(mode="WEIGHT_PAINT")
+        
+        ### start draw call
+        args = ()
+        self.draw_handler = bpy.types.SpaceView3D.draw_handler_add(self.draw_callback_px, args, "WINDOW", "POST_PIXEL")
         return {"RUNNING_MODAL"}
+    
+    
+    def draw_callback_px(self):
+        draw_edit_mode(self,bpy.context,color=[0.367356, 1.000000, 0.632293, 1.000000],text="Edit Weights Mode",offset=-5)
             

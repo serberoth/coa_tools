@@ -32,7 +32,7 @@ from bpy_extras.io_utils import ExportHelper, ImportHelper
 import json
 from bpy.app.handlers import persistent
 from .. functions import *
-        
+from .. functions_draw import *        
 
 ######################################################################################################################################### Quick Armature        
 class QuickArmature(bpy.types.Operator):
@@ -369,28 +369,31 @@ class QuickArmature(bpy.types.Operator):
                 return{'RUNNING_MODAL'}
 
      
-            ### cancel  
-            if (context.active_object.mode != "EDIT" and context.active_object.type == "ARMATURE" and self.set_waits == False) or not self.sprite_object.coa_edit_armature:# or (event.type in {'ESC'} and self.in_view_3d):
-                bpy.context.space_data.show_manipulator = self.show_manipulator
-                bpy.context.window.cursor_set("CROSSHAIR")
-                #bpy.ops.object.mode_set(mode=self.armature_mode)
-                bpy.ops.object.mode_set(mode="POSE")
-                
-                for pose_bone in context.active_object.pose.bones:
-                    if "default_bones" in context.active_object.pose.bone_groups and pose_bone.bone_group == None:
-                        pose_bone.bone_group = context.active_object.pose.bone_groups["default_bones"]
-                
-                #lock_sprites(context,get_sprite_object(context.active_object),get_sprite_object(context.active_object).lock_sprites)
-                self.sprite_object.coa_edit_armature = False
-                
-                ### restore previous selection
-                for obj in bpy.context.scene.objects:
-                    obj.select = False
-                for obj in self.selected_objects:
-                    obj.select = True
-                context.scene.objects.active = self.active_object   
-                context.user_preferences.inputs.use_mouse_emulate_3_button = self.emulate_3_button
-                return{'CANCELLED'}
+        ### cancel  
+        if (context.active_object.mode != "EDIT" and context.active_object.type == "ARMATURE" and self.set_waits == False) or not self.sprite_object.coa_edit_armature:# or (event.type in {'ESC'} and self.in_view_3d):
+            bpy.context.space_data.show_manipulator = self.show_manipulator
+            bpy.context.window.cursor_set("CROSSHAIR")
+            #bpy.ops.object.mode_set(mode=self.armature_mode)
+            bpy.ops.object.mode_set(mode="POSE")
+            
+            for pose_bone in context.active_object.pose.bones:
+                if "default_bones" in context.active_object.pose.bone_groups and pose_bone.bone_group == None:
+                    pose_bone.bone_group = context.active_object.pose.bone_groups["default_bones"]
+            
+            #lock_sprites(context,get_sprite_object(context.active_object),get_sprite_object(context.active_object).lock_sprites)
+            self.sprite_object.coa_edit_armature = False
+            
+            ### restore previous selection
+            for obj in bpy.context.scene.objects:
+                obj.select = False
+            for obj in self.selected_objects:
+                obj.select = True
+            context.scene.objects.active = self.active_object   
+            context.user_preferences.inputs.use_mouse_emulate_3_button = self.emulate_3_button
+            
+            ### remove draw call
+            bpy.types.SpaceView3D.draw_handler_remove(self.draw_handler, "WINDOW")
+            return{'CANCELLED'}
         return {'PASS_THROUGH'}
     
     def execute(self, context):
@@ -415,10 +418,17 @@ class QuickArmature(bpy.types.Operator):
         bpy.context.space_data.show_manipulator = False
 
         context.window_manager.modal_handler_add(self)
+        
+        ### call draw code
+        args = ()
+        self.draw_handler = bpy.types.SpaceView3D.draw_handler_add(self.draw_callback_px, args, "WINDOW", "POST_PIXEL")
         return {'RUNNING_MODAL'}
 
     def cancel(self, context):
         return {'CANCELLED'}
+    
+    def draw_callback_px(self):
+        draw_edit_mode(self,bpy.context,color=[0.461840, 0.852381, 1.000000, 1.000000],text="Edit Armature Mode",offset=0)
     
     
 ######################################################################################################################################### Set Stretch To Constraint
