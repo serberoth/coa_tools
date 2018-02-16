@@ -944,8 +944,11 @@ def draw_children(self,context,sprite_object,layout,box,row,col,children,obj,cur
                                 row.prop(child,"coa_favorite",emboss=False,text="",icon="SOLO_OFF")
                                 
                                 
-                            if child.coa_hide:  
-                                row.prop(child,"coa_hide",emboss=False,text="",icon="VISIBLE_IPO_OFF")
+                            if child.coa_hide:
+                                icon = "VISIBLE_IPO_OFF"
+                                if not child.hide:
+                                    icon = "VISIBLE_IPO_ON"
+                                row.prop(child,"coa_hide",emboss=False,text="",icon=icon)
                             else:   
                                 row.prop(child,"coa_hide",emboss=False,text="",icon="VISIBLE_IPO_ON")
                             if child.coa_hide_select:   

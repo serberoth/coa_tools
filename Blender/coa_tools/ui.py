@@ -220,7 +220,10 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
         if self.coa_hide:
             if context.scene.objects.active == self:
                 context.scene.objects.active = self.parent
-        self.hide = self.coa_hide
+        if self.hide != self.coa_hide:
+            self.hide = self.coa_hide
+#        else:
+#            self.coa_hide = not self.coa_hide
     def hide_select(self,context):
         if self.coa_hide_select:
             self.select = False
@@ -919,8 +922,8 @@ class SelectChild(bpy.types.Operator):
                 select_range.append(i)  
         for i,child in enumerate(children):
             if i in select_range:
-                child.coa_hide_select = False
-                child.coa_hide = False
+#                child.coa_hide_select = False
+#                child.coa_hide = False
                 child.select = True
                 
         if self.mode == "object":
