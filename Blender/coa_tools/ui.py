@@ -893,7 +893,7 @@ class SelectChild(bpy.types.Operator):
             ### sort children
             children = sorted(children, key=lambda x: x.location[1] if type(x) == bpy.types.Object else x.name,reverse=False)
             children = sorted(children, key=lambda x: x.type if type(x) == bpy.types.Object else x.name,reverse=False)
-            if type(children[1]) == bpy.types.Object and children[1].type == "CAMERA":
+            if len(children) > 1 and type(children[1]) == bpy.types.Object and children[1].type == "CAMERA":
                 children.insert(0,children.pop(1))
         else:
             armature = bpy.data.armatures[self.ob_name]

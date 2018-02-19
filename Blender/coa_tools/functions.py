@@ -598,7 +598,7 @@ def get_sprite_object(obj):
         return None 
         
 def get_armature(obj):
-    if obj.type != "ARMATURE":
+    if obj != None and obj.type != "ARMATURE":
         for child in obj.children:
             if child.type == "ARMATURE":
                 return child
@@ -880,7 +880,7 @@ def draw_children(self,context,sprite_object,layout,box,row,col,children,obj,cur
     if sprite_object != None and sprite_object.coa_show_children:
         children = sorted(children, key=lambda x: x.location[1] if type(x) == bpy.types.Object else x.name,reverse=False)
         children = sorted(children, key=lambda x: x.type if type(x) == bpy.types.Object else x.name,reverse=False)
-        if type(children[1]) == bpy.types.Object and children[1].type == "CAMERA":
+        if len(children) > 1 and type(children[1]) == bpy.types.Object and children[1].type == "CAMERA":
             children.insert(0,children.pop(1))
         for i,child in enumerate(children):
             child_obj = child
