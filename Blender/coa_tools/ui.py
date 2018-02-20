@@ -936,8 +936,21 @@ class SelectChild(bpy.types.Operator):
         if self.sprite_object.coa_edit_weights:
             armature = get_armature(self.sprite_object)
             armature.select = True
-            bpy.ops.object.mode_set(mode=mode)
             bpy.ops.view3d.localview()
+            
+            ### zoom to selected mesh/sprite
+            for obj in bpy.context.selected_objects:
+                obj.select = False
+            obj = bpy.data.objects[context.active_object.name]    
+            obj.select = True
+            context.scene.objects.active = obj
+            bpy.ops.view3d.view_selected()
+            
+            ### set uv image
+            set_uv_image(obj)
+        
+            
+            bpy.ops.object.mode_set(mode=mode)
             global tmp_active_object
             tmp_active_object = context.active_object
             

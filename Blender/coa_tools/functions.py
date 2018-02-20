@@ -32,6 +32,15 @@ from bpy_extras.io_utils import ExportHelper, ImportHelper
 import json
 from bpy.app.handlers import persistent
 
+def set_uv_image(obj):
+    data = obj.data
+    if len(data.materials) > 0:
+        mat = data.materials[0]
+        tex = [slot.texture for slot in mat.texture_slots if slot != None and slot.texture.type == "IMAGE"][0]
+        img = tex.image if tex.image != None else None   
+        if img != None:
+            for uv_vert in obj.data.uv_textures[0].data:
+                uv_vert.image = img
 
 def draw_sculpt_ui(self,context,layout):
     obj = context.active_object

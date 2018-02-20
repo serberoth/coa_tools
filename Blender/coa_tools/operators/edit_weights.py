@@ -204,9 +204,25 @@ class EditWeights(bpy.types.Operator):
             create_armature_parent(context)
 
         set_local_view(True)
+        
+        
         context.scene.tool_settings.use_auto_normalize = True
         
+        
+        ### zoom to selected mesh/sprite
+        for obj in bpy.context.selected_objects:
+            obj.select = False
+        obj = bpy.data.objects[self.obj]    
+        obj.select = True
+        context.scene.objects.active = obj
+        bpy.ops.view3d.view_selected()
+        
+        ### set uv image
+        set_uv_image(obj)
+        
+        ### enter weights mode
         bpy.ops.object.mode_set(mode="WEIGHT_PAINT")
+        
         
         ### start draw call
         args = ()

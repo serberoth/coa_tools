@@ -154,11 +154,15 @@ def register():
     try: bpy.utils.register_module(__name__)
     except: traceback.print_exc()
     
+    
     print("Registered {} with {} modules".format(bl_info["name"], len(modules)))
     
     bpy.types.Object.coa_anim_collections = bpy.props.CollectionProperty(type=AnimationCollections)
     bpy.types.Object.coa_uv_default_state = bpy.props.CollectionProperty(type=UVData)
     bpy.types.Object.coa_slot = bpy.props.CollectionProperty(type=SlotData)
+    
+    bpy.types.Scene.coa_project_name = bpy.props.StringProperty(default="New Project")
+    bpy.types.Scene.coa_export_path = bpy.props.StringProperty(default="",subtype="DIR_PATH")
     
     bpy.types.Scene.coa_ticker = bpy.props.IntProperty()
     bpy.types.WindowManager.coa_update_uv = bpy.props.BoolProperty(default=False)
