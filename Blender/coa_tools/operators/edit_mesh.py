@@ -289,21 +289,24 @@ class GenerateMeshFromEdgesAndVerts(bpy.types.Operator):
             for e2 in bm.edges:
                 edges_not_visible = not e1.hide and not e2.hide
                 
-                if e1 != e2 and edges_not_visible and e1.verts[0] not in e2.verts and e1.verts[1] not in e2.verts:
+                edges_share_points = e1.verts[0].co.xz in [e2.verts[0].co.xz, e2.verts[1].co.xz] or e1.verts[1].co.xz in [e2.verts[0].co.xz, e2.verts[1].co.xz]
+                
+                if e1 != e2 and not edges_share_points and edges_not_visible:
                     i = geometry.intersect_line_line_2d(e1.verts[0].co.xz, e1.verts[1].co.xz, e2.verts[0].co.xz, e2.verts[1].co.xz)
+                    
                     if i != None:
+                        i_3d = Vector((i[0],e1.verts[0].co[1],i[1]))
                         if e1 not in to_be_deleted:
                             to_be_deleted.append(e1)
                         if e2 not in to_be_deleted:
                             to_be_deleted.append(e2)
-                        i_3d = Vector((i[0],e1.verts[0].co[1],i[1]))
                         if i_3d not in intersection_points:
                             intersection_points.append(i_3d)
         for edge in to_be_deleted:
             bm.edges.remove(edge)
         for p in intersection_points:
             bm.verts.new(p)
-        
+    
         def get_vertex_loops(bm):
             ### find single vertex loops
             all_verts = []
@@ -315,8 +318,6 @@ class GenerateMeshFromEdgesAndVerts(bpy.types.Operator):
                         vert_loops.append(loop_list)
                         all_verts += loop_list
             return vert_loops            
-
-        
         ### connect loose verts
         connected_edges = []
         for vert in bm.verts:
@@ -325,7 +326,8 @@ class GenerateMeshFromEdgesAndVerts(bpy.types.Operator):
                 vert_a = None
                 vert_b = None
                 for vert2 in bm.verts:
-                    if vert != vert2:
+                    edge_center = (vert.co+vert2.co)*.5
+                    if vert != vert2 and vert2.co != vert.co:# and edge_center not in connected_edges:
                         if (vert.co - vert2.co).magnitude < distance:
                             distance = (vert.co - vert2.co).magnitude
                             vert_a = vert
@@ -335,7 +337,7 @@ class GenerateMeshFromEdgesAndVerts(bpy.types.Operator):
                     if edge_center not in connected_edges:
                         bm.edges.new([vert_a,vert_b])
                         connected_edges.append(edge_center) 
-              
+                        
         ### connect loose edges
         vert_loops = get_vertex_loops(bm)
         connected_edges = []
@@ -352,13 +354,14 @@ class GenerateMeshFromEdgesAndVerts(bpy.types.Operator):
                                 if vert2 != vert:
                                     edge1 = (vert.co - vert.link_edges[0].other_vert(vert).co).normalized()
                                     edge2 = (vert.co - vert2.co).normalized()
-                                    angle = degrees(edge1.angle(edge2))
-                                    
-                                    if (vert.co - vert2.co).magnitude < distance and vert2 not in exclude_verts and abs(angle) > 30 and not edge_is_intersecting([vert,vert2],bm):
+                                    if edge1.length > 0 and edge2.length > 0:
+                                        angle = degrees(edge1.angle(edge2))
                                         
-                                        distance = (vert.co - vert2.co).magnitude
-                                        vert_a = vert
-                                        vert_b = vert2
+                                        if (vert.co - vert2.co).magnitude < distance and vert2 not in exclude_verts and abs(angle) > 30 and not edge_is_intersecting([vert,vert2],bm):
+                                            
+                                            distance = (vert.co - vert2.co).magnitude
+                                            vert_a = vert
+                                            vert_b = vert2
                                 
                     ### connect nearest points and check 
                     ### if they haven't been connected yet by finding the edge center
@@ -367,7 +370,7 @@ class GenerateMeshFromEdgesAndVerts(bpy.types.Operator):
                         if edge_center not in connected_edges:
                             bm.edges.new([vert_a,vert_b])
                             connected_edges.append(edge_center)                    
-
+      
         ### find nearest vertex of different loops and connect
         vert_loops = get_vertex_loops(bm)
         connected_edges = []
