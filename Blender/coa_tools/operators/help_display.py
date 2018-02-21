@@ -1,5 +1,6 @@
 import bpy
 import blf, bgl
+from .. functions import get_sprite_object
 
 
 class ShowHelp(bpy.types.Operator):
@@ -86,6 +87,8 @@ class ShowHelp(bpy.types.Operator):
         return {"FINISHED"}
 
     def draw_callback_px(self):
+        self.sprite_object = get_sprite_object(bpy.context.active_object)
+        
         self.font_id = 0  # XXX, need to find out how best to get this.
         global_pos = self.region_height - 60
         # draw some text
@@ -118,9 +121,9 @@ class ShowHelp(bpy.types.Operator):
         
         
         ### draw hotkeys help
-        texts = [
-                ["COA Tools Hotkeys Overview",25],
-                
+        texts = []
+        text_headline = [["COA Tools Hotkeys Overview",25]]
+        text_general = [
                 ["Object Mode",20],
                 ["      F   -   Contextual Pie Menu",15],
                 
@@ -130,16 +133,16 @@ class ShowHelp(bpy.types.Operator):
                 
                 ["Keyframing",20],
                 ["      Ctrl + Click on Key Operator    -   Opens Curve Interpolation Options",15],
-                ["      I    -   Keyframe Menu",15],
-                
+                ["      I    -   Keyframe Menu",15]]
+        text_armature = [        
                 ["Edit Armature Mode",20],
                 ["      Click + Drag    -   Draw Bone",15],
                 ["      Shift + Click + Drag    -   Draw Bone locked to 45 Angle",15],
                 ["      Alt + Click    -    Bind Sprite to selected Bones",15],
                 ["      ESC/Tab    -    Exit Armature Mode",15],
                 ["      Ctrl + P    -    Parent selected Bones to Active",15],
-                ["      Alt + P    -    Clear parenting",15],
-                
+                ["      Alt + P    -    Clear parenting",15]]
+        text_mesh = [        
                 ["Edit Mesh Mode",20],
                 ["      Click + Drag    -   Draw Vertex Contour",15],
                 ["      Alt + Click    -   Delete Vertex or Edge",15],
@@ -152,8 +155,8 @@ class ShowHelp(bpy.types.Operator):
                 ["      W    -    Specials Menu",15],
                 ["      Ctrl + V    -    Vertex Menu",15],
                 ["      Ctrl + E    -    Edge Menu",15],
-                ["      Ctrl + F    -    Face Menu",15],
-                
+                ["      Ctrl + F    -    Face Menu",15]]
+        text_blender = [        
                 ["Blender General",20],
                 ["      Right Click   -   Select Object",15],
                 ["      Shift + Right Click   -   Add to Selection",15],
@@ -164,8 +167,13 @@ class ShowHelp(bpy.types.Operator):
                 ["      G   -   Move Selection",15],
                 ["      R   -   Rotate Selection",15],
                 ["",15],
-                ["      W   -   Specials Menu",15]
-                ]
+                ["      W   -   Specials Menu",15]]
+        
+        texts += text_headline
+        texts += text_general
+        texts += text_armature
+        texts += text_mesh
+        texts += text_blender
         
         linebreak_size = 0
         for i,text in enumerate(texts):
