@@ -33,6 +33,7 @@ import json
 from bpy.app.handlers import persistent
 from .. functions import *
 from .. functions_draw import *        
+import traceback
 
 ######################################################################################################################################### Quick Armature        
 class QuickArmature(bpy.types.Operator):
@@ -223,178 +224,182 @@ class QuickArmature(bpy.types.Operator):
         
     
     def modal(self, context, event):
-        self.in_view_3d = check_region(context,event)
-#        if self.in_view_3d:
-#            bpy.context.window.cursor_set("PAINT_BRUSH")
-#        else:
-#            bpy.context.window.cursor_set("DEFAULT")
-            
-        if event.alt:
-            bpy.context.window.cursor_set("EYEDROPPER") 
-        elif not event.alt and self.in_view_3d:    
-            bpy.context.window.cursor_set("PAINT_BRUSH")
-        else:
-            bpy.context.window.cursor_set("DEFAULT")    
-            
-        scene = context.scene
-        ob = context.active_object
-        
-        
-        ### lock posebone scale z value
-        for bone in self.armature.data.bones:
-            if "lock_z" in bone:
-                if bone.name in ob.pose.bones:
-                    pose_bone = ob.pose.bones[bone.name]
-                    pose_bone.lock_scale[2] = True
-                    del bone["lock_z"]
-            if "lock_rot" in bone:
-                if bone.name in ob.pose.bones:
-                    pose_bone = ob.pose.bones[bone.name]
-                    pose_bone.lock_rotation[0] = True
-                    pose_bone.lock_rotation[1] = True
-                    del bone["lock_rot"]        
-        
-        if self.in_view_3d:
-            self.mouse_press_hist = self.mouse_press
-            mouse_button = None
-            if context.user_preferences.inputs.select_mouse == "RIGHT":
-                mouse_button = 'LEFTMOUSE' 
+        try:
+            self.in_view_3d = check_region(context,event)
+                
+            if event.alt:
+                bpy.context.window.cursor_set("EYEDROPPER") 
+            elif not event.alt and self.in_view_3d:    
+                bpy.context.window.cursor_set("PAINT_BRUSH")
             else:
-                mouse_button = 'RIGHTMOUSE'    
-            ### Set Mouse click
-            
-                 
-            if (event.value == 'PRESS') and event.type == mouse_button and self.mouse_press == False:
-                self.mouse_press = True
-                #return {'RUNNING_MODAL'}
-            elif event.value in ['RELEASE','NOTHING'] and (event.type == mouse_button):
-                self.mouse_press = False 
-            #print(event.value,"-----------",event.type)
-            ### Cast Ray from mousePosition and set Cursor to hitPoint
-            rayStart,rayEnd, ray = self.project_cursor(event)
-            
-            if ray[0] == True and ray[1] != None:
-                #bpy.context.scene.cursor_location = ray[3]
-                self.cursor_location = ray[3]
-            elif rayEnd != None:
-                #bpy.context.scene.cursor_location = rayEnd
-                self.cursor_location = rayEnd
-            self.cursor_location[1] = context.active_object.location[1]    
-            #bpy.context.scene.cursor_location[1] = context.active_object.location[1]
-            
-            if event.value in ["RELEASE"]:
-                if self.object_hover_hist != None:
-                    self.object_hover_hist.show_x_ray = False
-                    self.object_hover_hist.select = False
-                    self.object_hover_hist.show_name = False
-                    self.object_hover_hist = None
-                if self.object_hover != None:
-                    self.object_hover.show_x_ray = False
-                    self.object_hover.select = False
-                    self.object_hover.show_name = False
-                        
+                bpy.context.window.cursor_set("DEFAULT")    
                 
-            if not event.alt and not event.ctrl:
-                self.object_hover = None
-                ### mouse just pressed
-                if not self.mouse_press_hist and self.mouse_press and self.in_view_3d:
-                    #print("just pressed")
-                    self.mouse_click_vec = Vector(self.cursor_location)
-                    self.create_bones(context,context.active_object)
-                    
-                    self.drag_bone(context,event,self.current_bone)
-                    if context.active_bone != None:
-                        bpy.ops.armature.calculate_roll(type='GLOBAL_POS_Y')
-                ### mouse pressed
-                elif self.mouse_press_hist and self.mouse_press:
-                    #print("pressed")
-                    self.drag_bone(context,event,self.current_bone)
-                    if context.active_bone != None:
-                        bpy.ops.armature.calculate_roll(type='GLOBAL_POS_Y')
-                ### mouse release   
-                elif not self.mouse_press and self.mouse_press_hist and self.current_bone != None:
-                    bpy.ops.ed.undo_push(message="Add Bone: "+self.current_bone.name)
-                    self.current_bone.hide = False   
-                    self.current_bone = None
-                    self.mouse_click_vec = Vector((1000000,1000000,1000000))
-                    
-                    self.set_waits = True
-                    bpy.ops.object.mode_set(mode='OBJECT')
-                    bpy.ops.object.mode_set(mode='EDIT')
-                    self.set_waits = False 
+            scene = context.scene
+            ob = context.active_object
             
-            elif (event.alt or "ALT" in event.type) and not event.ctrl and not event.type == "P":
-                self.object_hover_hist = self.object_hover
-                
-                hover_objects = self.return_ray_sprites(context,event)
-                distance = 1000000000
-                if len(hover_objects) > 0:
-                    for ray in hover_objects:
-                        sprite_center = get_bounds_and_center(ray[1])[0]
-                        if ((sprite_center) - ray[3]).length < distance:
-                            distance = (sprite_center - ray[3]).length
-                            self.object_hover = ray[1]
+            
+            ### lock posebone scale z value
+            for bone in self.armature.data.bones:
+                if "lock_z" in bone:
+                    if bone.name in ob.pose.bones:
+                        pose_bone = ob.pose.bones[bone.name]
+                        pose_bone.lock_scale[2] = True
+                        del bone["lock_z"]
+                if "lock_rot" in bone:
+                    if bone.name in ob.pose.bones:
+                        pose_bone = ob.pose.bones[bone.name]
+                        pose_bone.lock_rotation[0] = True
+                        pose_bone.lock_rotation[1] = True
+                        del bone["lock_rot"]        
+            
+            if self.in_view_3d:
+                self.mouse_press_hist = self.mouse_press
+                mouse_button = None
+                if context.user_preferences.inputs.select_mouse == "RIGHT":
+                    mouse_button = 'LEFTMOUSE' 
                 else:
-                    self.object_hover = None
+                    mouse_button = 'RIGHTMOUSE'    
+                ### Set Mouse click
                 
-                show_x_ray = False
-                if self.object_hover != self.object_hover_hist:
-                    if self.object_hover != None:
-                        self.object_hover.show_name = True
-                        self.object_hover.select = True
-                        show_x_ray = self.object_hover.show_x_ray
-                        self.object_hover.show_x_ray = True      
+                     
+                if (event.value == 'PRESS') and event.type == mouse_button and self.mouse_press == False:
+                    self.mouse_press = True
+                    #return {'RUNNING_MODAL'}
+                elif event.value in ['RELEASE','NOTHING'] and (event.type == mouse_button):
+                    self.mouse_press = False 
+                #print(event.value,"-----------",event.type)
+                ### Cast Ray from mousePosition and set Cursor to hitPoint
+                rayStart,rayEnd, ray = self.project_cursor(event)
+                
+                if ray[0] == True and ray[1] != None:
+                    #bpy.context.scene.cursor_location = ray[3]
+                    self.cursor_location = ray[3]
+                elif rayEnd != None:
+                    #bpy.context.scene.cursor_location = rayEnd
+                    self.cursor_location = rayEnd
+                self.cursor_location[1] = context.active_object.location[1]    
+                #bpy.context.scene.cursor_location[1] = context.active_object.location[1]
+                
+                if event.value in ["RELEASE"]:
                     if self.object_hover_hist != None:
-                        self.object_hover_hist.show_name = False
-                        self.object_hover_hist.select = False
                         self.object_hover_hist.show_x_ray = False
-                ### mouse just pressed
-                if not self.mouse_press_hist and self.mouse_press and self.in_view_3d and self.object_hover != None:
-                    selected_bones = context.selected_editable_bones
-                    if ray[0] and ray[1] != None:
-                        obj = ray[1]
-                        if self.object_hover.coa_type == "MESH":
-                            #self.set_weights(context,self.object_hover)
-                            set_weights(self,context,self.object_hover)
-                            msg = '"'+obj.name+'"' + " has been bound to selected Bones."
-                            self.report({'INFO'},msg)
-                        elif self.object_hover.coa_type == "SLOT":
-                            prev_index = int(self.object_hover.coa_slot_index)
-                            for i,slot in enumerate(self.object_hover.coa_slot):
-                                self.object_hover.coa_slot_index = i
+                        self.object_hover_hist.select = False
+                        self.object_hover_hist.show_name = False
+                        self.object_hover_hist = None
+                    if self.object_hover != None:
+                        self.object_hover.show_x_ray = False
+                        self.object_hover.select = False
+                        self.object_hover.show_name = False
+                            
+                    
+                if not event.alt and not event.ctrl:
+                    self.object_hover = None
+                    ### mouse just pressed
+                    if not self.mouse_press_hist and self.mouse_press and self.in_view_3d:
+                        #print("just pressed")
+                        self.mouse_click_vec = Vector(self.cursor_location)
+                        self.create_bones(context,context.active_object)
+                        
+                        self.drag_bone(context,event,self.current_bone)
+                        if context.active_bone != None:
+                            bpy.ops.armature.calculate_roll(type='GLOBAL_POS_Y')
+                    ### mouse pressed
+                    elif self.mouse_press_hist and self.mouse_press:
+                        #print("pressed")
+                        self.drag_bone(context,event,self.current_bone)
+                        if context.active_bone != None:
+                            bpy.ops.armature.calculate_roll(type='GLOBAL_POS_Y')
+                    ### mouse release   
+                    elif not self.mouse_press and self.mouse_press_hist and self.current_bone != None:
+                        bpy.ops.ed.undo_push(message="Add Bone: "+self.current_bone.name)
+                        self.current_bone.hide = False   
+                        self.current_bone = None
+                        self.mouse_click_vec = Vector((1000000,1000000,1000000))
+                        
+                        self.set_waits = True
+                        bpy.ops.object.mode_set(mode='OBJECT')
+                        bpy.ops.object.mode_set(mode='EDIT')
+                        self.set_waits = False 
+                
+                elif (event.alt or "ALT" in event.type) and not event.ctrl and not event.type == "P":
+                    self.object_hover_hist = self.object_hover
+                    
+                    hover_objects = self.return_ray_sprites(context,event)
+                    distance = 1000000000
+                    if len(hover_objects) > 0:
+                        for ray in hover_objects:
+                            sprite_center = get_bounds_and_center(ray[1])[0]
+                            if ((sprite_center) - ray[3]).length < distance:
+                                distance = (sprite_center - ray[3]).length
+                                self.object_hover = ray[1]
+                    else:
+                        self.object_hover = None
+                    
+                    show_x_ray = False
+                    if self.object_hover != self.object_hover_hist:
+                        if self.object_hover != None:
+                            self.object_hover.show_name = True
+                            self.object_hover.select = True
+                            show_x_ray = self.object_hover.show_x_ray
+                            self.object_hover.show_x_ray = True      
+                        if self.object_hover_hist != None:
+                            self.object_hover_hist.show_name = False
+                            self.object_hover_hist.select = False
+                            self.object_hover_hist.show_x_ray = False
+                    ### mouse just pressed
+                    if not self.mouse_press_hist and self.mouse_press and self.in_view_3d and self.object_hover != None:
+                        selected_bones = context.selected_editable_bones
+                        if ray[0] and ray[1] != None:
+                            obj = ray[1]
+                            if self.object_hover.coa_type == "MESH":
+                                #self.set_weights(context,self.object_hover)
                                 set_weights(self,context,self.object_hover)
-                                msg = '"'+self.object_hover.name+'"' + " has been bound to selected Bones."
+                                msg = '"'+obj.name+'"' + " has been bound to selected Bones."
                                 self.report({'INFO'},msg)
-                            self.object_hover.coa_slot_index = prev_index 
-                return{'RUNNING_MODAL'}
-
-     
-        ### cancel  
-        if (context.active_object.mode != "EDIT" and context.active_object.type == "ARMATURE" and self.set_waits == False) or not self.sprite_object.coa_edit_armature:# or (event.type in {'ESC'} and self.in_view_3d):
-            bpy.context.space_data.show_manipulator = self.show_manipulator
-            bpy.context.window.cursor_set("CROSSHAIR")
-            #bpy.ops.object.mode_set(mode=self.armature_mode)
-            bpy.ops.object.mode_set(mode="POSE")
+                            elif self.object_hover.coa_type == "SLOT":
+                                prev_index = int(self.object_hover.coa_slot_index)
+                                for i,slot in enumerate(self.object_hover.coa_slot):
+                                    self.object_hover.coa_slot_index = i
+                                    set_weights(self,context,self.object_hover)
+                                    msg = '"'+self.object_hover.name+'"' + " has been bound to selected Bones."
+                                    self.report({'INFO'},msg)
+                                self.object_hover.coa_slot_index = prev_index 
+                    return{'RUNNING_MODAL'}
             
-            for pose_bone in context.active_object.pose.bones:
-                if "default_bones" in context.active_object.pose.bone_groups and pose_bone.bone_group == None:
-                    pose_bone.bone_group = context.active_object.pose.bone_groups["default_bones"]
+            ### finish mode  
+            if (context.active_object.mode != "EDIT" and context.active_object.type == "ARMATURE" and self.set_waits == False) or not self.sprite_object.coa_edit_armature:# or (event.type in {'ESC'} and self.in_view_3d):
+                return self.exit_edit_mode(context)
             
-            #lock_sprites(context,get_sprite_object(context.active_object),get_sprite_object(context.active_object).lock_sprites)
-            self.sprite_object.coa_edit_armature = False
-            
-            ### restore previous selection
-            for obj in bpy.context.scene.objects:
-                obj.select = False
-            for obj in self.selected_objects:
-                obj.select = True
-            context.scene.objects.active = self.active_object   
-            context.user_preferences.inputs.use_mouse_emulate_3_button = self.emulate_3_button
-            
-            ### remove draw call
-            bpy.types.SpaceView3D.draw_handler_remove(self.draw_handler, "WINDOW")
-            return{'CANCELLED'}
+        except Exception as e:
+            traceback.print_exc()
+            self.report({"ERROR"},"An Error occured, please check the console for more information")
+            return self.exit_edit_mode(context)
         return {'PASS_THROUGH'}
+    
+    def exit_edit_mode(self,context):
+        bpy.context.space_data.show_manipulator = self.show_manipulator
+        bpy.context.window.cursor_set("CROSSHAIR")
+        #bpy.ops.object.mode_set(mode=self.armature_mode)
+        bpy.ops.object.mode_set(mode="POSE")
+        
+        for pose_bone in context.active_object.pose.bones:
+            if "default_bones" in context.active_object.pose.bone_groups and pose_bone.bone_group == None:
+                pose_bone.bone_group = context.active_object.pose.bone_groups["default_bones"]
+        
+        #lock_sprites(context,get_sprite_object(context.active_object),get_sprite_object(context.active_object).lock_sprites)
+        self.sprite_object.coa_edit_armature = False
+        
+        ### restore previous selection
+        for obj in bpy.context.scene.objects:
+            obj.select = False
+        for obj in self.selected_objects:
+            obj.select = True
+        context.scene.objects.active = self.active_object   
+        context.user_preferences.inputs.use_mouse_emulate_3_button = self.emulate_3_button
+        
+        ### remove draw call
+        bpy.types.SpaceView3D.draw_handler_remove(self.draw_handler, "WINDOW")
+        return{'FINISHED'}
     
     def execute(self, context):
         #bpy.ops.wm.coa_modal() ### start coa modal mode if not running

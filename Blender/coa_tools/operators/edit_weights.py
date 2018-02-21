@@ -33,6 +33,7 @@ import json
 from bpy.app.handlers import persistent
 from .. functions import *
 from .. functions_draw import *
+import traceback
     
 class EditWeights(bpy.types.Operator):
     bl_idname = "object.coa_edit_weights"
@@ -94,21 +95,28 @@ class EditWeights(bpy.types.Operator):
         context.scene.objects.active = bpy.data.objects[self.active_object]
         self.unhide_non_deform_bones(context)
         self.hide_deform_bones(context)
-            
-    def modal(self, context, event):
     
-        if get_local_view(context) == None or (context.active_object != None and context.active_object.mode != "WEIGHT_PAINT") or context.active_object == None:
-            sprite_object = bpy.data.objects[self.sprite_object] 
-            
-            self.exit_edit_weights(context)
-            sprite_object.coa_edit_weights = False
-            bpy.ops.ed.undo_push(message="Exit Edit Weights")
-            self.disable_object_color(False)
-            context.active_object.active_material.use_shadeless = self.shadeless
-            
-            ### remove draw call
-            bpy.types.SpaceView3D.draw_handler_remove(self.draw_handler, "WINDOW")
-            return {"FINISHED"}
+    def exit_edit_mode(self,context):
+        sprite_object = bpy.data.objects[self.sprite_object] 
+                
+        self.exit_edit_weights(context)
+        sprite_object.coa_edit_weights = False
+        bpy.ops.ed.undo_push(message="Exit Edit Weights")
+        self.disable_object_color(False)
+        context.active_object.active_material.use_shadeless = self.shadeless
+        
+        ### remove draw call
+        bpy.types.SpaceView3D.draw_handler_remove(self.draw_handler, "WINDOW")
+        return {"FINISHED"}
+    
+    def modal(self, context, event):
+        try:
+            if get_local_view(context) == None or (context.active_object != None and context.active_object.mode != "WEIGHT_PAINT") or context.active_object == None:
+                return self.exit_edit_mode(context)
+        except Exception as e:
+            traceback.print_exc()
+            self.report({"ERROR"},"An Error occured, please check console for more Information.")
+            self.exit_edit_mode(context)       
           
         return {"PASS_THROUGH"}
     

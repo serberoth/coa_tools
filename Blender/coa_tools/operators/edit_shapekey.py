@@ -30,6 +30,7 @@ from bpy.props import FloatProperty, IntProperty, BoolProperty, StringProperty, 
 from .. functions import *
 from .. functions_draw import *
 import bgl, blf
+import traceback
 
 class LeaveSculptmode(bpy.types.Operator):
     bl_idname = "coa_tools.leave_sculptmode"
@@ -166,7 +167,7 @@ class EditShapekeyMode(bpy.types.Operator):
         context.window_manager.modal_handler_add(self)
         return {"RUNNING_MODAL"}
     
-    def exit_mode(self,context,event,obj):
+    def exit_edit_mode(self,context,event,obj):
         for obj in context.selected_objects:
             obj.select = False
         self.sprite_object.coa_edit_shapekey = False
@@ -187,19 +188,24 @@ class EditShapekeyMode(bpy.types.Operator):
     
     def modal(self, context, event):
         obj = context.active_object
-        if obj not in self.objs and obj.type == "MESH":
-            self.objs.append(obj)
-        if obj.type == "MESH" and obj.mode in ["OBJECT","WEIGHT_PAINT"]:
-            bpy.ops.object.mode_set(mode="SCULPT")    
-        
-        if obj.type == "MESH" and obj.data.shape_keys != None:
-            if obj.coa_selected_shapekey != obj.active_shape_key.name:
-                obj.coa_selected_shapekey = str(obj.active_shape_key_index) #obj.active_shape_key.name
-        
-        
-        if self.sprite_object.coa_edit_shapekey == False:
-            return self.exit_mode(context,event,obj)
-        
+        try:
+            if obj not in self.objs and obj.type == "MESH":
+                self.objs.append(obj)
+            if obj.type == "MESH" and obj.mode in ["OBJECT","WEIGHT_PAINT"]:
+                bpy.ops.object.mode_set(mode="SCULPT")    
+            
+            if obj.type == "MESH" and obj.data.shape_keys != None:
+                if obj.coa_selected_shapekey != obj.active_shape_key.name:
+                    obj.coa_selected_shapekey = str(obj.active_shape_key_index) #obj.active_shape_key.name
+            
+            
+            if self.sprite_object.coa_edit_shapekey == False:
+                return self.exit_edit_mode(context,event,obj)
+            
+        except Exception as e:
+            traceback.print_exc()
+            self.report({"ERROR"},"An Error occured, please check console for more Information.")
+            self.exit_edit_mode(context,event,obj) 
         return {"PASS_THROUGH"}
     
     def draw_callback_px(self):
