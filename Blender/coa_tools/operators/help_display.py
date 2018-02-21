@@ -133,14 +133,17 @@ class ShowHelp(bpy.types.Operator):
         text_headline = [["COA Tools Hotkeys Overview",25]]
         
         text_general = [
-                ["Pie Menu",20],
+                ["COA Tools Specific",20],
+                ["  Fast Access",17],
                 ["      F   -   Contextual Pie Menu",15],
                 
-                ["Sprite Outliner",20],
+                ["",15],
+                ["  Sprite Outliner",17],
                 ["      Ctrl + Click    -   Add Item to Selection",15],
                 ["      Shift + Click   -   Multi Selection",15],
                 
-                ["Keyframes",20],
+                ["",15],
+                ["  Keyframes",17],
                 ["      Ctrl + Click on Key Operator    -   Opens Curve Interpolation Options",15],
                 ["      I    -   Keyframe Menu",15]]
         
@@ -151,7 +154,7 @@ class ShowHelp(bpy.types.Operator):
                 ["      Shift + Click + Drag    -   Draw Bone locked to 45 Angle",15],
 
                 ["",15],
-                ["  Hierarchy",17],                
+                ["  Hierarchy",17],
                 ["      Ctrl + P    -    Parent selected Bones to Active",15],
                 ["      Alt + P    -    Clear parenting",15],
                 
@@ -227,6 +230,11 @@ class ShowHelp(bpy.types.Operator):
                 ["      Shift + F   -   Change Brush Strength",15],
                 
                 ["",15],
+                ["  Display",17],  
+                ["      Z       -   Toggle to Wire Mode.",15],
+                ["      Alt + Z   -   Toggle to Texture mode",15],
+                
+                ["",15],
                 ["  General",17],  
                 ["      Tab    -    Exit Edit Weights Mode",15]]
                 
@@ -237,6 +245,10 @@ class ShowHelp(bpy.types.Operator):
                 ["      Right Click   -   Select Object",15],
                 ["      Left Click   -   Confirm / Edit Values in UI",15],
                 ["      Shift + Right Click   -   Add to Selection",15],
+                ["",15],
+                ["      Middle Mouse   -   Rotate Viewport",15],
+                ["      Shift + Middle Mouse   -   Pan Viewport",15],
+                ["      Ctrl + Middle Mouse   -   Zoom Viewport",15],
                 
                 ["",15],
                 ["  Select",17],  
@@ -256,6 +268,10 @@ class ShowHelp(bpy.types.Operator):
                 ["      Alt + G   -   Reset Location",15],
                 ["      Alt + R   -   Reset Rotation",15],
                 
+                ["",15],
+                ["  Display",17],  
+                ["      Z       -   Toggle to Wire Mode.",15],
+                ["      Alt + Z   -   Toggle to Texture mode",15],
                 
                 ["",15],
                 ["  Menues",17],
