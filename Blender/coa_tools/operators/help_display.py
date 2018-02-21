@@ -133,25 +133,46 @@ class ShowHelp(bpy.types.Operator):
         text_headline = [["COA Tools Hotkeys Overview",25]]
         
         text_general = [
-                ["Object Mode",20],
+                ["Pie Menu",20],
                 ["      F   -   Contextual Pie Menu",15],
                 
-                ["COA Tools Outliner",20],
+                ["Sprite Outliner",20],
                 ["      Ctrl + Click    -   Add Item to Selection",15],
                 ["      Shift + Click   -   Multi Selection",15],
                 
-                ["Keyframing",20],
+                ["Keyframes",20],
                 ["      Ctrl + Click on Key Operator    -   Opens Curve Interpolation Options",15],
                 ["      I    -   Keyframe Menu",15]]
         
         text_armature = [        
                 ["Edit Armature Mode",20],
+                ["  Create",17],
                 ["      Click + Drag    -   Draw Bone",15],
                 ["      Shift + Click + Drag    -   Draw Bone locked to 45 Angle",15],
-                ["      Alt + Click    -    Bind Sprite to selected Bones",15],
-                ["      Tab    -    Exit Edit Armature Mode",15],
+
+                ["",15],
+                ["  Hierarchy",17],                
                 ["      Ctrl + P    -    Parent selected Bones to Active",15],
-                ["      Alt + P    -    Clear parenting",15]]
+                ["      Alt + P    -    Clear parenting",15],
+                
+                ["",15],
+                ["  Select",17],
+                ["      Right Click   -   Select Bone",15],
+                ["      Shift + Right Click   -   Add to Selection",15],
+                ["      A   -   Select / Deselect All",15],
+                ["      B   -   Border Selection",15],
+                ["      C   -   Paint Selection",15],
+                ["      L   -   Select Hovered Mesh",15],
+                ["      Ctrl + Draw    -   Draw Selection Outline",15],
+                
+                ["",15],
+                ["  Bind Mesh",17],
+                ["      Alt + Click    -    Click on Sprite or Layer in Outliner.",15],
+                ["                              Binds Bone with Sprite.",15],
+
+                ["",15],
+                ["  General",17],
+                ["      Tab    -    Exit Edit Armature Mode",15]]
         
         text_mesh = [        
                 ["Edit Mesh Mode",20],
@@ -197,11 +218,16 @@ class ShowHelp(bpy.types.Operator):
                 
         text_weights = [        
                 ["Edit Weights Mode",20],
+                ["  Brush Settings",17],  
                 ["      1       -   Add Brush",15],
                 ["      2       -   Blur Brush",15],
                 ["      8       -   Subtract Brush",15],
+                ["",15],
                 ["      F       -   Change Brush Size",15],
                 ["      Shift + F   -   Change Brush Strength",15],
+                
+                ["",15],
+                ["  General",17],  
                 ["      Tab    -    Exit Edit Weights Mode",15]]
                 
         
