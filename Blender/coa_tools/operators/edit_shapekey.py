@@ -154,6 +154,7 @@ class EditShapekeyMode(bpy.types.Operator):
             shape_name = shape.name
             
         self.sprite_object.coa_edit_shapekey = True
+        self.sprite_object.coa_edit_mode = "SHAPEKEY"
         bpy.ops.object.mode_set(mode="SCULPT")
         
         for brush in bpy.data.brushes:
@@ -171,6 +172,7 @@ class EditShapekeyMode(bpy.types.Operator):
         for obj in context.selected_objects:
             obj.select = False
         self.sprite_object.coa_edit_shapekey = False
+        self.sprite_object.coa_edit_mode = "OBJECT"
         
         for obj in self.objs:
             context.scene.objects.active = obj

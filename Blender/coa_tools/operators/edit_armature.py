@@ -388,6 +388,7 @@ class QuickArmature(bpy.types.Operator):
         
         #lock_sprites(context,get_sprite_object(context.active_object),get_sprite_object(context.active_object).lock_sprites)
         self.sprite_object.coa_edit_armature = False
+        self.sprite_object.coa_edit_mode = "OBJECT"
         
         ### restore previous selection
         for obj in bpy.context.scene.objects:
@@ -413,6 +414,8 @@ class QuickArmature(bpy.types.Operator):
         
         self.sprite_object = get_sprite_object(context.active_object)
         self.sprite_object.coa_edit_armature = True
+        self.sprite_object.coa_edit_mode = "ARMATURE"
+        
         lock_sprites(context,get_sprite_object(context.active_object),False)
         self.armature = self.create_armature(context)
         

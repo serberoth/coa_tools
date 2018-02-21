@@ -1362,6 +1362,8 @@ class DrawContour(bpy.types.Operator):
     def exit_edit_mode(self,context,event):
         self.draw_handler_removed = True
         self.sprite_object.coa_edit_mesh = False
+        self.sprite_object.coa_edit_mode = "OBJECT"
+        
         bpy.types.SpaceView3D.draw_handler_remove(self.draw_handler, "WINDOW")
         bpy.types.SpaceView3D.draw_handler_remove(self.draw_handler2, "WINDOW")
         bpy.context.space_data.show_manipulator = self.show_manipulator
@@ -1505,6 +1507,7 @@ class DrawContour(bpy.types.Operator):
         bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT')
 
         if self.sprite_object != None:
+            self.sprite_object.coa_edit_mode = "MESH"
             self.sprite_object.coa_edit_mesh = True
         
         wm = context.window_manager

@@ -11,28 +11,31 @@ class ShowHelp(bpy.types.Operator):
 
     region_offset = 0
     region_height = 0
+    region_width = 0
     _timer = None
     alpha = 1.0
     alpha_current = 0.0
     global_pos = 0.0
     i = 0
     fade_in = False
-    scale = .7
+    scale_y = .7
+    scale_x = 1.0
     display_height = 1060 # display height before scaling starts
+    display_width = 1000
     
     @classmethod
     def poll(cls, context):
         return True
 
     def write_text(self,text,size=20,pos_y=0,color=(1,1,1,1)):
-        start_pos = self.region_height - 60*self.scale
+        start_pos = self.region_height - 60*self.scale_y
         lines = text.split("\n")
         
-        pos_y = start_pos - (pos_y * self.scale)
-        size = int(size * self.scale)
+        pos_y = start_pos - (pos_y * self.scale_y)
+        size = int(size * self.scale_y)
         
         bgl.glColor4f(color[0],color[1],color[2],color[3]*self.alpha_current)
-        line_height = (size + size*.5) * self.scale
+        line_height = (size + size*.5) * self.scale_y
         for i,line in enumerate(lines):
             
             blf.position(self.font_id, 15+self.region_offset, pos_y-(line_height*i), 0)
@@ -59,9 +62,12 @@ class ShowHelp(bpy.types.Operator):
                 self.region_offset = region.width
             if region.type == "WINDOW":    
                 self.region_height = region.height
-                #self.scale = self.region_height/920
-                self.scale = self.region_height/self.display_height
-                self.scale = min(1.0,max(.7,self.scale))
+                self.region_width = region.width
+                #self.scale_y = self.region_height/920
+                self.scale_y = self.region_height/self.display_height
+                self.scale_y = min(1.0,max(.7,self.scale_y))
+                self.scale_x = self.region_width/self.display_width
+                self.scale_x = min(1.0,max(.0,self.scale_x))
         
         if context.user_preferences.system.use_region_overlap:
             pass
@@ -94,13 +100,14 @@ class ShowHelp(bpy.types.Operator):
         # draw some text
         headline_color = [1.0, 0.9, 0.6, 1.0]
         headline_color2 = [0.692584, 1.000000, 0.781936, 1.000000]
+        headline_color3 = [0.707686, 1.000000, 0.969626, 1.000000]
         
         ### draw gradient overlay
         bgl.glEnable(bgl.GL_BLEND)
         bgl.glBegin(bgl.GL_QUAD_STRIP)
         color_black = [0.0,0.0,0.0]
         x_coord1 = self.region_offset
-        x_coord2 = 525
+        x_coord2 = 525 * self.scale_x
         y_coord1 = self.region_height
         alpha1 = self.alpha_current * 0.7
         alpha2 = self.alpha_current * 0.0
@@ -122,58 +129,125 @@ class ShowHelp(bpy.types.Operator):
         
         ### draw hotkeys help
         texts = []
+        
         text_headline = [["COA Tools Hotkeys Overview",25]]
+        
         text_general = [
                 ["Object Mode",20],
                 ["      F   -   Contextual Pie Menu",15],
                 
-                ["Object Outliner",20],
+                ["COA Tools Outliner",20],
                 ["      Ctrl + Click    -   Add Item to Selection",15],
                 ["      Shift + Click   -   Multi Selection",15],
                 
                 ["Keyframing",20],
                 ["      Ctrl + Click on Key Operator    -   Opens Curve Interpolation Options",15],
                 ["      I    -   Keyframe Menu",15]]
+        
         text_armature = [        
                 ["Edit Armature Mode",20],
                 ["      Click + Drag    -   Draw Bone",15],
                 ["      Shift + Click + Drag    -   Draw Bone locked to 45 Angle",15],
                 ["      Alt + Click    -    Bind Sprite to selected Bones",15],
-                ["      ESC/Tab    -    Exit Armature Mode",15],
+                ["      Tab    -    Exit Edit Armature Mode",15],
                 ["      Ctrl + P    -    Parent selected Bones to Active",15],
                 ["      Alt + P    -    Clear parenting",15]]
+        
         text_mesh = [        
                 ["Edit Mesh Mode",20],
-                ["      Click + Drag    -   Draw Vertex Contour",15],
+                ["  Create",17],
+                ["      Click + Drag    -   Add/Draw Points",15],
                 ["      Alt + Click    -   Delete Vertex or Edge",15],
-                ["      K   -   Knife Tool",15],
-                ["      L   -   Select Mesh",15],
-                ["      ESC/Tab    -    Exit Mesh Mode",15],
+                ["      Shift + Click on Edge    -   Set Edge Length for drawing Edges",15],
+
                 ["",15],
+                ["  Connect / Fill Shortcuts",17],
                 ["      F   -   Connect Verts, Edges and Faces",15],
                 ["      Alt + F   -   Fill Edge Loop",15],
-                ["      W    -    Specials Menu",15],
-                ["      Ctrl + V    -    Vertex Menu",15],
-                ["      Ctrl + E    -    Edge Menu",15],
-                ["      Ctrl + F    -    Face Menu",15]]
-        text_blender = [        
-                ["Blender General",20],
+                
+                ["",15],
+                ["  Select",17],
                 ["      Right Click   -   Select Object",15],
                 ["      Shift + Right Click   -   Add to Selection",15],
                 ["      A   -   Select / Deselect All",15],
                 ["      B   -   Border Selection",15],
                 ["      C   -   Paint Selection",15],
+                ["      L   -   Select Hovered Mesh",15],
+                ["      Ctrl + Draw    -   Draw Selection Outline",15],
+                
+                ["",15],
+                ["  Manipulate",17],
                 ["      S   -   Scale Selection",15],
                 ["      G   -   Move Selection",15],
                 ["      R   -   Rotate Selection",15],
+                
                 ["",15],
+                ["  General",17],                
+                ["      Ctrl + V    -    Vertex Menu",15],
+                ["      Ctrl + E    -    Edge Menu",15],
+                ["      Ctrl + F    -    Face Menu",15],
+                ["      W    -    Specials Menu",15],
+                ["      Tab    -    Exit Edit Mesh Mode",15]]
+        
+        text_shapekey = [        
+                ["Edit Shapkey Mode",20],
+                ["      G       -   Select Grab Brush",15],
+                ["      F       -   Change Brush Size",15],
+                ["      Shift + F   -   Change Brush Strength",15]]
+                
+        text_weights = [        
+                ["Edit Weights Mode",20],
+                ["      1       -   Add Brush",15],
+                ["      2       -   Blur Brush",15],
+                ["      8       -   Subtract Brush",15],
+                ["      F       -   Change Brush Size",15],
+                ["      Shift + F   -   Change Brush Strength",15],
+                ["      Tab    -    Exit Edit Weights Mode",15]]
+                
+        
+        text_blender = [        
+                ["Blender General",20],
+                ["  Mouse",17],  
+                ["      Right Click   -   Select Object",15],
+                ["      Left Click   -   Confirm / Edit Values in UI",15],
+                ["      Shift + Right Click   -   Add to Selection",15],
+                
+                ["",15],
+                ["  Select",17],  
+                ["      A   -   Select / Deselect All",15],
+                ["      B   -   Border Selection",15],
+                ["      C   -   Paint Selection",15],
+                ["      L   -   Select Hovered Mesh",15],
+                ["      Ctrl + Draw    -   Draw Selection Outline",15],
+                
+                ["",15],
+                ["  Manipulate",17],  
+                ["      S   -   Set Scale",15],
+                ["      G   -   Set Location",15],
+                ["      R   -   Set Rotation",15],
+                ["",15],
+                ["      Alt + S   -   Reset Scale",15],
+                ["      Alt + G   -   Reset Location",15],
+                ["      Alt + R   -   Reset Rotation",15],
+                
+                
+                ["",15],
+                ["  Menues",17],
                 ["      W   -   Specials Menu",15]]
         
         texts += text_headline
-        texts += text_general
-        texts += text_armature
-        texts += text_mesh
-        texts += text_blender
+        if self.sprite_object == None or (self.sprite_object != None and self.sprite_object.coa_edit_mode in ["OBJECT"]):
+            texts += text_general
+        if self.sprite_object == None or (self.sprite_object != None and self.sprite_object.coa_edit_mode in ["OBJECT"]):    
+            texts += text_blender
+        if self.sprite_object == None or (self.sprite_object != None and self.sprite_object.coa_edit_mode in ["ARMATURE"]):
+            texts += text_armature
+        if self.sprite_object == None or (self.sprite_object != None and self.sprite_object.coa_edit_mode in ["SHAPEKEY"]):
+            texts += text_shapekey
+        if self.sprite_object == None or (self.sprite_object != None and self.sprite_object.coa_edit_mode in ["WEIGHTS"]):
+            texts += text_weights
+        if self.sprite_object == None or (self.sprite_object != None and self.sprite_object.coa_edit_mode in ["MESH"]):
+            texts += text_mesh
         
         linebreak_size = 0
         for i,text in enumerate(texts):
@@ -189,6 +263,11 @@ class ShowHelp(bpy.types.Operator):
                 color = headline_color
             elif lineheight == 25:
                 color = headline_color2
+            elif lineheight == 17:
+                color = headline_color3    
+            ### custom color
+            if len(text) == 3:
+                color = text[2]
             self.write_text(line,size=lineheight,pos_y=linebreak_size,color=color)
         
         

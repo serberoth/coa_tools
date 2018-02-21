@@ -101,6 +101,7 @@ class EditWeights(bpy.types.Operator):
                 
         self.exit_edit_weights(context)
         sprite_object.coa_edit_weights = False
+        sprite_object.coa_edit_mode = "OBJECT"
         bpy.ops.ed.undo_push(message="Exit Edit Weights")
         self.disable_object_color(False)
         context.active_object.active_material.use_shadeless = self.shadeless
@@ -193,6 +194,7 @@ class EditWeights(bpy.types.Operator):
             self.selected_objects.append(obj.name)
         
         sprite_object.coa_edit_weights = True
+        sprite_object.coa_edit_mode = "WEIGHTS"
         
         
         self.hide_non_deform_bones(context)
@@ -213,9 +215,7 @@ class EditWeights(bpy.types.Operator):
 
         set_local_view(True)
         
-        
         context.scene.tool_settings.use_auto_normalize = True
-        
         
         ### zoom to selected mesh/sprite
         for obj in bpy.context.selected_objects:
