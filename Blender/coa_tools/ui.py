@@ -620,9 +620,9 @@ class CutoutAnimationTools(bpy.types.Panel):
         row = layout.row(align=True)
         row.prop(screen,"coa_view",expand=True)
         if not wm.coa_show_help:
-            row.operator("coa_tools.show_help",text="",icon="QUESTION")
+            row.operator("coa_tools.show_help",text="",icon="INFO")
         else:
-            row.prop(wm,"coa_show_help",text="",icon="QUESTION")    
+            row.prop(wm,"coa_show_help",text="",icon="INFO")    
         
         no_edit_mode_active = sprite_object != None and sprite_object.coa_edit_shapekey == False and sprite_object.coa_edit_mesh == False and sprite_object.coa_edit_armature == False and sprite_object.coa_edit_weights == False
         if obj == None or (obj != None):
