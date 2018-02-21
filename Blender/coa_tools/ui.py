@@ -327,6 +327,7 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
         if self.data.shape_keys != None:
             self.active_shape_key_index = int(self.coa_selected_shapekey)
         
+    bpy.types.Mesh.coa_hide_base_sprite = BoolProperty(default=False,update=hide_base_sprite,description="Make sure to hide base sprite when adding a custom mesh.")
     
     bpy.types.Object.coa_dimensions_old = FloatVectorProperty()
     bpy.types.Object.coa_sprite_dimension = FloatVectorProperty()
@@ -342,22 +343,11 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
     bpy.types.Object.coa_filter_names = StringProperty(update=update_filter,options={'TEXTEDIT_UPDATE'})
     bpy.types.Object.coa_favorite = BoolProperty()
     bpy.types.Object.coa_hide_base_sprite = BoolProperty(default=False,update=hide_base_sprite)
-    bpy.types.Mesh.coa_hide_base_sprite = BoolProperty(default=False,update=hide_base_sprite,description="Make sure to hide base sprite when adding a custom mesh.")
     bpy.types.Object.coa_animation_loop = BoolProperty(default=False,description="Sets the Timeline frame to 0 when it reaches the end of the animation. Also works for changing frame with cursor keys.")
-    bpy.types.Bone.coa_favorite = BoolProperty()
-    bpy.types.Object.coa_edit_weights = BoolProperty(default=False,update=exit_edit_weights)
-    bpy.types.Object.coa_edit_armature = BoolProperty(default=False)
-    bpy.types.Object.coa_edit_shapekey = BoolProperty(default=False)
-    bpy.types.Object.coa_edit_mesh = BoolProperty(default=False,update=change_edit_mode)
     bpy.types.Object.coa_hide = BoolProperty(default=False,update=hide)
     bpy.types.Object.coa_hide_select = BoolProperty(default=False,update=hide_select)
     bpy.types.Object.coa_data_path = StringProperty()
     bpy.types.Object.coa_show_children = BoolProperty(default=True)
-    bpy.types.Bone.coa_draw_bone = BoolProperty(default=False)
-    bpy.types.Bone.coa_z_value = IntProperty(description="Z Depth",default=0)
-    bpy.types.Bone.coa_data_path = StringProperty()
-    bpy.types.Bone.coa_hide_select = BoolProperty(default=False, update=hide_select_bone)
-    bpy.types.Bone.coa_hide = BoolProperty(default=False,update=hide_bone)
     bpy.types.Object.coa_show_export_box = BoolProperty()
     bpy.types.Object.coa_sprite_frame_previews = EnumProperty(items = enum_sprite_previews,update=set_sprite_frame)
     bpy.types.Object.coa_tiles_changed = BoolProperty(default=False)
@@ -373,6 +363,19 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
     bpy.types.Object.coa_flip_direction_last = bpy.props.BoolProperty(default=False)
     bpy.types.Object.coa_change_z_ordering = bpy.props.BoolProperty(default=False)
     bpy.types.Object.coa_selected_shapekey = bpy.props.EnumProperty(items=get_shapekeys,update=select_shapekey,name="Active Shapkey")
+    
+    bpy.types.Object.coa_edit_mode = EnumProperty(name="Edit Mode",items=(("OBJECT","Object","Object"),("MESH","Mesh","Mesh"),("ARMATURE","Armature","Armature"),("WEIGHTS","Weights","Weights"),("SHAPEKEY","Shapkey","Shapekey")))
+    bpy.types.Object.coa_edit_weights = BoolProperty(default=False,update=exit_edit_weights)
+    bpy.types.Object.coa_edit_armature = BoolProperty(default=False)
+    bpy.types.Object.coa_edit_shapekey = BoolProperty(default=False)
+    bpy.types.Object.coa_edit_mesh = BoolProperty(default=False,update=change_edit_mode)
+    
+    bpy.types.Bone.coa_favorite = BoolProperty()
+    bpy.types.Bone.coa_draw_bone = BoolProperty(default=False)
+    bpy.types.Bone.coa_z_value = IntProperty(description="Z Depth",default=0)
+    bpy.types.Bone.coa_data_path = StringProperty()
+    bpy.types.Bone.coa_hide_select = BoolProperty(default=False, update=hide_select_bone)
+    bpy.types.Bone.coa_hide = BoolProperty(default=False,update=hide_bone)
     
     bpy.types.Scene.coa_display_all = bpy.props.BoolProperty(default=True)
     bpy.types.Scene.coa_display_page = bpy.props.IntProperty(default=0,min=0,name="Display Page",description="Defines which page is displayed")
@@ -619,10 +622,14 @@ class CutoutAnimationTools(bpy.types.Panel):
         
         row = layout.row(align=True)
         row.prop(screen,"coa_view",expand=True)
+        
         if not wm.coa_show_help:
             row.operator("coa_tools.show_help",text="",icon="INFO")
         else:
             row.prop(wm,"coa_show_help",text="",icon="INFO")    
+        
+#        row = layout.row(align=True)
+#        row.prop(sprite_object,"coa_edit_mode",expand=True)
         
         no_edit_mode_active = sprite_object != None and sprite_object.coa_edit_shapekey == False and sprite_object.coa_edit_mesh == False and sprite_object.coa_edit_armature == False and sprite_object.coa_edit_weights == False
         if obj == None or (obj != None):
@@ -937,7 +944,8 @@ class SelectChild(bpy.types.Operator):
             armature = get_armature(self.sprite_object)
             armature.select = True
             bpy.ops.view3d.localview()
-            
+            bpy.context.space_data.viewport_shade = 'TEXTURED'
+
             ### zoom to selected mesh/sprite
             for obj in bpy.context.selected_objects:
                 obj.select = False
