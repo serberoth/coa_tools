@@ -226,6 +226,7 @@ class EditWeights(bpy.types.Operator):
         bpy.ops.view3d.view_selected()
         
         ### set uv image
+        bpy.context.space_data.viewport_shade = 'TEXTURED'
         set_uv_image(obj)
         
         ### enter weights mode
