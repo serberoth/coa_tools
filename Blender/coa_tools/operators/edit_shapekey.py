@@ -138,6 +138,9 @@ class EditShapekeyMode(bpy.types.Operator):
             
     
     def execute(self, context):
+        if context.active_object == None:
+            self.report({"ERROR"},"Armature is hidden or not selected. Cannot go in Edit Mode.")
+            return{"CANCELLED"}
         obj = context.active_object
         self.sprite_object = get_sprite_object(obj)
         self.armature = get_armature(self.sprite_object)

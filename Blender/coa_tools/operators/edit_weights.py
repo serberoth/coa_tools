@@ -170,6 +170,9 @@ class EditWeights(bpy.types.Operator):
         return mod
                                     
     def invoke(self, context, event):
+        if context.active_object == None:
+            self.report({"ERROR"},"Armature is hidden or not selected. Cannot go in Edit Mode.")
+            return{"CANCELLED"}
         obj = context.active_object
         self.obj = context.active_object.name
         self.sprite_object = get_sprite_object(context.active_object).name

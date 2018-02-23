@@ -594,17 +594,22 @@ def set_bone_group(self, armature, pose_bone,group = "ik_group" ,theme = "THEME0
     else:
         new_group = armature.pose.bone_groups[group]
     pose_bone.bone_group = new_group
-        
+
+last_sprite_object = None        
 def get_sprite_object(obj):
+    global last_sprite_object
+    
+    context = bpy.context
     if obj != None:
         if "sprite_object" in obj:
+            last_sprite_object = obj
             return obj
         elif obj.parent != None:
             return get_sprite_object(obj.parent)
-        else:
-            return None
-    else:
-        return None 
+    
+    if last_sprite_object != None:
+        return last_sprite_object
+    return None 
         
 def get_armature(obj):
     if obj != None and obj.type != "ARMATURE":
@@ -794,6 +799,7 @@ def change_slot_mesh_data(context,obj):
                 obj.modifiers["coa_base_sprite"].show_viewport = False
 
 def display_children(self, context, obj):
+    obj = get_sprite_object(obj)
     layout = self.layout
     col = layout.column(align=True)
     row = col.row(align=True)
@@ -884,7 +890,7 @@ def filter_bone_name(armature,filter):
     return False    
 
 def draw_children(self,context,sprite_object,layout,box,row,col,children,obj,current_display_item):    
-    
+    obj = get_sprite_object(obj)
     ### Sprite Object Children Display
     if sprite_object != None and sprite_object.coa_show_children:
         children = sorted(children, key=lambda x: x.location[1] if type(x) == bpy.types.Object else x.name,reverse=False)
@@ -913,7 +919,7 @@ def draw_children(self,context,sprite_object,layout,box,row,col,children,obj,cur
                             row.separator()
                         name = child.name
                         icon = "LAYER_USED"
-                        if child.select and not child.hide:
+                        if child.select:# and not child.hide:
                             icon = "LAYER_ACTIVE"
                         row.label(text="",icon=icon)
                         if child.type == "ARMATURE":

@@ -1420,6 +1420,10 @@ class DrawContour(bpy.types.Operator):
     _timer = 0
     
     def execute(self, context):
+        if context.active_object == None:
+            self.report({"ERROR"},"Sprite is hidden or not selected. Cannot go in Edit Mode.")
+            return{"CANCELLED"}
+        
         obj = context.active_object
         self.edit_object = obj
         #bpy.ops.wm.coa_modal() ### start coa modal mode if not running
