@@ -660,7 +660,7 @@ class CutoutAnimationTools(bpy.types.Panel):
                     row = layout.row()
                     row.operator("object.create_driver_constraint",text="Driver Constraint",icon="DRIVER")
             if sprite_object.coa_edit_weights == False and sprite_object.coa_edit_shapekey == False:
-                if (obj != None and obj.mode not in ["EDIT","WEIGHT_PAINT","SCULPT"]) or obj == None:
+                if sprite_object != None and ((obj != None and obj.mode not in ["EDIT","WEIGHT_PAINT","SCULPT"]) or obj == None):
                     row = layout.row(align=True)
                     row.operator("coa_tools.coa_import_sprites",text="Re / Import Sprites",icon="IMASEL")
 #                    if obj.type == "MESH":

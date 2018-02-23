@@ -302,6 +302,8 @@ class ImportSprites(bpy.types.Operator, ImportHelper):
     replace = BoolProperty(name="Update Existing",default=True)
     
     def execute(self, context):
+        sprite_object = get_sprite_object(context.active_object)
+        
         bpy.context.space_data.viewport_shade = "TEXTURED"
         bpy.context.scene.game_settings.material_mode = "GLSL"
         
@@ -311,7 +313,6 @@ class ImportSprites(bpy.types.Operator, ImportHelper):
         for object in bpy.context.selected_objects:
             object.select = False
                 
-        sprite_object = get_sprite_object(context.active_object)            
         #if ext in [".png",".jpg",".psd",".jpeg",".gif"] or ext in [".avi",".wmv",".webm",".mpeg",".mp4",".mov"]:
         if ext not in [".json"]:
             for i in self.files:
@@ -326,24 +327,7 @@ class ImportSprites(bpy.types.Operator, ImportHelper):
             data_file.close()
             
             bpy.ops.coa_tools.load_json_data("INVOKE_DEFAULT",json_data = str(sprite_data),filepath=self.filepath)
-#            
-#            if "name" in sprite_data:
-#                sprite_object.name = sprite_data["name"]
-#                
-#            if "nodes" in sprite_data:
-#                for i,sprite in enumerate(sprite_data["nodes"]):
-#                    filepath = os.path.join(folder,sprite["resource_path"])
-#                    pos = [sprite["position"][0],-sprite["z"],sprite["position"][1]]
-#                    offset = [sprite["offset"][0],0,sprite["offset"][1]]
-#                    parent = sprite_object.name
-#                    tilesize = [sprite["tiles_x"],sprite["tiles_y"]]
-#                    scale = get_addon_prefs(context).sprite_import_export_scale
-#                    
-#                    bpy.ops.wm.coa_import_sprite(path = filepath, pos = pos, offset = offset, parent = parent, tilesize = tilesize, scale = scale)
-#                    obj = context.active_object
-#                    obj.parent = sprite_object
-#                    
-#            context.scene.objects.active = sprite_object
+
         if bpy.context.screen.coa_view == "3D":
             bpy.ops.view3d.viewnumpad(type="FRONT")
         if context.space_data.region_3d.is_perspective:

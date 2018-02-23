@@ -607,7 +607,7 @@ def get_sprite_object(obj):
         elif obj.parent != None:
             return get_sprite_object(obj.parent)
     
-    if last_sprite_object != None:
+    if last_sprite_object != None and last_sprite_object.name in bpy.data.objects:
         return last_sprite_object
     return None 
         
@@ -800,81 +800,78 @@ def change_slot_mesh_data(context,obj):
 
 def display_children(self, context, obj):
     obj = get_sprite_object(obj)
-    layout = self.layout
-    col = layout.column(align=True)
-    row = col.row(align=True)
-    if context.scene.coa_display_all:
-        row.prop(context.scene,"coa_display_all",text="",toggle=True,icon="DISCLOSURE_TRI_RIGHT")
-    else:    
-        row.prop(context.scene,"coa_display_all",text="",toggle=True,icon="DISCLOSURE_TRI_DOWN")
-        row.prop(context.scene,"coa_display_length",text="Length")
-        row.prop(context.scene,"coa_display_page",text="Page")
-    box = col.box()
-    col = box.column(align=True)
-    sprite_object = get_sprite_object(obj)
-    children = get_children(context,sprite_object,ob_list=[])
-    
-    list1 = []
-    list2 = []
-    for child in children:
-        if child.type != "CAMERA":
-            list1.append(child)
-        else:
-            list2.append(child)
-    children = list1
-    children += list2
-    row = col.row(align=True)
-    row.label(text="",icon="OOPS")
-    row.prop(obj,"coa_filter_names",text="",icon="VIEWZOOM")
-    if sprite_object != None:
-        if sprite_object.coa_favorite:
-            row.prop(sprite_object,"coa_favorite",text="",icon="SOLO_ON")
-        else:
-            row.prop(sprite_object,"coa_favorite",text="",icon="SOLO_OFF")
-    
-    col = box.column(align=True)
-#    if context.active_object.mode == "EDIT":
-#        col.enabled = False
-#    else:
-#        col.enabled = True
-    
-    current_display_item = 0
-    ### Sprite Objects display for all that are in active Scene
-    for obj2 in context.scene.objects:
-        if get_sprite_object(obj2) == obj2:
-            in_range = current_display_item in range(context.scene.coa_display_page * context.scene.coa_display_length , context.scene.coa_display_page * context.scene.coa_display_length + context.scene.coa_display_length)
-            
-            if in_range or context.scene.coa_display_all:
-                row = col.row(align=True)
-                icon = "LAYER_USED"
-                if obj2.select:
-                    icon = "LAYER_ACTIVE"
-                row.label(text="",icon=icon)
-                if obj2.type == "EMPTY":
-                    row.label(text="",icon="EMPTY_DATA")
-                elif obj2.type == "ARMATURE":
-                    row.label(text="",icon="ARMATURE_DATA")
-                if get_sprite_object(obj2) == sprite_object:
-                    if obj2.coa_show_children and get_sprite_object(obj2) == sprite_object:
-                        row.prop(obj2,"coa_show_children",text="",icon="TRIA_DOWN",emboss=False)
-                    else:
-                        row.prop(obj2,"coa_show_children",text="",icon="TRIA_RIGHT",emboss=False) 
-                op = row.operator("object.coa_select_child",text=obj2.name,emboss=False)
-                op.mode = "object"
-                op.ob_name = obj2.name
+    if obj != None:
+        layout = self.layout
+        col = layout.column(align=True)
+        row = col.row(align=True)
+        if context.scene.coa_display_all:
+            row.prop(context.scene,"coa_display_all",text="",toggle=True,icon="DISCLOSURE_TRI_RIGHT")
+        else:    
+            row.prop(context.scene,"coa_display_all",text="",toggle=True,icon="DISCLOSURE_TRI_DOWN")
+            row.prop(context.scene,"coa_display_length",text="Length")
+            row.prop(context.scene,"coa_display_page",text="Page")
+        box = col.box()
+        col = box.column(align=True)
+        sprite_object = get_sprite_object(obj)
+        children = get_children(context,sprite_object,ob_list=[])
+        
+        list1 = []
+        list2 = []
+        for child in children:
+            if child.type != "CAMERA":
+                list1.append(child)
+            else:
+                list2.append(child)
+        children = list1
+        children += list2
+        row = col.row(align=True)
+        row.label(text="",icon="OOPS")
+        row.prop(obj,"coa_filter_names",text="",icon="VIEWZOOM")
+        if sprite_object != None:
+            if sprite_object.coa_favorite:
+                row.prop(sprite_object,"coa_favorite",text="",icon="SOLO_ON")
+            else:
+                row.prop(sprite_object,"coa_favorite",text="",icon="SOLO_OFF")
+        
+        col = box.column(align=True)
+        
+        current_display_item = 0
+        ### Sprite Objects display for all that are in active Scene
+        for obj2 in context.scene.objects:
+            if get_sprite_object(obj2) == obj2:
+                in_range = current_display_item in range(context.scene.coa_display_page * context.scene.coa_display_length , context.scene.coa_display_page * context.scene.coa_display_length + context.scene.coa_display_length)
                 
-                op = row.operator("coa_tools.view_sprite",icon="ZOOM_SELECTED",text="",emboss=False)
-                op.type = "VIEW_ALL"
-                op.name = obj2.name
+                if in_range or context.scene.coa_display_all:
+                    row = col.row(align=True)
+                    icon = "LAYER_USED"
+                    if obj2.select:
+                        icon = "LAYER_ACTIVE"
+                    row.label(text="",icon=icon)
+                    if obj2.type == "EMPTY":
+                        row.label(text="",icon="EMPTY_DATA")
+                    elif obj2.type == "ARMATURE":
+                        row.label(text="",icon="ARMATURE_DATA")
+                    if get_sprite_object(obj2) == sprite_object:
+                        if obj2.coa_show_children and get_sprite_object(obj2) == sprite_object:
+                            row.prop(obj2,"coa_show_children",text="",icon="TRIA_DOWN",emboss=False)
+                        else:
+                            row.prop(obj2,"coa_show_children",text="",icon="TRIA_RIGHT",emboss=False) 
+                    op = row.operator("object.coa_select_child",text=obj2.name,emboss=False)
+                    op.mode = "object"
+                    op.ob_name = obj2.name
+                    
+                    op = row.operator("coa_tools.view_sprite",icon="ZOOM_SELECTED",text="",emboss=False)
+                    op.type = "VIEW_ALL"
+                    op.name = obj2.name
+                    
+                    row2 = row.row()
+                    if not obj2.coa_change_z_ordering:
+                        row2.active = False
+                    row2.prop(obj2,"coa_change_z_ordering",text="",icon="SORTALPHA",emboss=False)
                 
-                row2 = row.row()
-                if not obj2.coa_change_z_ordering:
-                    row2.active = False
-                row2.prop(obj2,"coa_change_z_ordering",text="",icon="SORTALPHA",emboss=False)
-            
-            current_display_item += 1
-            if obj2 == sprite_object:
-                draw_children(self,context,sprite_object,layout,box,row,col,children,obj,current_display_item)
+                current_display_item += 1
+                if obj2 == sprite_object:
+                    draw_children(self,context,sprite_object,layout,box,row,col,children,obj,current_display_item)
             
 
 def favorite_bones(armature):
