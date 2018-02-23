@@ -92,7 +92,7 @@ class EditShapekeyMode(bpy.types.Operator):
         SHAPEKEYS = []
         SHAPEKEYS.append(("NEW_KEY","New Shapekey","New Shapekey","NEW",0))
         obj = context.active_object
-        if obj.data.shape_keys != None:
+        if obj.type == "MESH" and obj.data.shape_keys != None:
             i = 0
             for i,shape in enumerate(obj.data.shape_keys.key_blocks):
                 if i > 0:
@@ -175,6 +175,7 @@ class EditShapekeyMode(bpy.types.Operator):
         self.sprite_object.coa_edit_mode = "OBJECT"
         
         for obj in self.objs:
+            obj.hide = False
             context.scene.objects.active = obj
             bpy.ops.object.mode_set(mode="OBJECT")
             obj.show_only_shape_key = False
@@ -191,15 +192,15 @@ class EditShapekeyMode(bpy.types.Operator):
     def modal(self, context, event):
         obj = context.active_object
         try:
-            if obj not in self.objs and obj.type == "MESH":
-                self.objs.append(obj)
-            if obj.type == "MESH" and obj.mode in ["OBJECT","WEIGHT_PAINT"]:
-                bpy.ops.object.mode_set(mode="SCULPT")    
-            
-            if obj.type == "MESH" and obj.data.shape_keys != None:
-                if obj.coa_selected_shapekey != obj.active_shape_key.name:
-                    obj.coa_selected_shapekey = str(obj.active_shape_key_index) #obj.active_shape_key.name
-            
+            if obj != None:
+                if obj not in self.objs and obj.type == "MESH":
+                    self.objs.append(obj)
+                if obj.type == "MESH" and obj.mode in ["OBJECT","WEIGHT_PAINT"]:
+                    bpy.ops.object.mode_set(mode="SCULPT")    
+                
+                if obj.type == "MESH" and obj.data.shape_keys != None:
+                    if obj.coa_selected_shapekey != obj.active_shape_key.name:
+                        obj.coa_selected_shapekey = str(obj.active_shape_key_index) #obj.active_shape_key.name
             
             if self.sprite_object.coa_edit_shapekey == False:
                 return self.exit_edit_mode(context,event,obj)

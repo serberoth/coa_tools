@@ -64,6 +64,7 @@ class QuickArmature(bpy.types.Operator):
         self.active_object = None
         self.armature = None
         self.emulate_3_button = False
+        self.obj_settings = {}
         
         self.cursor_location = Vector((0,0,0))
         
@@ -398,6 +399,11 @@ class QuickArmature(bpy.types.Operator):
         context.scene.objects.active = self.active_object   
         context.user_preferences.inputs.use_mouse_emulate_3_button = self.emulate_3_button
         
+        ### restore object settings
+        for obj in self.obj_settings:
+            obj.show_x_ray = self.obj_settings[obj]["show_x_ray"]
+            obj.show_name = self.obj_settings[obj]["show_name"]
+        
         ### remove draw call
         bpy.types.SpaceView3D.draw_handler_remove(self.draw_handler, "WINDOW")
         return{'FINISHED'}
@@ -406,6 +412,10 @@ class QuickArmature(bpy.types.Operator):
         #bpy.ops.wm.coa_modal() ### start coa modal mode if not running
         self.emulate_3_button = context.user_preferences.inputs.use_mouse_emulate_3_button
         context.user_preferences.inputs.use_mouse_emulate_3_button = False
+        
+        ### store object settings
+        for obj in context.scene.objects:
+            self.obj_settings[obj] = {"show_x_ray":obj.show_x_ray, "show_name":obj.show_name}
         
         for obj in context.scene.objects:
             if obj.select:

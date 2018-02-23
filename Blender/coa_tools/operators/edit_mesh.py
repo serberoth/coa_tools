@@ -232,6 +232,8 @@ class GenerateMeshFromEdgesAndVerts(bpy.types.Operator):
 
     def cleanup_and_fill_mesh(self,obj,bm):
         context = bpy.context
+        wm = context.window_manager
+        wm.progress_begin(0,100)
         
         def edge_is_intersecting(e2,bm):
             for e1 in bm.edges:
@@ -270,7 +272,7 @@ class GenerateMeshFromEdgesAndVerts(bpy.types.Operator):
                     faces.append(face)
                 
         bmesh.ops.delete(bm,geom=faces,context=3)        
-        
+        wm.progress_update(30)
         ### delete double verts
         edges_len_average, shortest_edge = get_average_edge_length(bm,context.active_object)
         verts = []
@@ -371,7 +373,8 @@ class GenerateMeshFromEdgesAndVerts(bpy.types.Operator):
                         if edge_center not in connected_edges:
                             bm.edges.new([vert_a,vert_b])
                             connected_edges.append(edge_center)                    
-      
+                            
+        wm.progress_update(100)
         ### find nearest vertex of different loops and connect
         vert_loops = get_vertex_loops(bm)
         connected_edges = []
@@ -444,7 +447,8 @@ class GenerateMeshFromEdgesAndVerts(bpy.types.Operator):
                     
         ### update mesh            
         bmesh.update_edit_mesh(obj.data)
-
+        wm.progress_end()
+        
     @classmethod
     def poll(cls, context):
         return True

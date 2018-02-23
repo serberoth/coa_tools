@@ -82,7 +82,12 @@ class EditWeights(bpy.types.Operator):
         tool_settings = context.scene.tool_settings
         tool_settings.unified_paint_settings.use_unified_strength = self.use_unified_strength
         set_local_view(False)
+        obj = bpy.data.objects[self.obj]
+        obj.hide = False
+        obj.select = True
+        context.scene.objects.active = obj
         armature = get_armature(get_sprite_object(context.active_object))
+        armature.hide = False
         bpy.ops.object.mode_set(mode="OBJECT")
         for i,bone_layer in enumerate(bone_layers):
             armature.data.layers[i] = bone_layer
@@ -94,7 +99,7 @@ class EditWeights(bpy.types.Operator):
             obj.select = True
         context.scene.objects.active = bpy.data.objects[self.active_object]
         self.unhide_non_deform_bones(context)
-        self.hide_deform_bones(context)
+        #self.hide_deform_bones(context)
     
     def exit_edit_mode(self,context):
         sprite_object = bpy.data.objects[self.sprite_object] 
