@@ -440,9 +440,9 @@ def clear_pose(obj):
         obj.coa_sprite_frame = 0
         obj.coa_alpha = 1.0
         obj.coa_modulate_color = (1.0,1.0,1.0)
-        obj["coa_slot_index"] = max(0,len(obj.coa_slot)-1)
+        #obj["coa_slot_index"] = max(0,len(obj.coa_slot)-1)
         #obj["coa_slot_index"] = obj.coa_slot_reset_index
-        #obj.coa_slot_index = obj.coa_slot_reset_index
+        obj.coa_slot_index = 0
 
 def set_direction(obj):
     if obj.coa_flip_direction:
