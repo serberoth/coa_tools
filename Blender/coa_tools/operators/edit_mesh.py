@@ -1184,7 +1184,7 @@ class DrawContour(bpy.types.Operator):
             ### leave edit mode
             if context.active_object == None or (context.active_object != None and context.active_object.type == "MESH" and context.active_object.mode != "EDIT" and not self.draw_handler_removed) or self.sprite_object.coa_edit_mesh == False or context.active_object.type != "MESH":
                 return self.exit_edit_mode(context,event)
-            
+            self.obj = bpy.context.active_object
             ### create bmesh object
             bm = bmesh.from_edit_mesh(obj.data)
             
@@ -1411,8 +1411,8 @@ class DrawContour(bpy.types.Operator):
             context.scene.objects.unlink(self.bone_shape)
             bpy.ops.object.mode_set(mode="POSE")    
         else:
-            if len(obj.data.vertices) > 4:
-                obj.data.coa_hide_base_sprite = True
+            if len(self.obj.data.vertices) > 4:
+                self.obj.data.coa_hide_base_sprite = True
             bpy.ops.object.mode_set(mode="OBJECT")    
         context.scene.objects.active = obj    
         return{'FINISHED'}
