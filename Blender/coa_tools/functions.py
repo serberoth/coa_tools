@@ -602,13 +602,13 @@ def get_sprite_object(obj):
     context = bpy.context
     if obj != None:
         if "sprite_object" in obj:
-            last_sprite_object = obj
+            last_sprite_object = obj.name
             return obj
         elif obj.parent != None:
             return get_sprite_object(obj.parent)
     
-    if last_sprite_object != None and last_sprite_object.name in bpy.data.objects:
-        return last_sprite_object
+    if last_sprite_object != None and last_sprite_object in bpy.data.objects:
+        return bpy.data.objects[last_sprite_object]
     return None 
         
 def get_armature(obj):

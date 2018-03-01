@@ -163,6 +163,9 @@ def register():
     
     bpy.types.Scene.coa_project_name = bpy.props.StringProperty(default="New Project")
     bpy.types.Scene.coa_export_path = bpy.props.StringProperty(default="",subtype="DIR_PATH")
+    bpy.types.Scene.coa_export_image_mode = bpy.props.EnumProperty(default="ATLAS",items=(("ATLAS","Atlas","Atlas"),("IMAGES","Images","Images")))
+    bpy.types.Scene.coa_atlas_resolution_x = bpy.props.IntProperty(default=1024,min=8,subtype="PIXEL")
+    bpy.types.Scene.coa_atlas_resolution_y = bpy.props.IntProperty(default=1024,min=8,subtype="PIXEL")
     
     bpy.types.Scene.coa_ticker = bpy.props.IntProperty()
     bpy.types.WindowManager.coa_update_uv = bpy.props.BoolProperty(default=False)

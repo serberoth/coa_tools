@@ -178,7 +178,7 @@ class COAModal(bpy.types.Operator):
 #                                obj.coa_sprite_dimension = Vector((local_dimensions[0],0,local_dimensions[1]))
             
             ### will be executed when leaving armature edit mode                
-            if get_sprite_object(obj)!= None and obj.type == "ARMATURE" and self.obj_mode_hist == "EDIT" and obj.mode != "EDIT":
+            if get_sprite_object(obj)!= None and obj != None and obj.type == "ARMATURE" and self.obj_mode_hist == "EDIT" and obj.mode != "EDIT":
                 ### fix bone roll to properly export
                 fix_bone_roll(obj)
             

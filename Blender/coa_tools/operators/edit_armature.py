@@ -368,7 +368,7 @@ class QuickArmature(bpy.types.Operator):
                     return{'RUNNING_MODAL'}
             
             ### finish mode  
-            if (context.active_object.mode != "EDIT" and context.active_object.type == "ARMATURE" and self.set_waits == False) or not self.sprite_object.coa_edit_armature:# or (event.type in {'ESC'} and self.in_view_3d):
+            if context.active_object == None or (context.active_object != None and context.active_object != self.armature) or (context.active_object.mode != "EDIT" and context.active_object.type == "ARMATURE" and self.set_waits == False) or not self.sprite_object.coa_edit_armature:
                 return self.exit_edit_mode(context)
             
         except Exception as e:

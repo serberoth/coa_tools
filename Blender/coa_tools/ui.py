@@ -38,7 +38,6 @@ from . import addon_updater_ops
 bone_layers = []
 armature_mode = None
 armature_select = False
-tmp_active_object = None
 
 class ChangeShadingMode(bpy.types.Operator):
     bl_idname = "coa_tools.change_shading_mode"
@@ -393,9 +392,9 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
         layout = self.layout
         obj = context.active_object
         if obj != None:
-            last_obj = obj
-        elif obj == None and last_obj != None and last_obj.name in bpy.data.objects:
-            obj = last_obj
+            last_obj = obj.name
+        elif obj == None and last_obj != None and last_obj in bpy.data.objects:
+            obj = bpy.data.objects[last_obj] if last_obj in bpy.data.objects else None
         sprite_object = get_sprite_object(obj)
         scene = context.scene
             
@@ -601,8 +600,8 @@ class CutoutAnimationTools(bpy.types.Panel):
         wm = context.window_manager
         layout = self.layout
         obj = context.active_object
-        if obj == None and last_obj != None and last_obj.name in bpy.data.objects:
-            obj = last_obj
+        if obj == None and last_obj != None and last_obj in bpy.data.objects:
+            obj = bpy.data.objects[last_obj]
             
         sprite_object = get_sprite_object(obj)
         scene = context.scene    
@@ -867,7 +866,7 @@ class SelectChild(bpy.types.Operator):
             ob.select = True
             context.scene.objects.active = ob
             if ob != None:
-                last_obj = ob
+                last_obj = ob.name
             
             if not event.ctrl and not event.shift:
                 for obj in context.scene.objects:
@@ -956,8 +955,6 @@ class SelectChild(bpy.types.Operator):
         
             
             bpy.ops.object.mode_set(mode=mode)
-            global tmp_active_object
-            tmp_active_object = context.active_object
             
     def invoke(self,context,event):
         self.sprite_object = get_sprite_object(context.active_object)
