@@ -1027,35 +1027,38 @@ def draw_children(self,context,sprite_object,layout,box,row,col,children,obj,cur
                         
                         if child.type == "ARMATURE":
                             if (not sprite_object.coa_favorite and child.coa_show_bones) or sprite_object.coa_favorite:
-                                bone_childs = child.data.bones
                                 for bone in child.data.bones:
-                                    if (sprite_object.coa_favorite and bone.coa_favorite or not sprite_object.coa_favorite):# or (sprite_object.coa_filter_names != "" and sprite_object.coa_filter_names.upper() in bone.name.upper() or sprite_object.coa_filter_names == ""):
-                                        row = col.row(align=True)
-                                        row.separator()
-                                        row.separator()
-                                        row.separator()
-                                        row.separator()
-                                        row.separator()
-                                        row.separator()
-                                        icon = "LAYER_USED"
-                                        if bone.select:
-                                            icon = "LAYER_ACTIVE"   
-                                        row.label(text="",icon=icon)
-                                        row.label(text="",icon="BONE_DATA")
-                                        bone_name = ""+bone.name
-                                        op = row.operator("object.coa_select_child",text=bone_name,emboss=False)
-                                        op.mode = "bone"
-                                        op.ob_name = child.name
-                                        op.bone_name = bone.name
-                                        if bone.coa_favorite:
-                                            row.prop(bone,"coa_favorite",emboss=False,text="",icon="SOLO_ON")
-                                        else:
-                                            row.prop(bone,"coa_favorite",emboss=False,text="",icon="SOLO_OFF")
-                                        if bone.hide:
-                                            row.prop(bone,"coa_hide",text="",emboss=False,icon="VISIBLE_IPO_OFF")
-                                        else:   
-                                            row.prop(bone,"coa_hide",text="",emboss=False,icon="VISIBLE_IPO_ON")
-                                        if bone.hide_select:
-                                            row.prop(bone,"coa_hide_select",text="",emboss=False,icon="RESTRICT_SELECT_ON")
-                                        else:   
-                                            row.prop(bone,"coa_hide_select",text="",emboss=False,icon="RESTRICT_SELECT_OFF")            
+                                    if (sprite_object.coa_favorite and bone.coa_favorite or not sprite_object.coa_favorite):
+                                        draw_bone_entry(self,bone,row,col,child)
+                                        
+                                            
+def draw_bone_entry(self,bone,row,col,child,indentation_level=0):
+    row = col.row(align=True)
+    row.separator()
+    row.separator()
+    row.separator()
+    row.separator()
+    row.separator()
+    row.separator()
+    icon = "LAYER_USED"
+    if bone.select:
+        icon = "LAYER_ACTIVE"   
+    row.label(text="",icon=icon)
+    row.label(text="",icon="BONE_DATA")
+    bone_name = ""+bone.name
+    op = row.operator("object.coa_select_child",text=bone_name,emboss=False)
+    op.mode = "bone"
+    op.ob_name = child.name
+    op.bone_name = bone.name
+    if bone.coa_favorite:
+        row.prop(bone,"coa_favorite",emboss=False,text="",icon="SOLO_ON")
+    else:
+        row.prop(bone,"coa_favorite",emboss=False,text="",icon="SOLO_OFF")
+    if bone.hide:
+        row.prop(bone,"coa_hide",text="",emboss=False,icon="VISIBLE_IPO_OFF")
+    else:   
+        row.prop(bone,"coa_hide",text="",emboss=False,icon="VISIBLE_IPO_ON")
+    if bone.hide_select:
+        row.prop(bone,"coa_hide_select",text="",emboss=False,icon="RESTRICT_SELECT_ON")
+    else:   
+        row.prop(bone,"coa_hide_select",text="",emboss=False,icon="RESTRICT_SELECT_OFF")          

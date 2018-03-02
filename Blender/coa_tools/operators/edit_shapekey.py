@@ -179,9 +179,10 @@ class EditShapekeyMode(bpy.types.Operator):
         
         for obj in self.objs:
             obj.hide = False
-            context.scene.objects.active = obj
-            bpy.ops.object.mode_set(mode="OBJECT")
-            obj.show_only_shape_key = False
+            if obj.type == "MESH" and obj != None:
+                context.scene.objects.active = obj
+                bpy.ops.object.mode_set(mode="OBJECT")
+                obj.show_only_shape_key = False
         
         context.scene.objects.active = obj
         obj.select = True
