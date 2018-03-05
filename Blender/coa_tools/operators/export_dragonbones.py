@@ -714,11 +714,12 @@ def get_bone_weight_data(self,obj,armature):
 ### get objs and bones that are keyed on given frame    
 def bone_key_on_frame(bone,frame,action,type="LOCATION"): ### LOCATION, ROTATION, SCALE, ANY
     type = "."+type.lower()
-    for fcurve in action.fcurves:
-        if bone.name in fcurve.data_path and (type in fcurve.data_path or type == ".any"):
-            for keyframe in fcurve.keyframe_points:
-                if keyframe.co[0] == frame:
-                    return True
+    if action != None:
+        for fcurve in action.fcurves:
+            if bone.name in fcurve.data_path and (type in fcurve.data_path or type == ".any"):
+                for keyframe in fcurve.keyframe_points:
+                    if keyframe.co[0] == frame:
+                        return True
     return False   
 
 def property_key_on_frame(obj,prop_names,frame,type="PROPERTY"):
@@ -1051,6 +1052,11 @@ class DragonBonesExport(bpy.types.Operator):
         self.get_init_state(context)
         self.scene = context.scene
         
+        ### set animation mode to action
+        coa_nla_mode = str(self.scene.coa_nla_mode)
+        self.scene.coa_nla_mode = "ACTION"
+            
+        
         ### get sprite object, sprites and armature
         self.scale = 1/get_addon_prefs(context).sprite_import_export_scale
         self.sprite_object = get_sprite_object(context.active_object)
@@ -1076,7 +1082,7 @@ class DragonBonesExport(bpy.types.Operator):
         if self.scene.coa_export_image_mode == "ATLAS":
             sprites = [sprite for sprite in self.sprites if sprite.type == "MESH"]
             generate_texture_atlas(self, sprites, self.scene.coa_project_name, self.scene.coa_export_path, img_width=self.scene.coa_atlas_resolution_x, img_height=self.scene.coa_atlas_resolution_y)
-            
+        
         ### create texture directory
         if self.scene.coa_export_image_mode == "IMAGES":
             if os.path.exists(texture_dir_path):
@@ -1123,7 +1129,8 @@ class DragonBonesExport(bpy.types.Operator):
             
         for key in tmp_slots_data:
             bpy.data.objects.remove(tmp_slots_data[key]["object"],do_unlink=True)
-            
+        
+        self.scene.coa_nla_mode = coa_nla_mode    
             
         self.report({"INFO"},"Export successful.")
         return {"FINISHED"}
@@ -1180,18 +1187,20 @@ def generate_texture_atlas(self, sprites, atlas_name, img_path, img_width=512, i
     
     ### get a list of all sprites and containing slots    
     slots = []
-    for sprite in sprites:    
-        if sprite.coa_type == "MESH":
-            slots.append({"sprite":sprite,"slot":sprite.data})
-        elif sprite.coa_type == "SLOT":
-            for i,slot in enumerate(sprite.coa_slot):
-                slots.append({"sprite":sprite,"slot":slot.mesh}) 
+    for sprite in sprites:
+        if sprite.type == "MESH":    
+            if sprite.coa_type == "MESH":
+                slots.append({"sprite":sprite,"slot":sprite.data})
+            elif sprite.coa_type == "SLOT":
+                for i,slot in enumerate(sprite.coa_slot):
+                    slots.append({"sprite":sprite,"slot":slot.mesh}) 
     
     ### loop over all slots and create an object with slot assigned   
     for slot in slots:
         dupli_sprite = slot["sprite"].copy()
         dupli_sprite.data = slot["slot"].copy()
         context.scene.objects.link(dupli_sprite)
+        dupli_sprite.hide = False
         dupli_sprite.select = True
         context.scene.objects.active = dupli_sprite
         
@@ -1258,6 +1267,7 @@ def generate_texture_atlas(self, sprites, atlas_name, img_path, img_width=512, i
     coa_uv_atlas = tex_atlas_obj.data.uv_textures.new(name="COA_UV_ATLAS")
     coa_uv_atlas = tex_atlas_obj.data.uv_textures[coa_uv_atlas.name]
     tex_atlas_obj.data.uv_textures.active = coa_uv_atlas
+    tex_atlas_obj.hide_render = False
     
     ### generate one texture atlas for all sprites
     bpy.ops.object.mode_set(mode="EDIT")
@@ -1291,12 +1301,12 @@ def generate_texture_atlas(self, sprites, atlas_name, img_path, img_width=512, i
     ### assign img atlas to uvs
     for v in tex_atlas_obj.data.uv_textures.active.data:
         v.image = img_atlas
-        
     ### bake uv atlas
     context.scene.render.bake_type = "TEXTURE"
     context.scene.render.use_bake_selected_to_active = False
     context.scene.render.use_bake_clear = False
     context.scene.render.bake_margin = 0
+
     bpy.ops.object.bake_image()
     
     ### get uv coordinates
