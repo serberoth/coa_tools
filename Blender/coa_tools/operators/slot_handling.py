@@ -124,13 +124,20 @@ class CreateSlotObject(bpy.types.Operator):
         
         
         if self.keep_sprite_position:
+            print("test")
             for ob in objs:
+                slots = []
+                if ob.coa_type == "MESH":
+                    slots = [ob.data]
+                elif ob.coa_type == "SLOT":
+                    for slot in ob.coa_slot:
+                        slots.append(slot.mesh)
+                        
                 ob.location[1] = obj.location[1]
-                for i,slot in enumerate(ob.coa_slot):
-                    
+                for i,slot in enumerate(slots):
                     ob_tmp = ob.copy()
                     context.scene.objects.link(ob_tmp)
-                    ob_tmp.data = ob.coa_slot[i].mesh
+                    ob_tmp.data = slot
                     ob_tmp.select = True
                     
                     ### deselect all objects, select the current from iteration
@@ -151,7 +158,7 @@ class CreateSlotObject(bpy.types.Operator):
             context.scene.cursor_location = obj.matrix_world.to_translation()
             bpy.ops.object.origin_set(type='ORIGIN_CURSOR')
             context.scene.cursor_location = cursor_location
-        
+
         obj.select = True
         context.scene.objects.active = obj
         
