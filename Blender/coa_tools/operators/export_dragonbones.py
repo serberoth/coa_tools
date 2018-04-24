@@ -164,6 +164,7 @@ def copy_textures(self,sprites,texture_dir_path):
 
 def remove_base_sprite(obj):
     bpy.context.scene.objects.active = obj
+    obj.hide = False
     bpy.ops.object.mode_set(mode="EDIT")
     bm = bmesh.from_edit_mesh(obj.data)
     bm.verts.ensure_lookup_table()
@@ -324,7 +325,8 @@ def get_skin_slot(self,sprite,armature,scale,slot_data=None):
                     override = context.copy()
                     override["object"] = sprite
                     override["edit_object"] = sprite
-                    bpy.ops.object.vertex_group_clean(override, group_select_mode='BONE_DEFORM', keep_single=True)
+                    #bpy.ops.object.vertex_group_clean(override, group_select_mode='BONE_DEFORM', keep_single=True)
+                    bpy.ops.object.vertex_group_clean(override, group_select_mode='ALL', keep_single=True)
     ###
     
     global tmp_sprites
@@ -726,7 +728,7 @@ def property_key_on_frame(obj,prop_names,frame,type="PROPERTY"):
     if type == "SHAPEKEY":
         obj = obj.shape_keys
     
-    if obj.animation_data != None:
+    if obj != None and obj.animation_data != None:
     ### check if property has a key set
         action = obj.animation_data.action
         if action != None:
@@ -815,8 +817,9 @@ def get_animation_data(self,sprite_object,armature,armature_orig):
                     data_name = item["name"]
                     
                     key_blocks = []
-                    for key in data.shape_keys.key_blocks:
-                        key_blocks.append(key.name)        
+                    if data.shape_keys != None:
+                        for key in data.shape_keys.key_blocks:
+                            key_blocks.append(key.name)        
                     if property_key_on_frame(data,key_blocks,frame,type="SHAPEKEY"):
                         SHAPEKEY_ANIMATION[slot.name] = True
                         break
