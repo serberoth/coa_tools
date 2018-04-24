@@ -142,8 +142,11 @@ class EditShapekeyMode(bpy.types.Operator):
             self.report({"ERROR"},"Armature is hidden or not selected. Cannot go in Edit Mode.")
             return{"CANCELLED"}
         obj = context.active_object
+        
         self.sprite_object = get_sprite_object(obj)
-        self.armature = get_armature(self.sprite_object)
+        
+        armature_name = get_armature(self.sprite_object).name
+        self.armature = context.scene.objects[armature_name] if armature_name in context.scene.objects else None
         self.obj_init = context.active_object
         
         self.mode_init = obj.mode if obj.mode != "SCULPT" else "OBJECT"
@@ -172,12 +175,17 @@ class EditShapekeyMode(bpy.types.Operator):
         return {"RUNNING_MODAL"}
     
     def exit_edit_mode(self,context,event,obj):
+        ### remove draw handler on exiting modal mode    
+        bpy.types.SpaceView3D.draw_handler_remove(self.draw_handler, "WINDOW") 
+        
+        
         for obj in context.selected_objects:
             obj.select = False
         self.sprite_object.coa_edit_shapekey = False
         self.sprite_object.coa_edit_mode = "OBJECT"
         
-        for obj in self.objs:
+        for obj_name in self.objs:
+            obj = bpy.context.scene.objects[obj_name]
             obj.hide = False
             if obj.type == "MESH" and obj != None:
                 context.scene.objects.active = obj
@@ -187,18 +195,18 @@ class EditShapekeyMode(bpy.types.Operator):
         context.scene.objects.active = obj
         obj.select = True
         if self.armature != None:
-            self.armature.data.pose_position = "POSE"
-            
-        ### remove draw handler on exiting modal mode    
-        bpy.types.SpaceView3D.draw_handler_remove(self.draw_handler, "WINDOW")    
+            self.armature.data.pose_position = "POSE"   
         return {"FINISHED"}
     
     def modal(self, context, event):
-        obj = context.active_object
+        obj = None
+        obj_name = context.active_object.name if context.active_object != None else None
+        obj = context.scene.objects[obj_name] if obj_name != None else None
+        
         try:
             if obj != None:
                 if obj not in self.objs and obj.type == "MESH":
-                    self.objs.append(obj)
+                    self.objs.append(obj.name)
                 if obj.type == "MESH" and obj.mode in ["OBJECT","WEIGHT_PAINT"]:
                     bpy.ops.object.mode_set(mode="SCULPT")    
                 
