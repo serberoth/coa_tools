@@ -616,14 +616,17 @@ def get_bone_pos(armature,bone,scale):
 
 def get_bone_angle(armature,bone,relative=True):
     loc, rot, scale = get_bone_matrix(armature,bone,relative).decompose()
-    compat_euler = Euler((0.0,0.0,math.pi),"XYZ")
-    angle = -rot.to_euler().z  # negate angle to fit dragonbones angle
-        
-    return round(math.degrees(angle),2)
+    rot_x = round(math.degrees(rot.to_euler().x),2)
+    rot_y = round(math.degrees(rot.to_euler().y),2)
+    rot_z = -round(math.degrees(rot.to_euler().z),2)
+#    if get_bone_scale(armature,bone)[0] < 0:
+#        rot_z = - rot_z
+    return rot_z
 
 def get_bone_scale(armature,bone):
     mat = get_bone_matrix(armature,bone)
     loc, rot, scale = get_bone_matrix(armature,bone).decompose()
+#    scale = Vector(((scale[0]),abs(scale[1]),abs(scale[2])))
     return scale
             
 def get_bone_data(self,armature,sprite_object,scale):
@@ -785,6 +788,7 @@ def get_animation_data(self,sprite_object,armature,armature_orig):
             ### append all slots to list
             slot_keyframe_duration = {}
             ffd_keyframe_duration = {}
+            ffd_last_frame_values = {}
             for slot in self.sprites:
                 if slot.type == "MESH":
                     anim_data["slot"].append({"name":slot.name,"colorFrame":[],"displayFrame":[]})
@@ -794,10 +798,13 @@ def get_animation_data(self,sprite_object,armature,armature_orig):
                     if slot.coa_type == "MESH":
                         anim_data["ffd"].append({"name":slot.data.name,"slot":slot.name,"frame":[]})
                         ffd_keyframe_duration[slot.data.name] = {"ffd_duration":0}
+                        ffd_last_frame_values[slot.data.name] = None
                     elif slot.coa_type == "SLOT":
                         for slot2 in slot.coa_slot:
                             anim_data["ffd"].append({"name":slot2.mesh.name,"slot":slot.name,"frame":[]})
                             ffd_keyframe_duration[slot2.mesh.name] = {"ffd_duration":0}
+                            ffd_last_frame_values[slot2.mesh.name] = None
+                            
             ### check if slot has animation data. if so, store for later usage                
             SHAPEKEY_ANIMATION = {}
             for i in range(anim.frame_end+1):
@@ -830,7 +837,7 @@ def get_animation_data(self,sprite_object,armature,armature_orig):
             if armature != None:
                 for bone in armature.data.bones:
                     anim_data["bone"].append({"name":bone.name,"translateFrame":[],"rotateFrame":[],"scaleFrame":[]})
-                    bone_keyframe_duration[bone.name] = {"scale_duration":0,"rot_duration":0,"pos_duration":0,}
+                    bone_keyframe_duration[bone.name] = {"scale_duration":0,"rot_duration":0,"pos_duration":0,"last_scale":None, "last_rot":None, "last_pos":None}
             
             for i in range(anim.frame_end+1):
                 frame = anim.frame_end-i
@@ -877,46 +884,89 @@ def get_animation_data(self,sprite_object,armature,armature_orig):
                         
                         bake_anim = self.scene.coa_export_bake_anim and frame%self.scene.coa_export_bake_steps==0
                         
+                        ### bone position
                         if bone_key_on_frame(bone_orig,frame,armature_orig.animation_data.action,type="LOCATION") or frame in [0,anim.frame_end] or const_len > 0 or in_ik_chain or bake_anim:
                             bone_pos = get_bone_pos(armature,bone,scale) - self.armature_restpose[bone.name]["bone_pos"]
                             
                             keyframe_data = {}
                             keyframe_data["duration"] = bone_keyframe_duration[bone.name]["pos_duration"]
-                            keyframe_data["curve"] = [.5,0,.5,1]
-                            if bone_pos[0] != 0:
-                                keyframe_data["x"] = round(bone_pos[0],2)
-                            if bone_pos[1] != 0:    
-                                keyframe_data["y"] = round(bone_pos[1],2)
+                            keyframe_data["curve"] = [.5,0,.5,1] if bake_anim == False else [0,0,1,1]
+                            keyframe_data["x"] = round(bone_pos[0],2)
+                            keyframe_data["y"] = round(bone_pos[1],2)
                             
-                            anim_data["bone"][j]["translateFrame"].insert(0,keyframe_data)
-                            bone_keyframe_duration[bone.name]["pos_duration"] = 0
+                            if (frame in [0,anim.frame_end]) or (bone_keyframe_duration[bone.name]["last_pos"] != [keyframe_data["x"], keyframe_data["y"]]):
+                                
+                                ### if previous keyframe differs and keyframe duration is greater 1 add an extra keyframe inbetween
+                                if bone_keyframe_duration[bone.name]["pos_duration"] > 1 and (bone_keyframe_duration[bone.name]["last_pos"] != [keyframe_data["x"], keyframe_data["y"]]):
+                                    keyframe_data_last = {}
+                                    keyframe_data_last["duration"] = bone_keyframe_duration[bone.name]["pos_duration"]-1
+                                    keyframe_data_last["curve"] = [.5,0,.5,1] if bake_anim == False else [0,0,1,1]
+                                    keyframe_data_last["x"] = bone_keyframe_duration[bone.name]["last_pos"][0]
+                                    keyframe_data_last["y"] = bone_keyframe_duration[bone.name]["last_pos"][1]
+                                    anim_data["bone"][j]["translateFrame"].insert(0,keyframe_data_last)
+                                    
+                                    keyframe_data["duration"] = 1
+                                    
+                                anim_data["bone"][j]["translateFrame"].insert(0,keyframe_data)
+                                bone_keyframe_duration[bone.name]["pos_duration"] = 0
+                                bone_keyframe_duration[bone.name]["last_pos"] = [keyframe_data["x"], keyframe_data["y"]]
                         
+                        ### bone rotation
                         if bone_key_on_frame(bone_orig,frame,armature_orig.animation_data.action,type="ROTATION") or frame in [0,anim.frame_end] or const_len > 0 or in_ik_chain or bake_anim:
                             bone_rot = get_bone_angle(armature,bone) - self.armature_restpose[bone.name]["bone_rot"]
                             
                             keyframe_data = {}
                             keyframe_data["duration"] = bone_keyframe_duration[bone.name]["rot_duration"]
-                            keyframe_data["curve"] = [.5,0,.5,1]
-                            if bone_rot != 0:
-                                keyframe_data["rotate"] = bone_rot
+                            keyframe_data["curve"] = [.5,0,.5,1] if bake_anim == False else [0,0,1,1]
+                            keyframe_data["rotate"] = bone_rot
                             
-                            anim_data["bone"][j]["rotateFrame"].insert(0,keyframe_data)
-                            bone_keyframe_duration[bone.name]["rot_duration"] = 0
+                            if (frame in [0,anim.frame_end]) or (bone_keyframe_duration[bone.name]["last_rot"] != keyframe_data["rotate"]):
+                                
+                                ### if previous keyframe differs and keyframe duration is greater 1 add an extra keyframe inbetween
+                                if bone_keyframe_duration[bone.name]["rot_duration"] > 1 and (bone_keyframe_duration[bone.name]["last_rot"] != keyframe_data["rotate"]):
+                                    keyframe_data_last = {}
+                                    keyframe_data_last["duration"] = bone_keyframe_duration[bone.name]["rot_duration"]-1
+                                    keyframe_data_last["curve"] = [.5,0,.5,1] if bake_anim == False else [0,0,1,1]
+                                    keyframe_data_last["rotate"] = bone_keyframe_duration[bone.name]["last_rot"]
+                                    anim_data["bone"][j]["rotateFrame"].insert(0,keyframe_data_last)
+                                    
+                                    keyframe_data["duration"] = 1
+                                
+                                
+                                anim_data["bone"][j]["rotateFrame"].insert(0,keyframe_data)
+                                bone_keyframe_duration[bone.name]["rot_duration"] = 0
+                                bone_keyframe_duration[bone.name]["last_rot"] = keyframe_data["rotate"]
                         
+                        ### bone scale
                         if bone_key_on_frame(bone_orig,frame,armature_orig.animation_data.action,type="SCALE") or frame in [0,anim.frame_end] or const_len > 0 or in_ik_chain or bake_anim:
                             
                             bone_scale = get_bone_scale(armature,bone)
                             
                             keyframe_data = {}
                             keyframe_data["duration"] = bone_keyframe_duration[bone.name]["scale_duration"]
-                            keyframe_data["curve"] = [.5,0,.5,1]
-                            if bone_scale[0] != 1:
-                                keyframe_data["x"] = round(bone_scale[0],2)
-                            if bone_scale[1] != 1:    
-                                keyframe_data["y"] = round(bone_scale[1],2)
+                            keyframe_data["curve"] = [.5,0,.5,1] if bake_anim == False else [0,0,1,1]
+                            keyframe_data["x"] = round(bone_scale[0],2)
+                            keyframe_data["y"] = round(bone_scale[1],2)
                             
-                            anim_data["bone"][j]["scaleFrame"].insert(0,keyframe_data)
-                            bone_keyframe_duration[bone.name]["scale_duration"] = 0
+                            if (frame in [0,anim.frame_end]) or (bone_keyframe_duration[bone.name]["last_scale"] != [keyframe_data["x"], keyframe_data["y"]]):
+                                
+                                ### if previous keyframe differs and keyframe duration is greater 1 add an extra keyframe inbetween
+                                if bone_keyframe_duration[bone.name]["scale_duration"] > 1 and (bone_keyframe_duration[bone.name]["last_scale"] != [keyframe_data["x"], keyframe_data["y"]]):
+                                    keyframe_data_last = {}
+                                    keyframe_data_last["duration"] = bone_keyframe_duration[bone.name]["scale_duration"]-1
+                                    keyframe_data_last["curve"] = [.5,0,.5,1] if bake_anim == False else [0,0,1,1]
+                                    keyframe_data_last["x"] = bone_keyframe_duration[bone.name]["last_scale"][0]
+                                    keyframe_data_last["y"] = bone_keyframe_duration[bone.name]["last_scale"][1]
+                                    anim_data["bone"][j]["scaleFrame"].insert(0,keyframe_data_last)
+                                    
+                                    keyframe_data["duration"] = 1
+                                
+#                                if bone_keyframe_duration[bone.name]["last_scale"] != None and ((bone_keyframe_duration[bone.name]["last_scale"][1] < 0 and keyframe_data["y"] > 0) or (bone_keyframe_duration[bone.name]["last_scale"][1] > 0 and keyframe_data["y"] < 0)):
+#                                    keyframe_data["curve"] = []
+                                
+                                anim_data["bone"][j]["scaleFrame"].insert(0,keyframe_data)
+                                bone_keyframe_duration[bone.name]["scale_duration"] = 0
+                                bone_keyframe_duration[bone.name]["last_scale"] = [keyframe_data["x"], keyframe_data["y"]]
                 
                 #### HANDLE FFD Transformations (Blender Shapekeys)
                 j = 0
@@ -933,17 +983,23 @@ def get_animation_data(self,sprite_object,armature,armature_orig):
                         for item in slot_data:
                             data = item["data"]
                             data_name = item["name"]
+                            
+                            bake_anim = self.scene.coa_export_bake_anim and frame%self.scene.coa_export_bake_steps==0
+                            
                             if data.shape_keys != None:
                                 ffd_keyframe_duration[data_name]["ffd_duration"] += 1
                                 
                                 key_blocks = []
                                 for key in data.shape_keys.key_blocks:
                                     key_blocks.append(key.name)
-                                if property_key_on_frame(data,key_blocks,frame,type="SHAPEKEY") or (frame in [0,anim.frame_end] and data_name in SHAPEKEY_ANIMATION):
+                                if property_key_on_frame(data,key_blocks,frame,type="SHAPEKEY") or (frame in [0,anim.frame_end] and data_name in SHAPEKEY_ANIMATION) or bake_anim:
                                     ffd_data = {}
                                     ffd_data["duration"] = ffd_keyframe_duration[data_name]["ffd_duration"]
-                                    ffd_data["curve"] = [.5,0,.5,1]
-                                    #ffd_data["tweenEasing"] = 0
+                                    ffd_data["curve"] = [.5,0,.5,1] if bake_anim == False else [0,0,1,1]
+#                                    if bake_anim == False:
+#                                        ffd_data["curve"] = [.5,0,.5,1]
+#                                    else:    
+#                                        ffd_data["tweenEasing"] = 0
                                     
                                     verts = get_mixed_vertex_data(item["object"])
                                     verts_relative = []
@@ -952,8 +1008,20 @@ def get_animation_data(self,sprite_object,armature,armature_orig):
                                     
                                     ffd_data["vertices"] = convert_vertex_data_to_pixel_space(verts_relative)     
                                     
-                                    anim_data["ffd"][j]["frame"].insert(0,ffd_data)
-                                    ffd_keyframe_duration[data_name]["ffd_duration"] = 0
+                                    if (frame in [0, anim.frame_end]) or (ffd_last_frame_values[data_name] != ffd_data["vertices"]):
+                                        ### if previous keyframe differs and keyframe duration is greater 1 add an extra keyframe inbetween
+                                        if ffd_data["duration"] > 1 and (ffd_last_frame_values[data_name] != ffd_data["vertices"]):
+                                            ffd_data_last = {}
+                                            ffd_data_last["duration"] = ffd_keyframe_duration[data_name]["ffd_duration"]-1
+                                            ffd_data_last["curve"] = [.5,0,.5,1]
+                                            ffd_data_last["vertices"] = ffd_last_frame_values[data_name]
+                                            
+                                            anim_data["ffd"][j]["frame"].insert(0,ffd_data_last)
+                                            ffd_data["duration"] = 1
+                                        
+                                        anim_data["ffd"][j]["frame"].insert(0,ffd_data)
+                                        ffd_keyframe_duration[data_name]["ffd_duration"] = 0
+                                        ffd_last_frame_values[data_name] = ffd_data["vertices"]
                             j += 1            
             
 
@@ -1084,7 +1152,7 @@ class DragonBonesExport(bpy.types.Operator):
         ### export texture atlas
         if self.scene.coa_export_image_mode == "ATLAS":
             sprites = [sprite for sprite in self.sprites if sprite.type == "MESH"]
-            generate_texture_atlas(self, sprites, self.scene.coa_project_name, self.scene.coa_export_path, img_width=self.scene.coa_atlas_resolution_x, img_height=self.scene.coa_atlas_resolution_y)
+            generate_texture_atlas(self, sprites, self.scene.coa_project_name, export_path, img_width=self.scene.coa_atlas_resolution_x, img_height=self.scene.coa_atlas_resolution_y)
         
         ### create texture directory
         if self.scene.coa_export_image_mode == "IMAGES":
