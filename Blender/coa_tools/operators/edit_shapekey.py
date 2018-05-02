@@ -138,6 +138,7 @@ class EditShapekeyMode(bpy.types.Operator):
             
     
     def execute(self, context):
+        self.objs = []
         if context.active_object == None:
             self.report({"ERROR"},"Armature is hidden or not selected. Cannot go in Edit Mode.")
             return{"CANCELLED"}
@@ -202,10 +203,9 @@ class EditShapekeyMode(bpy.types.Operator):
         obj = None
         obj_name = context.active_object.name if context.active_object != None else None
         obj = context.scene.objects[obj_name] if obj_name != None else None
-        
         try:
             if obj != None:
-                if obj not in self.objs and obj.type == "MESH":
+                if obj.name not in self.objs and obj.type == "MESH":
                     self.objs.append(obj.name)
                 if obj.type == "MESH" and obj.mode in ["OBJECT","WEIGHT_PAINT"]:
                     bpy.ops.object.mode_set(mode="SCULPT")    
