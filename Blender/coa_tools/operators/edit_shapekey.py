@@ -51,7 +51,7 @@ class LeaveSculptmode(bpy.types.Operator):
 
 class ShapekeyAdd(bpy.types.Operator):
     bl_idname = "coa_tools.shapekey_add"
-    bl_label = "Shapekey Add"
+    bl_label = "Add Shapekey"
     bl_description = ""
     bl_options = {"REGISTER"}
 
@@ -80,6 +80,61 @@ class ShapekeyAdd(bpy.types.Operator):
                 break
             
         return {"FINISHED"}
+    
+class ShapekeyRemove(bpy.types.Operator):
+    bl_idname = "coa_tools.shapekey_remove"
+    bl_label = "Remove Shapekey"
+    bl_description = ""
+    bl_options = {"REGISTER"}
+    
+    @classmethod
+    def poll(cls, context):
+        return True
+        
+    def invoke(self,context,event):
+        wm = context.window_manager
+        return wm.invoke_confirm(self,event)
+        
+    def execute(self, context):
+        obj = context.active_object
+        
+        idx = int(obj.coa_selected_shapekey)
+
+        shape = obj.data.shape_keys.key_blocks[idx]
+        obj.shape_key_remove(shape)
+            
+        return {"FINISHED"}
+    
+class ShapekeyRename(bpy.types.Operator):
+    bl_idname = "coa_tools.shapekey_rename"
+    bl_label = "Rename Shapekey"
+    bl_description = ""
+    bl_options = {"REGISTER"}
+
+    new_name = StringProperty(name="Name")
+
+    @classmethod
+    def poll(cls, context):
+        return True
+    
+    def invoke(self,context,event):
+        obj = context.active_object
+        idx = int(obj.coa_selected_shapekey)
+        shape = obj.data.shape_keys.key_blocks[idx]
+        
+        self.new_name = shape.name
+        
+        wm = context.window_manager
+        return wm.invoke_props_dialog(self)
+    
+    def execute(self, context):
+        obj = context.active_object
+        idx = int(obj.coa_selected_shapekey)
+        shape = obj.data.shape_keys.key_blocks[idx]
+        
+        shape.name = self.new_name
+        return {"FINISHED"}
+            
         
 
 class EditShapekeyMode(bpy.types.Operator):

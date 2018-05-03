@@ -57,6 +57,10 @@ def draw_sculpt_ui(self,context,layout):
         subrow = col.row(align=True)
         subrow.prop(obj,"coa_selected_shapekey",text="")
         op = subrow.operator("coa_tools.shapekey_add",icon="NEW",text="")
+        
+        if obj.data.shape_keys != None and len(obj.data.shape_keys.key_blocks) > 0:
+            op = subrow.operator("coa_tools.shapekey_rename",icon="OUTLINER_DATA_FONT",text="")
+            op = subrow.operator("coa_tools.shapekey_remove",icon="X",text="")
             
         if obj.data.shape_keys != None:
             shapekey_index = int(obj.coa_selected_shapekey)
