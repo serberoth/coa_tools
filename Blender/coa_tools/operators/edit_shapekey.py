@@ -166,6 +166,8 @@ class EditShapekeyMode(bpy.types.Operator):
     create_shapekey = BoolProperty(default=False)
     objs = []
     
+    last_obj_name = ""
+    
     @classmethod
     def poll(cls, context):
         return True
@@ -274,11 +276,16 @@ class EditShapekeyMode(bpy.types.Operator):
         obj = context.scene.objects[obj_name] if obj_name != None else None
         try:
             if obj != None:
+                
+                if obj_name != self.last_obj_name:
+                    if obj.type == "MESH":
+                        self.set_most_driven_shapekey(obj)
+                
+                
                 if obj.name not in self.objs and obj.type == "MESH":
                     self.objs.append(obj.name)
                 if obj.type == "MESH" and obj.mode in ["OBJECT","WEIGHT_PAINT"]:
                     bpy.ops.object.mode_set(mode="SCULPT")
-                    self.set_most_driven_shapekey(obj)
                 
                 if obj.type == "MESH" and obj.data.shape_keys != None:
                     if obj.coa_selected_shapekey != obj.active_shape_key.name:
@@ -290,7 +297,11 @@ class EditShapekeyMode(bpy.types.Operator):
         except Exception as e:
             traceback.print_exc()
             self.report({"ERROR"},"An Error occured, please check console for more Information.")
-            self.exit_edit_mode(context,event,obj) 
+            self.exit_edit_mode(context,event,obj)
+        
+        if obj_name != self.last_obj_name:
+            self.last_obj_name = obj_name
+             
         return {"PASS_THROUGH"}
     
     def draw_callback_px(self):
