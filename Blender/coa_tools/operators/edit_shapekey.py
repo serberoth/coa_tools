@@ -111,7 +111,7 @@ class ShapekeyRename(bpy.types.Operator):
     bl_description = ""
     bl_options = {"REGISTER"}
 
-    new_name = StringProperty(name="Name")
+    new_name = StringProperty()
 
     @classmethod
     def poll(cls, context):
@@ -192,6 +192,18 @@ class EditShapekeyMode(bpy.types.Operator):
             return self.execute(context)
             
     
+    def set_most_driven_shapekey(self,obj):
+        ### select most driven shapekey
+        index = None
+        value = 0.0
+        if obj.data.shape_keys != None:
+            for i,shape in enumerate(obj.data.shape_keys.key_blocks):
+                if shape.value > value:
+                    index = i
+                    value = shape.value
+            if index != None:
+                obj.active_shape_key_index = index
+    
     def execute(self, context):
         self.objs = []
         if context.active_object == None:
@@ -223,6 +235,8 @@ class EditShapekeyMode(bpy.types.Operator):
             if brush.sculpt_tool == "GRAB":
                 context.scene.tool_settings.sculpt.brush = brush
                 break
+        
+        self.set_most_driven_shapekey(obj)
         
         ### run modal operator and draw handler
         args = ()
@@ -263,7 +277,8 @@ class EditShapekeyMode(bpy.types.Operator):
                 if obj.name not in self.objs and obj.type == "MESH":
                     self.objs.append(obj.name)
                 if obj.type == "MESH" and obj.mode in ["OBJECT","WEIGHT_PAINT"]:
-                    bpy.ops.object.mode_set(mode="SCULPT")    
+                    bpy.ops.object.mode_set(mode="SCULPT")
+                    self.set_most_driven_shapekey(obj)
                 
                 if obj.type == "MESH" and obj.data.shape_keys != None:
                     if obj.coa_selected_shapekey != obj.active_shape_key.name:
