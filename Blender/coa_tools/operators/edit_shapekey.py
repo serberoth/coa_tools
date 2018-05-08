@@ -198,7 +198,7 @@ class EditShapekeyMode(bpy.types.Operator):
         ### select most driven shapekey
         index = None
         value = 0.0
-        if obj.data.shape_keys != None:
+        if obj != None and obj.data.shape_keys != None:
             for i,shape in enumerate(obj.data.shape_keys.key_blocks):
                 if shape.value > value:
                     index = i
@@ -280,7 +280,6 @@ class EditShapekeyMode(bpy.types.Operator):
                 if obj_name != self.last_obj_name:
                     if obj.type == "MESH":
                         self.set_most_driven_shapekey(obj)
-                
                 
                 if obj.name not in self.objs and obj.type == "MESH":
                     self.objs.append(obj.name)
