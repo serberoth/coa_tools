@@ -773,10 +773,24 @@ def set_z_value(context,obj,z):
     obj.location[1] = -z  * scale
 
 def set_modulate_color(obj,context,color):
-    if obj.type == "MESH":
-        if not obj.material_slots[0].material.use_object_color:
-            obj.material_slots[0].material.use_object_color = True
-        obj.color[:3] = color    
+    r_engine = context.scene.render.engine
+    if r_engine in ["BLENDER_INTERNAL","BLENDER_GAME"]:
+        if obj.type == "MESH":
+            if not obj.material_slots[0].material.use_object_color:
+                obj.material_slots[0].material.use_object_color = True
+            obj.color[:3] = color
+    elif r_engine in ["CYCLES"]:
+        if obj.type == "MESH":
+            node_color_modulate = None
+            node_tree = obj.active_material.node_tree
+            if node_tree != None:
+                for node in node_tree.nodes:
+                    if "coa_modulate_color" in node:
+                        node_color_modulate = node
+                        break
+            if node_color_modulate != None:
+                node_color_modulate.outputs[0].default_value[:3] = color        
+            
 
 def change_slot_mesh_data(context,obj):
     if len(obj.coa_slot) > 0:
