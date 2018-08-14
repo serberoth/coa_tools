@@ -902,11 +902,26 @@ def filter_bone_name(armature,filter):
     for bone in armature.data.bones:
         if filter.upper() in bone.name.upper():
             return True
-    return False    
+    return False
 
 def draw_children(self,context,sprite_object,layout,box,row,col,children,obj,current_display_item):    
     obj = get_sprite_object(obj)
     ### Sprite Object Children Display
+    if sprite_object.coa_edit_mesh or sprite_object.coa_edit_armature or sprite_object.coa_edit_weights or sprite_object.coa_edit_shapekey:
+        row.enabled = False
+        col.enabled = False
+        if sprite_object.coa_edit_mesh:
+            box.row().prop(sprite_object, "coa_edit_mesh", text="", toggle=True, icon="LOOP_BACK")
+        if sprite_object.coa_edit_armature:
+            box.row().prop(sprite_object, "coa_edit_armature", text="", toggle=True, icon="LOOP_BACK")
+        if sprite_object.coa_edit_weights:
+            box.row().prop(sprite_object, "coa_edit_weights", text="", toggle=True, icon="LOOP_BACK")
+        if sprite_object.coa_edit_shapekey:
+            box.row().prop(sprite_object, "coa_edit_shapekey", text="", toggle=True, icon="LOOP_BACK")
+    else:
+        row.enabled = True    
+        row.enabled = True
+        
     if sprite_object != None and sprite_object.coa_show_children:
         children = sorted(children, key=lambda x: x.location[1] if type(x) == bpy.types.Object else x.name,reverse=False)
         children = sorted(children, key=lambda x: x.type if type(x) == bpy.types.Object else x.name,reverse=False)

@@ -1360,7 +1360,7 @@ class DrawContour(bpy.types.Operator):
         except Exception as e:
             traceback.print_exc()
             self.report({"ERROR"},"An Error occured, please check console for more Information.")
-            self.exit_edit_mode(context,event)   
+            self.exit_edit_mode(context,event)
         return {'PASS_THROUGH'}
     
     def exit_edit_mode(self,context,event):

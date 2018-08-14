@@ -623,9 +623,9 @@ class CutoutAnimationTools(bpy.types.Panel):
         
         no_edit_mode_active = sprite_object != None and sprite_object.coa_edit_shapekey == False and sprite_object.coa_edit_mesh == False and sprite_object.coa_edit_armature == False and sprite_object.coa_edit_weights == False
         if obj == None or (obj != None):
-            if not no_edit_mode_active and sprite_object != None:
-                row = layout.row(align=True)
-                row.label(text="Edit Operator:")
+#            if not no_edit_mode_active and sprite_object != None:
+#                row = layout.row(align=True)
+#                row.label(text="Edit Operator:")
             if sprite_object != None and sprite_object.coa_edit_mesh:
                 row = layout.row(align=True)
                 row.prop(sprite_object,"coa_edit_mesh", text="Finish Edit Mesh", toggle=True, icon="GREASEPENCIL")
@@ -662,8 +662,6 @@ class CutoutAnimationTools(bpy.types.Panel):
                 if sprite_object != None and ((obj != None and obj.mode not in ["EDIT","WEIGHT_PAINT","SCULPT"]) or obj == None):
                     row = layout.row(align=True)
                     row.operator("coa_tools.coa_import_sprites",text="Re / Import Sprites",icon="IMASEL")
-#                    if obj.type == "MESH":
-#                        row.operator("coa_tools.coa_reimport_sprite",text="Reimport Sprite",icon="FILE_REFRESH")
                         
                     if get_addon_prefs(context).json_export:
                         row = layout.row()
@@ -683,8 +681,8 @@ class CutoutAnimationTools(bpy.types.Panel):
                         row.operator("coa_tools.export_dragon_bones",text="Export Dragonbones",icon_value=db_icon.icon_id,emboss=True)
                 
                 if obj != None:    
-                    row = layout.row(align=True)
-                    row.label(text="Edit Operator:")
+#                    row = layout.row(align=True)
+#                    row.label(text="Edit Operator:")
                     
                     if obj.type == "ARMATURE" and obj.mode == "POSE":
                         row = layout.row(align=True)
@@ -959,6 +957,11 @@ class SelectChild(bpy.types.Operator):
     def invoke(self,context,event):
         self.sprite_object = get_sprite_object(context.active_object)
         self.armature = get_armature(self.sprite_object)
+        
+        if self.sprite_object.coa_edit_mesh:
+            obj = bpy.data.objects[self.ob_name]
+            obj.hide = False
+        
         if self.sprite_object != None:
             self.change_weight_mode(context,"OBJECT")
         
