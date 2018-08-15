@@ -210,8 +210,8 @@ class EditShapekeyMode(bpy.types.Operator):
     
     def execute(self, context):
         self.objs = []
-        if context.active_object == None:
-            self.report({"ERROR"},"Armature is hidden or not selected. Cannot go in Edit Mode.")
+        if context.active_object == None or context.active_object.type != "MESH":
+            self.report({"ERROR"},"Sprite is not selected. Cannot go in Edit Mode.")
             return{"CANCELLED"}
         obj = bpy.data.objects[context.active_object.name] if context.active_object.name in bpy.data.objects else None
         

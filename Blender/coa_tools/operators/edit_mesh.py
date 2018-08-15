@@ -1421,7 +1421,7 @@ class DrawContour(bpy.types.Operator):
     _timer = 0
     
     def execute(self, context):
-        if context.active_object == None:
+        if context.active_object == None or context.active_object.type != "MESH":
             self.report({"ERROR"},"Sprite is hidden or not selected. Cannot go in Edit Mode.")
             return{"CANCELLED"}
         

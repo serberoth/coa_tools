@@ -167,8 +167,8 @@ class EditWeights(bpy.types.Operator):
         return mod
 
     def invoke(self, context, event):
-        if context.active_object == None:
-            self.report({"ERROR"},"Armature is hidden or not selected. Cannot go in Edit Mode.")
+        if context.active_object == None or context.active_object.type != "MESH":
+            self.report({"ERROR"},"Sprite is not selected. Cannot go in Edit Mode.")
             return{"CANCELLED"}
         obj = bpy.data.objects[context.active_object.name]
         self.obj_name = context.active_object.name
