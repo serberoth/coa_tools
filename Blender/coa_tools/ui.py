@@ -118,7 +118,7 @@ class AnimationCollections(bpy.types.PropertyGroup):
     name_old = StringProperty()
     action_collection = BoolProperty(default=False)
     frame_start = IntProperty(default=0 ,update=set_frame_start)
-    frame_end = IntProperty(default=250 ,update=set_frame_end)
+    frame_end = IntProperty(default=250 ,min=1,update=set_frame_end)
     event = CollectionProperty(type=Event)
     event_index = IntProperty(default=-1,max=-1)
         
@@ -620,20 +620,20 @@ class CutoutAnimationTools(bpy.types.Panel):
                 row = layout.row()
                 row.label(text="Edit Modes:")
             
+            if sprite_object.coa_edit_mesh == False and sprite_object.coa_edit_shapekey == False and sprite_object.coa_edit_armature == False and sprite_object.coa_edit_weights == False and obj.mode not in ["SCULPT"]:
+                row = layout.row(align=True)
+                row.operator("object.coa_edit_mesh",text="Edit Mesh",icon="GREASEPENCIL")
+                
             if sprite_object.coa_edit_mesh == False and sprite_object.coa_edit_shapekey == False and sprite_object.coa_edit_armature == False and sprite_object.coa_edit_weights == False and not(obj.type == "MESH" and obj.mode in ["EDIT","SCULPT"]):  
                 row = layout.row(align=True)
                 row.operator("scene.coa_quick_armature",text="Edit Armature",icon="ARMATURE_DATA")
             elif sprite_object.coa_edit_armature:
                 row = layout.row(align=True)
                 row.prop(sprite_object,"coa_edit_armature", text="Finish Edit Armature",icon="ARMATURE_DATA")
-            
-            if sprite_object.coa_edit_mesh == False and sprite_object.coa_edit_shapekey == False and sprite_object.coa_edit_armature == False and sprite_object.coa_edit_weights == False and obj.mode not in ["SCULPT"]:
-                row = layout.row(align=True)
-                row.operator("object.coa_edit_mesh",text="Edit Mesh",icon="GREASEPENCIL")
                 
+            if sprite_object.coa_edit_mesh == False and sprite_object.coa_edit_shapekey == False and sprite_object.coa_edit_armature == False and sprite_object.coa_edit_weights == False and obj.mode not in ["SCULPT"]:    
                 row = layout.row(align=True)
-                row.operator("coa_tools.edit_shapekey",text="Edit Shapekey",icon="SHAPEKEY_DATA")
-                    
+                row.operator("coa_tools.edit_shapekey",text="Edit Shapekey",icon="SHAPEKEY_DATA")     
             
             if sprite_object.coa_edit_mesh == False and sprite_object.coa_edit_shapekey == False and sprite_object.coa_edit_armature == False and sprite_object.coa_edit_weights == False and not(obj.type == "MESH" and obj.mode in ["EDIT","SCULPT"]) and (sprite_object) != None:
                 row = layout.row(align=True)
