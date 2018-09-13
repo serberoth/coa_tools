@@ -626,7 +626,12 @@ class CreateStretchIK(bpy.types.Operator):
     def execute(self, context):
         obj = context.active_object
         
+        if len(context.selected_pose_bones) < 3:
+            self.report({'WARNING'},"Select 3 bones at least.")
+            return{"CANCELLED"}
+        
         ####################### create all needed bones #######################
+        
         bpy.ops.object.mode_set(mode="EDIT")
         bones = context.selected_bones[:]
         
