@@ -132,7 +132,7 @@ class LoadJsonData(bpy.types.Operator):
                             bpy.ops.coa_tools.coa_import_sprite(path=filepath,parent=sprite_object.name,scale=scale,pos=pos,tilesize=tilesize,offset=offset)
                     
                     
-                    obj = context.active_object
+                    obj = bpy.data.objects[sprite["name"]]
                     obj.parent = sprite_object
                 
         context.scene.objects.active = sprite_object    
@@ -404,35 +404,39 @@ class ReImportSprite(bpy.types.Operator, ImportHelper):
         
         
         scale = get_addon_prefs(context).sprite_import_export_scale
-        active_obj = bpy.data.objects[context.active_object.name]
-        obj = context.active_object
-        if self.name != "" and self.name in bpy.data.objects:
-            obj = bpy.data.objects[self.name]
-            bpy.context.scene.objects.active = obj
-        mat = obj.active_material
-        tex = mat.texture_slots[0].texture
-        tex.image = img
-        tiles_x = int(obj.coa_tiles_x)
-        tiles_y = int(obj.coa_tiles_y)
-        
-        obj.coa_tiles_x = 1
-        obj.coa_tiles_y = 1
-        
-        img_dimension = img.size
-        
-        obj_dimension = Vector(obj.dimensions)
-        obj_dimension[0] /= obj.scale[0]
-        obj_dimension[1] /= obj.scale[1]
-        obj_dimension[2] /= obj.scale[2]
-        
-        pos = self.pos
-        obj.location = Vector((pos[0],pos[1],-pos[2]))*self.scale + Vector((self.offset[0],self.offset[1],self.offset[2]))*self.scale
-        
-        sprite_dimension = Vector(obj_dimension) * (1/scale)
+        if self.name in bpy.data.objects:
+            active_obj = bpy.data.objects[self.name]
+            obj_hide = active_obj.hide
+            active_obj.hide = False
+            obj = context.active_object
+            if self.name != "" and self.name in bpy.data.objects:
+                obj = bpy.data.objects[self.name]
+                bpy.context.scene.objects.active = obj
+            mat = obj.active_material
+            tex = mat.texture_slots[0].texture
+            tex.image = img
+            tiles_x = int(obj.coa_tiles_x)
+            tiles_y = int(obj.coa_tiles_y)
+            
+            obj.coa_tiles_x = 1
+            obj.coa_tiles_y = 1
+            
+            img_dimension = img.size
+            
+            obj_dimension = Vector(obj.dimensions)
+            obj_dimension[0] /= obj.scale[0]
+            obj_dimension[1] /= obj.scale[1]
+            obj_dimension[2] /= obj.scale[2]
+            
+            pos = self.pos
+            obj.location = Vector((pos[0],pos[1],-pos[2]))*self.scale + Vector((self.offset[0],self.offset[1],self.offset[2]))*self.scale
+            
+            sprite_dimension = Vector(obj_dimension) * (1/scale)
 
-        ratio_x = img_dimension[0] / sprite_dimension[0]
-        ratio_y = img_dimension[1] / sprite_dimension[2]
-        self.move_verts(obj,ratio_x,ratio_y)
+            ratio_x = img_dimension[0] / sprite_dimension[0]
+            ratio_y = img_dimension[1] / sprite_dimension[2]
+            self.move_verts(obj,ratio_x,ratio_y)
 
-        bpy.context.scene.objects.active = active_obj
+            bpy.context.scene.objects.active = active_obj
+            active_obj.hide = obj_hide
         return {'FINISHED'}
