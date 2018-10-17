@@ -54,7 +54,7 @@ from . functions import *
 
 import traceback
 
-class ExampleAddonPreferences(bpy.types.AddonPreferences):
+class COAToolsPreferences(bpy.types.AddonPreferences):
     bl_idname = __package__
     
     alpha_update_frequency = bpy.props.IntProperty(name="Alpha Update Frequency",default=1,min=1,description="Updates alpha on each x frame.")
