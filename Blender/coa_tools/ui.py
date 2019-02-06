@@ -628,7 +628,7 @@ class CutoutAnimationTools(bpy.types.Panel):
             row.prop(wm,"coa_show_help",text="",icon="INFO")    
         
         
-        if sprite_object != None:            
+        if obj!= None and sprite_object != None:            
             ### draw Edit Mode Operator
             if obj.mode in ["OBJECT","POSE"]:
                 row = layout.row()
