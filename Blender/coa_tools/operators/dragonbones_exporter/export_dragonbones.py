@@ -1180,7 +1180,7 @@ class DragonBonesExport(bpy.types.Operator):
         self.json_data["armature"][0]["animation"] = get_animation_data(self,self.sprite_object,self.armature,self.armature_orig)
         
         ### write and store json file
-        self.reduce_size = True
+        self.reduce_size = False
         if self.reduce_size:
             json_file = json.dumps(self.json_data,separators=(',',':'))
         else:    
@@ -1285,14 +1285,14 @@ def generate_texture_atlas(self, sprites, atlas_name, img_path, img_width=512, i
         for modifier in dupli_sprite.modifiers:
             if modifier.name == "coa_base_sprite" and modifier.type == "MASK":
                 if len(dupli_sprite.data.vertices) > 4:
-                    modifier.invert_vertex_group = False
+                    modifier.invert_vertex_group = True
                     override = bpy.context.copy()
                     override["object"] = dupli_sprite
                     override["active_object"] = dupli_sprite
                     bpy.ops.object.modifier_apply(override, apply_as="DATA", modifier=modifier.name)   
         for modifier in dupli_sprite.modifiers:
             dupli_sprite.modifiers.remove(modifier)
-                
+        
         ### delete vertex_groups
         for group in dupli_sprite.vertex_groups:
             dupli_sprite.vertex_groups.remove(group)
@@ -1317,70 +1317,7 @@ def generate_texture_atlas(self, sprites, atlas_name, img_path, img_width=512, i
                         
         bpy.ops.object.mode_set(mode="OBJECT")
     
-    img_atlas, tex_atlas_obj = TextureAtlasGenerator.generate_uv_layout(name="COA_UV_ATLAS", objects=context.selected_objects, width=256, height=256, max_width=1024, max_height=1024, margin=1, texture_bleed=0, square=True, output_scale=1.0)
-
-#    ### join all slots into one
-#    bpy.ops.object.join()
-#    
-#    ### rename new object
-#    tex_atlas_obj = context.active_object
-#    tex_atlas_obj.name = "coa_tex_atlas"
-#    
-#    
-#    ### create atlas image
-#    img_atlas = bpy.data.images.new(atlas_name, width=img_width, height=img_height)
-#    img_atlas.generated_color = [0,0,0,0]
-#    
-#    ### assign img atlas to uvs
-#    for v in tex_atlas_obj.data.uv_textures.active.data:
-#        v.image = img_atlas
-#    
-#    
-#    ### create new uv map atlas
-#    coa_uv_atlas = tex_atlas_obj.data.uv_textures.new(name="COA_UV_ATLAS")
-#    coa_uv_atlas = tex_atlas_obj.data.uv_textures[coa_uv_atlas.name]
-#    tex_atlas_obj.data.uv_textures.active = coa_uv_atlas
-#    tex_atlas_obj.hide_render = False
-#    
-#    ### generate one texture atlas for all sprites
-#    bpy.ops.object.mode_set(mode="EDIT")
-#    bpy.ops.mesh.select_all(action='SELECT')
-#    bpy.ops.mesh.reveal()
-
-#    for area in context.screen.areas:
-#        if area.type == "VIEW_3D":
-#            for region in area.regions:
-#                if region.type == "WINDOW":
-#                    override = context.copy()
-#                    override["area"] = area
-#                    override["edit_object"] = context.edit_object
-#                    override["region"] = region
-#                    bpy.ops.uv.project_from_view(override, camera_bounds=False, correct_aspect=True, scale_to_bounds=False)
-#                    break
-#    
-#    bpy.ops.uv.select_all(action='SELECT')
-#    for area in context.screen.areas:
-#        if area.type == "VIEW_3D":
-#            for region in area.regions:
-#                if region.type == "WINDOW":
-#                    override = context.copy()
-#                    override["area"] = area
-#                    override["edit_object"] = context.edit_object
-#                    override["region"] = region
-#                    bpy.ops.uv.pack_islands(rotate=False, margin=.01)
-#                    break
-#    bpy.ops.object.mode_set(mode="OBJECT")
-#    
-#    ### assign img atlas to uvs
-#    for v in tex_atlas_obj.data.uv_textures.active.data:
-#        v.image = img_atlas
-#    ### bake uv atlas
-#    context.scene.render.bake_type = "TEXTURE"
-#    context.scene.render.use_bake_selected_to_active = False
-#    context.scene.render.use_bake_clear = False
-#    context.scene.render.bake_margin = 0
-
-#    bpy.ops.object.bake_image()
+    img_atlas, tex_atlas_obj, atlas = TextureAtlasGenerator.generate_uv_layout(name="COA_UV_ATLAS", objects=context.selected_objects, width=256, height=256, max_width=1024, max_height=1024, margin=1, texture_bleed=0, square=True, output_scale=1.0)
     
     ### get uv coordinates
     bpy.ops.object.mode_set(mode="EDIT")
@@ -1444,10 +1381,11 @@ def generate_texture_atlas(self, sprites, atlas_name, img_path, img_width=512, i
     texture_atlas["name"] = self.scene.coa_project_name
     texture_atlas["SubTexture"] = sprite_data        
     
-    if self.reduce_size:
-        json_file = json.dumps(texture_atlas,separators=(',',':'))
-    else:    
-        json_file = json.dumps(texture_atlas, indent="\t", sort_keys=False)
+#    self.reduze_size = False
+#    if self.reduce_size:
+#        json_file = json.dumps(texture_atlas,separators=(',',':'))
+#    else:    
+    json_file = json.dumps(texture_atlas, indent="\t", sort_keys=False)
     
     json_path = os.path.join(img_path,atlas_name+"_tex.json")
     text_file = open(json_path, "w")

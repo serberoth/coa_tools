@@ -46,40 +46,53 @@ class TextureAtlasGenerator:
         uvs = obj.data.uv_layers[0].data
         textures = obj.data.uv_textures[0].data
         
-        img_size = textures[0].image.size
-        top_left_x = 1.0
-        top_left_y = 1.0
-        bottom_right_x = 0.0
-        bottom_right_y = 0.0
-        for uv in uvs:
-            if uv.uv[0] < top_left_x:
-                top_left_x = uv.uv[0]
-            if uv.uv[1] < top_left_y:
-                top_left_y = uv.uv[1]
-            if uv.uv[0] > bottom_right_x:
-                bottom_right_x = uv.uv[0]
-            if uv.uv[1] > bottom_right_y:
-                bottom_right_y = uv.uv[1]
-        
-        bounds_rel = [top_left_x, top_left_y, bottom_right_x, bottom_right_y]        
-        bounds_px = [img_size[0] * top_left_x, img_size[1] * top_left_y, img_size[0] * bottom_right_x, img_size[1] * bottom_right_y]
-        for i,value in enumerate(bounds_px):
-            bounds_px[i] = int(bounds_px[i] * output_scale)
-        width = (bounds_px[2] - bounds_px[0])
-        height = (bounds_px[3] - bounds_px[1])
-        
-        texture_data = TextureData(obj, bounds_px, bounds_rel, width, height)
-        
-        return texture_data
+        texture = None
+        for mat_slot in obj.material_slots:
+            if mat_slot.material != None:
+                material = mat_slot.material
+                for tex_slot in material.texture_slots:
+                    if tex_slot.texture != None:
+                        texture = tex_slot.texture
+                        break
+                if texture != None:
+                    break        
+        if texture != None:
+            img_size = texture.image.size
+            top_left_x = 1.0
+            top_left_y = 1.0
+            bottom_right_x = 0.0
+            bottom_right_y = 0.0
+            for uv in uvs:
+                if uv.uv[0] < top_left_x:
+                    top_left_x = uv.uv[0]
+                if uv.uv[1] < top_left_y:
+                    top_left_y = uv.uv[1]
+                if uv.uv[0] > bottom_right_x:
+                    bottom_right_x = uv.uv[0]
+                if uv.uv[1] > bottom_right_y:
+                    bottom_right_y = uv.uv[1]
+            
+            bounds_rel = [top_left_x, top_left_y, bottom_right_x, bottom_right_y]        
+            bounds_px = [img_size[0] * top_left_x, img_size[1] * top_left_y, img_size[0] * bottom_right_x, img_size[1] * bottom_right_y]
+            for i,value in enumerate(bounds_px):
+                bounds_px[i] = int(bounds_px[i] * output_scale)
+            width = (bounds_px[2] - bounds_px[0])
+            height = (bounds_px[3] - bounds_px[1])
+            texture_data = TextureData(obj, bounds_px, bounds_rel, width, height)
+            
+            return texture_data
+        return None
 
     @staticmethod
     def get_sorted_texture_data(objs, output_scale):
-        texture_data = []
+        texture_data_list = []
         for obj in objs:
             if obj.type == "MESH":
-                texture_data.append(TextureAtlasGenerator.get_texture_bounds(obj, output_scale))
-        texture_data = sorted(texture_data, key=lambda x: x.width * x.height + math.pow(x.width,3) + math.pow(x.height,3), reverse=True)
-        return texture_data
+                texture_data = TextureAtlasGenerator.get_texture_bounds(obj, output_scale)
+                if texture_data != None:
+                    texture_data_list.append(texture_data)
+        texture_data_list = sorted(texture_data_list, key=lambda x: x.width * x.height + math.pow(x.width,3) + math.pow(x.height,3), reverse=True)
+        return texture_data_list
 
     @staticmethod
     def texture_intersects_others(texture_data, texture_slot, atlas_data):
@@ -132,7 +145,10 @@ class TextureAtlasGenerator:
                         tex_intersects_other = TextureAtlasGenerator.texture_intersects_others(texture_data, texture_slot, atlas_data)
                         if tex_intersects_other and j == len(atlas_data.texture_slots)-1:
                             if atlas_data.width == atlas_data.height and atlas_data.height < atlas_data.max_height:
-                                atlas_data.height *= 2  
+                                atlas_data.height *= 2
+                                if atlas_data.square:
+                                    if atlas_data.width < atlas_data.height:
+                                        atlas_data.width *= 2  
                             elif atlas_data.height > atlas_data.width and atlas_data.width < atlas_data.max_width:
                                 atlas_data.width *= 2
                             
@@ -156,10 +172,7 @@ class TextureAtlasGenerator:
                             atlas_data.create_new_slot(x2,y2 + margin)
                             break  
         
-        
-        if atlas_data.square:
-            if atlas_data.width < atlas_data.height:
-                atlas_data.width *= 2        
+              
         return atlas_data        
     
     @staticmethod    
@@ -179,18 +192,26 @@ class TextureAtlasGenerator:
                 obj = slot.texture_data.texture_object
                 uv_map = obj.data.uv_textures.new(name="COA_UV_ATLAS")
                 uv_layer = obj.data.uv_layers["COA_UV_ATLAS"]
-                
-                uv_offset_x = (slot.x / atlas_data.width)
-                uv_offset_y = (slot.y / atlas_data.height)
-                uv_offset = Vector((uv_offset_x, uv_offset_y))
-                uv_flip_y = (1.0 - uv_offset_y) - (uv_offset_y + slot.texture_data.height / atlas_data.height)
-                uv_scale_x = slot.texture_data.width / atlas_data.width
-                uv_scale_y = slot.texture_data.height / atlas_data.height
-                uv_scale = Vector((uv_scale_x, uv_scale_y))
+
+                uv_old_width = slot.texture_data.bounds_rel[2] - slot.texture_data.bounds_rel[0]
+                uv_old_height = slot.texture_data.bounds_rel[3] - slot.texture_data.bounds_rel[1]
+                uv_old_pos = Vector((slot.texture_data.bounds_rel[0], slot.texture_data.bounds_rel[1]))
+
+                uv_new_width = slot.texture_data.width / atlas_data.width
+                uv_new_height = slot.texture_data.height / atlas_data.height
+                uv_new_pos = Vector((slot.x / atlas_data.width, slot.y / atlas_data.height))
+
+                scale_x = uv_new_width / uv_old_width
+                scale_y = uv_new_height / uv_old_height
+
+                uv_flip_y = (1.0 - uv_new_height) - 2*(uv_new_pos.y)
+
                 for uv_data in uv_layer.data:
-                    uv_data.uv[0] *= uv_scale[0]
-                    uv_data.uv[1] *= uv_scale[1]
-                    uv_data.uv += uv_offset
+                    uv = uv_data.uv
+                    uv -= uv_old_pos
+                    uv[0] *= scale_x
+                    uv[1] *= scale_y
+                    uv += uv_new_pos
                     uv_data.uv += Vector((0, uv_flip_y))
 
         bpy.ops.object.join()
@@ -199,6 +220,7 @@ class TextureAtlasGenerator:
         atlas_img = bpy.data.images.new(atlas_data.name, atlas_data.width, atlas_data.height, alpha=True)
         for vert in merged_uv_obj.data.vertices:
             vert.select = True
+            vert.hide = False
         for uv_data in merged_uv_obj.data.uv_textures["COA_UV_ATLAS"].data:
             uv_data.image = atlas_img
             
@@ -208,4 +230,8 @@ class TextureAtlasGenerator:
         context.scene.render.use_bake_clear = True
         context.scene.render.bake_margin = texture_bleed
         bpy.ops.object.bake_image()
-        return atlas_img, merged_uv_obj
+        return atlas_img, merged_uv_obj, atlas_data
+
+
+    
+#TextureAtlasGenerator.generate_uv_layout(name="texture_atlas", objects=bpy.context.selected_objects, width=256, height=256, max_width=2048, max_height=2048, margin=1, texture_bleed=0, square=True, output_scale=1.0)    
