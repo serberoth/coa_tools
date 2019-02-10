@@ -224,8 +224,6 @@ def get_edge_data(bm,only_outer_edges=True):
             if (edge.is_boundary and only_outer_edges) or (not edge.is_boundary and not only_outer_edges):
                 for i,vert in enumerate(edge.verts):
                     edges.append(vert.index)
-                    
-              
     return edges
 
 ### get triangle information
@@ -247,15 +245,35 @@ def uv_from_vert_first(uv_layer, v):
 def get_uv_data(bm):
     uvs = []
     uv_layer = bm.loops.layers.uv.active
+
+    ### first get the total dimensions of the uv
+    left = 0
+    top = 0
+    bottom = 1
+    right = 1
+    for vert in bm.verts:
+        uv_first = uv_from_vert_first(uv_layer, vert)
+        for i, val in enumerate(uv_first):
+            if i == 0:
+                left = max(left, val)
+                right = min(right, val)
+            else:
+                top = max(top, val)
+                bottom = min(bottom, val)
+    height = top - bottom
+    width = left - right
+
+    ### get uv coordinates and map them from 0 to 1 to total dimension that have been calculated before
     for vert in bm.verts:
         uv_first = uv_from_vert_first(uv_layer,vert)
         for i,val in enumerate(uv_first):
             if i == 1:
                 value = round(-val + 1,3)
-                uvs.append(value)
+                uvs.append(value / height)
             else:
                 value = round(val,3)
-                uvs.append(value)
+                uvs.append(value / width)
+
     return uvs
 
 def get_modulate_color(sprite):
@@ -266,6 +284,19 @@ def get_modulate_color(sprite):
 
 ##### get mesh data like vertices, edges, triangles and uvs   ##### End
 
+def get_bone_with_most_influence(self, sprite):
+    vertex_groups = sprite.vertex_groups
+    max_weight = 0
+    bone = None
+    for v_group in vertex_groups:
+        if v_group.name in self.armature.data.bones:
+            total_weight = 0
+            for i,vert in enumerate(sprite.data.vertices):
+                total_weight += v_group.weight(i)
+            if total_weight > max_weight:
+                max_weight = float(total_weight)
+                bone = self.armature.data.bones[v_group.name]
+    return bone
 
 ### get slot data
 def get_slot_data(self,sprites):
@@ -274,7 +305,15 @@ def get_slot_data(self,sprites):
         if sprite.type == "MESH":
             slot = OrderedDict()
             slot["name"] = sprite.name
-            slot["parent"] = self.sprite_object.name #sprite.parent.name
+            if len(sprite.data.vertices) != 4:
+                slot["parent"] = self.sprite_object.name #sprite.parent.name
+            else:
+                bone_parent = get_bone_with_most_influence(self, sprite)
+                if bone_parent != None:
+                    slot["parent"] = bone_parent.name
+                else:
+                    slot["parent"] = self.sprite_object.name
+
             slot_data.append(slot)
             
             if len(sprite.coa_slot) > 0:
@@ -348,57 +387,77 @@ def get_skin_slot(self,sprite,armature,scale,slot_data=None):
     display_data = OrderedDict()
     
     ### get general skin information
-    display_data["type"] = "mesh"
     display_data["name"] = sprite_data_name#sprite_name
-    if self.scene.coa_export_image_mode == "IMAGES":
-        display_data["path"] = img_names[sprite_data_name]
-    
-    if self.scene.coa_export_image_mode == "IMAGES":
-        display_data["width"] = int(img.size[0])
-        display_data["height"] = int(img.size[1])
-    elif self.scene.coa_export_image_mode == "ATLAS":
-        display_data["width"] = atlas_data[sprite_data_name]["width"]
-        display_data["height"] = atlas_data[sprite_data_name]["height"]
-        
-    verts = get_mixed_vertex_data(sprite)
-    vert_coords_default[sprite_name] = verts
-    display_data["vertices"] = convert_vertex_data_to_pixel_space(verts)
-    
-    bm = bmesh.from_edit_mesh(sprite.data)
-    display_data["userEdges"] = get_edge_data(bm,only_outer_edges=False)
-    display_data["edges"] = get_edge_data(bm)
-    display_data["triangles"] = get_triangle_data(bm)
-    display_data["uvs"] = get_uv_data(bm)
+    if len(sprite.data.vertices) != 4:
+        display_data["type"] = "mesh"
+        if self.scene.coa_export_image_mode == "IMAGES":
+            display_data["path"] = img_names[sprite_data_name]
+
+        if self.scene.coa_export_image_mode == "IMAGES":
+            display_data["width"] = int(img.size[0])
+            display_data["height"] = int(img.size[1])
+        elif self.scene.coa_export_image_mode == "ATLAS":
+            display_data["width"] = atlas_data[sprite_data_name]["width"]
+            display_data["height"] = atlas_data[sprite_data_name]["height"]
+
+        verts = get_mixed_vertex_data(sprite)
+        vert_coords_default[sprite_name] = verts
+        display_data["vertices"] = convert_vertex_data_to_pixel_space(verts)
+
+        bm = bmesh.from_edit_mesh(sprite.data)
+        display_data["userEdges"] = get_edge_data(bm,only_outer_edges=False)
+        display_data["edges"] = get_edge_data(bm)
+        display_data["triangles"] = get_triangle_data(bm)
+        display_data["uvs"] = get_uv_data(bm)
     
     if armature != None:
         armature.data.pose_position = "REST"
         bpy.context.scene.update()
-        
-        weights, bones = get_bone_weight_data(self,sprite,armature)
-        
-        display_data["weights"] = weights
-        
-        display_data["bonePose"] = []
-        for bone in bones:
-            mat = get_bone_matrix(armature,bone["bone"],relative=False)
-            display_data["bonePose"].append(bone["index"]+1)
-            display_data["bonePose"].append(round(mat[0][0],3))
-            display_data["bonePose"].append(round(mat[0][1],3))
-            display_data["bonePose"].append(round(mat[1][0],3))
-            display_data["bonePose"].append(round(mat[1][1],3))
-            display_data["bonePose"].append(round(mat[1][3] * scale ,3))#pos x
-            display_data["bonePose"].append(round(-mat[0][3] *scale ,3))#pos y
-        armature.data.pose_position = "POSE"    
-        bpy.context.scene.update()
-        
-        w = round(sprite.matrix_local[0][0], 3)
-        x = round(sprite.matrix_local[0][2], 3)
-        y = round(sprite.matrix_local[2][0], 3)
-        z = round(sprite.matrix_local[2][2], 3)
-        sca_x = round(sprite.matrix_local.to_translation()[0]*scale, 3)
-        sca_y = round(-sprite.matrix_local.to_translation()[2]*scale, 3)
-        display_data["slotPose"] = [w,x,y,z, sca_x, sca_y]
-    
+
+        if len(sprite.data.vertices) != 4:
+            ### write mesh bone data
+            weights, bones = get_bone_weight_data(self,sprite,armature)
+
+            display_data["weights"] = weights
+
+            display_data["bonePose"] = []
+            for bone in bones:
+                mat = get_bone_matrix(armature,bone["bone"],relative=False)
+                display_data["bonePose"].append(bone["index"]+1)
+                display_data["bonePose"].append(round(mat[0][0],3))
+                display_data["bonePose"].append(round(mat[0][1],3))
+                display_data["bonePose"].append(round(mat[1][0],3))
+                display_data["bonePose"].append(round(mat[1][1],3))
+                display_data["bonePose"].append(round(mat[1][3] * scale ,3))#pos x
+                display_data["bonePose"].append(round(-mat[0][3] *scale ,3))#pos y
+            armature.data.pose_position = "POSE"
+            bpy.context.scene.update()
+
+            w = round(sprite.matrix_local[0][0], 3)
+            x = round(sprite.matrix_local[0][2], 3)
+            y = round(sprite.matrix_local[2][0], 3)
+            z = round(sprite.matrix_local[2][2], 3)
+            sca_x = round(sprite.matrix_local.to_translation()[0]*scale, 3)
+            sca_y = round(-sprite.matrix_local.to_translation()[2]*scale, 3)
+            display_data["slotPose"] = [w,x,y,z, sca_x, sca_y]
+        else:
+            ### write sprite bone data
+            bone = get_bone_with_most_influence(self, sprite)
+            sprite_center_pos = get_mesh_center(sprite, 1.0)
+
+            bone_pos = get_bone_matrix(self.armature, bone, relative=False).to_translation()
+            p_bone = self.armature.pose.bones[bone.name]
+            sprite_pos_final = (bone.matrix_local.inverted() * sprite_center_pos) * scale
+
+            display_data["transform"] = OrderedDict()
+            display_data["transform"]["x"] = sprite_pos_final.y
+            display_data["transform"]["y"] = -sprite_pos_final.x
+
+            angle = get_bone_angle(armature, bone, relative=False)
+            if angle != 0:
+                display_data["transform"]["skX"] = -round(angle, 2)
+                display_data["transform"]["skY"] = -round(angle, 2)
+
     bpy.ops.object.mode_set(mode="OBJECT")
     
     #bpy.data.objects.remove(sprite,do_unlink=True)
@@ -610,6 +669,15 @@ def get_bone_matrix(armature,bone,relative=True):
     scale_mat[2][2] = scale[2]
     mat_bone_space = loc_mat * rot_mat * scale_mat
     return mat_bone_space
+
+def get_mesh_center(sprite, scale):
+    average_vert = Vector((0,0,0))
+    for i,vert in enumerate(sprite.data.vertices):
+        average_vert += vert.co
+    average_vert /= len(sprite.data.vertices)
+    pos = (sprite.matrix_world * average_vert) * scale
+    pos_2d = Vector((pos[0], pos[2]))
+    return pos
 
 def get_bone_pos(armature,bone,scale):
     loc, rot, sca = get_bone_matrix(armature,bone).decompose()
@@ -1317,8 +1385,10 @@ def generate_texture_atlas(self, sprites, atlas_name, img_path, img_width=512, i
                         
         bpy.ops.object.mode_set(mode="OBJECT")
     
-    img_atlas, tex_atlas_obj, atlas = TextureAtlasGenerator.generate_uv_layout(name="COA_UV_ATLAS", objects=context.selected_objects, width=256, height=256, max_width=1024, max_height=1024, margin=1, texture_bleed=0, square=True, output_scale=1.0)
-    
+    img_atlas, tex_atlas_obj, atlas = TextureAtlasGenerator.generate_uv_layout(name="COA_UV_ATLAS", objects=context.selected_objects, width=1024, height=1024, max_width=2048, max_height=2048, margin=1, texture_bleed=0, square=True, output_scale=1.0)
+    img_width = atlas.width
+    img_height = atlas.height
+
     ### get uv coordinates
     bpy.ops.object.mode_set(mode="EDIT")
     
