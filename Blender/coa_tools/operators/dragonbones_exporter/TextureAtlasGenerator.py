@@ -18,7 +18,7 @@ class TextureSlot:
         self.texture_data = texture_data
         
 class TextureAtlas:
-    def __init__(self, name, width, height, max_width, max_height, margin=1, square=True):
+    def __init__(self, name, width, height, max_width, max_height, margin=1, square=True, output_scale=1.0):
         self.name = name
         self.width = width
         self.height = height
@@ -28,12 +28,13 @@ class TextureAtlas:
         self.square = square
         self.texture_slots = []
         self.create_new_slot(self.margin, self.margin)
+        self.output_scale = output_scale
         
     def create_new_slot(self, x, y):
         texture_slot = TextureSlot(x, y, None)
         self.texture_slots.append(texture_slot)
-        # self.texture_slots = sorted(self.texture_slots, key=lambda slot: slot.x, reverse=True)
-        # self.texture_slots = sorted(self.texture_slots, key=lambda slot: slot.y, reverse=False)
+        self.texture_slots = sorted(self.texture_slots, key=lambda slot: slot.x, reverse=True)
+        self.texture_slots = sorted(self.texture_slots, key=lambda slot: slot.y, reverse=False)
         return texture_slot
     
     def cleanup_slots(self):
@@ -70,22 +71,7 @@ class TextureAtlasGenerator:
 
             bounds_rel = [bottom_left_x, bottom_left_y, top_right_x, top_right_y]
             bounds_px = [img_size[0] * bottom_left_x, img_size[1] * bottom_left_y, img_size[0] * top_right_x, img_size[1] * top_right_y]
-            # top_left_x = 1.0
-            # top_left_y = 1.0
-            # bottom_right_x = 0.0
-            # bottom_right_y = 0.0
-            # for uv in uvs:
-            #     if uv.uv[0] < top_left_x:
-            #         top_left_x = uv.uv[0]
-            #     if uv.uv[1] < top_left_y:
-            #         top_left_y = uv.uv[1]
-            #     if uv.uv[0] > bottom_right_x:
-            #         bottom_right_x = uv.uv[0]
-            #     if uv.uv[1] > bottom_right_y:
-            #         bottom_right_y = uv.uv[1]
-            
-            # bounds_rel = [top_left_x, top_left_y, bottom_right_x, bottom_right_y]
-            # bounds_px = [img_size[0] * top_left_x, img_size[1] * top_left_y, img_size[0] * bottom_right_x, img_size[1] * bottom_right_y]
+
             for i,value in enumerate(bounds_px):
                 bounds_px[i] = int(bounds_px[i] * output_scale)
             width = (bounds_px[2] - bounds_px[0])
@@ -143,14 +129,13 @@ class TextureAtlasGenerator:
                     for line_b in lines_b:
                         i = intersect_line_line_2d(line_a[0], line_a[1], line_b[0], line_b[1])
                         if i != None:
-                            print(texture_data.texture_object.name, " -- ", "(", texture_slot.x, ",", texture_slot.y,")", "w: ", texture_data.width, "h: ", texture_data.height,"-->" ,slot.texture_data.texture_object.name, " -- ", "(", slot.x, ",", slot.y,")", "w: ", slot.texture_data.width, "h: ", slot.texture_data.height)
                             return True
 
         return False
 
     @staticmethod
     def create_texture_atlas_data(texture_data_list, atlas_name, width, height, max_width, max_height, margin=0, square=True, output_scale=1.0):
-        atlas_data = TextureAtlas(atlas_name, width, height, max_width, max_height, margin, square)
+        atlas_data = TextureAtlas(atlas_name, width, height, max_width, max_height, margin, square, output_scale)
         objects = []
         for texture_data in texture_data_list:
             objects.append(texture_data.texture_object)
@@ -177,8 +162,8 @@ class TextureAtlasGenerator:
                                 atlas_data.width *= 2
 
                             if atlas_data.width >= atlas_data.max_width and atlas_data.height >= atlas_data.max_height:
-                                output_scale *= 0.95
-                                texture_data_list = TextureAtlasGenerator.get_sorted_texture_data(objects, output_scale)
+                                atlas_data.output_scale *= 0.95
+                                texture_data_list = TextureAtlasGenerator.get_sorted_texture_data(objects, atlas_data.output_scale)
                                 print("Max Atlas size of ", atlas_data.width,"x",atlas_data.height," reached. Decreasing texture size and restarting generation.")
                             else:
                                 print("Current Atlas size of ", atlas_data.width,"x",atlas_data.height," is to small. Increasing Atlas size and restarting generation.")
@@ -187,7 +172,6 @@ class TextureAtlasGenerator:
                         if restart_generation:
                             break
                         if not tex_intersects_other:
-                            print(texture_data.texture_object.name, " -- ", "(", texture_slot.x, ",", texture_slot.y,")", "width: ", texture_data.width, "height: ", texture_data.height)
                             texture_slot.texture_data = texture_data
                             x1 = texture_slot.x + texture_data.width
                             y1 = texture_slot.y
