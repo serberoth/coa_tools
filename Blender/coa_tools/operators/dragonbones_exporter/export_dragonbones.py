@@ -1327,17 +1327,16 @@ class DragonbonesExportPanel(bpy.types.Panel):
         col.label(text="Atlas Settings:")
         row = col.row()
         row.prop(self.scene, "coa_atlas_mode", expand=True)
-        col.prop(self.scene, "coa_sprite_scale", slider=True)
         if self.scene.coa_atlas_mode == "LIMIT_SIZE":
             subcol = col.column(align=True)
-            subcol.label(text="Texture Atlas Size:")
             subcol.prop(self.scene, "coa_atlas_resolution_x", text="X")
             subcol.prop(self.scene, "coa_atlas_resolution_y", text="Y")
+        col.prop(self.scene, "coa_sprite_scale", slider=True)
         col.prop(self.scene, "coa_atlas_island_margin")
-        col.label(text="Animation Settings:")
-        col.prop(self.scene, "coa_export_bake_anim")
+        subrow = col.row(align=True)
+        subrow.prop(self.scene, "coa_export_bake_anim")
         if self.scene.coa_export_bake_anim:
-            col.prop(self.scene, "coa_export_bake_steps")
+            subrow.prop(self.scene, "coa_export_bake_steps")
         col.prop(self.scene, "coa_minify_json")
         op = col.operator("coa_tools.export_dragon_bones")
 
