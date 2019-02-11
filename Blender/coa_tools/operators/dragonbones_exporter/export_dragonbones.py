@@ -291,7 +291,10 @@ def get_bone_with_most_influence(self, sprite):
         if v_group.name in self.armature.data.bones:
             total_weight = 0
             for i,vert in enumerate(sprite.data.vertices):
-                total_weight += v_group.weight(i)
+                try:
+                    total_weight += v_group.weight(vert.index)
+                except:
+                    pass
             if total_weight > max_weight:
                 max_weight = float(total_weight)
                 bone = self.armature.data.bones[v_group.name]
@@ -443,16 +446,21 @@ def get_skin_slot(self,sprite,armature,scale,slot_data=None):
             ### write sprite bone data
             bone = get_bone_with_most_influence(self, sprite)
             sprite_center_pos = get_mesh_center(sprite, 1.0)
-
-            bone_pos = get_bone_matrix(self.armature, bone, relative=False).to_translation()
-            p_bone = self.armature.pose.bones[bone.name]
-            sprite_pos_final = (bone.matrix_local.inverted() * sprite_center_pos) * scale
+            if bone != None:
+                bone_pos = get_bone_matrix(self.armature, bone, relative=False).to_translation()
+                p_bone = self.armature.pose.bones[bone.name]
+                sprite_pos_final = (bone.matrix_local.inverted() * sprite_center_pos) * scale
+                angle = get_bone_angle(armature, bone, relative=False)
+            else:
+                sprite_pos_final = sprite_center_pos * scale
+                sprite_pos_final = sprite_pos_final.zxy
+                angle = 0
 
             display_data["transform"] = OrderedDict()
             display_data["transform"]["x"] = round(sprite_pos_final.y,3)
             display_data["transform"]["y"] = round(-sprite_pos_final.x,3)
 
-            angle = get_bone_angle(armature, bone, relative=False)
+
             if angle != 0:
                 display_data["transform"]["skX"] = -round(angle, 2)
                 display_data["transform"]["skY"] = -round(angle, 2)
