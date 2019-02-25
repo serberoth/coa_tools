@@ -262,17 +262,18 @@ def get_uv_data(bm):
                 bottom = min(bottom, val)
     height = top - bottom
     width = left - right
-
     ### get uv coordinates and map them from 0 to 1 to total dimension that have been calculated before
     for vert in bm.verts:
         uv_first = uv_from_vert_first(uv_layer,vert)
         for i,val in enumerate(uv_first):
             if i == 1:
-                value = round(-val + height,3)
-                uvs.append(value / height)
+                value = -val + height
+                final_value = round((value + bottom) / height, 3)
+                uvs.append(final_value)
             else:
-                value = round(val,3)
-                uvs.append(value / width)
+                value = val
+                final_value = round((value - right)/width, 3)
+                uvs.append(final_value)
     return uvs
 
 def get_modulate_color(sprite):
