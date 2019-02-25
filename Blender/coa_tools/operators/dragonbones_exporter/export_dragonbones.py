@@ -90,6 +90,7 @@ display = [
 
 bone_default_pos = {}
 bone_default_rot = {}
+bone_uses_constraints = {}
 vert_coords_default = {}
 tex_pathes = {}
 img_names = {} ### exported image names
@@ -527,8 +528,9 @@ def create_cleaned_armature_copy(self,armature,sprites):
         for bone in armature_copy.data.bones:
             transformations = {}
             transformations["bone_pos"] = get_bone_pos(armature_copy,bone,scale)
-            transformations["bone_rot"] = get_bone_angle(armature_copy,bone)
-            transformations["bone_scale"] = get_bone_scale(armature_copy,bone)
+            transformations["bone_rot"] = get_bone_angle(armature_copy,bone) if not bone_uses_constraints[bone.name] else get_bone_angle(armature_copy,bone,relative=False)
+            transformations["bone_scale"] = get_bone_scale(armature_copy,bone) if not bone_uses_constraints[bone.name] else get_bone_scale(armature_copy,bone,relative=False)
+
 
             self.armature_restpose[bone.name] = transformations
         armature_copy.data.pose_position = "POSE"
@@ -569,8 +571,13 @@ def bone_is_deform_bone(self,bone,sprites):
             sprite.data = init_mesh
     return False
 
+def check_if_bone_uses_constraints(pbone):
+    return pbone.is_in_ik_chain or len(pbone.constraints) > 0
+
 ### is used for export armature. All non deform bones will be deleted and deform bone animations baked in later process
 def delete_non_deform_bones(self,armature,sprites):
+    global bone_uses_constraints
+    bone_uses_constraints = {}
     context = bpy.context
     context.scene.objects.active = armature
 
@@ -579,7 +586,7 @@ def delete_non_deform_bones(self,armature,sprites):
     for bone in armature.data.bones:
         pbone = armature.pose.bones[bone.name]
         ebone = armature.data.edit_bones[bone.name]
-
+        bone_uses_constraints[pbone.name] = check_if_bone_uses_constraints(pbone)
         # if pbone.is_in_ik_chain or len(pbone.constraints) > 0:
         #     ebone.parent = None
 
@@ -660,10 +667,13 @@ def get_bone_matrix(armature,bone,relative=True):
     else:
         if relative:
             #if bone.use_inherit_rotation and bone.use_inherit_scale:
-            mat_bone_space = pose_bone.parent.matrix.inverted() * pose_bone.matrix
+            # mat_bone_space = pose_bone.parent.matrix.inverted() * pose_bone.matrix
+            mat_bone_space = pose_bone.matrix
+            for parent in pose_bone.parent_recursive:
+                pose_bone_matrix = parent.matrix.inverted() * mat_bone_space
+                mat_bone_space = pose_bone.parent.matrix.inverted() * pose_bone.matrix
         else:
             mat_bone_space = m * pose_bone.matrix
-
     #### remap matrix
     loc, rot, scale = mat_bone_space.decompose()
 
@@ -690,8 +700,8 @@ def get_mesh_center(sprite, scale):
     pos_2d = Vector((pos[0], pos[2]))
     return pos
 
-def get_bone_pos(armature,bone,scale):
-    loc, rot, sca = get_bone_matrix(armature,bone).decompose()
+def get_bone_pos(armature,bone,scale,relative=True):
+    loc, rot, sca = get_bone_matrix(armature, bone, relative).decompose()
 
     pos_2d = Vector((loc[1],-loc[0])) * scale # flip x and y and negate x to fit dragonbones coordinate system
     return pos_2d
@@ -705,17 +715,18 @@ def get_bone_angle(armature,bone,relative=True):
 #        rot_z = - rot_z
     return rot_z
 
-def get_bone_scale(armature,bone):
+def get_bone_scale(armature,bone,relative=True):
     mat = get_bone_matrix(armature,bone)
-    loc, rot, scale = get_bone_matrix(armature,bone).decompose()
+    loc, rot, scale = get_bone_matrix(armature, bone, relative).decompose()
     return scale
 
 def get_bone_data(self,armature,sprite_object,scale):
 
     bone_data = []
-    bone_data.append(OrderedDict({"name":self.sprite_object.name})) ### append root
+    bone_data.append(OrderedDict({"name": self.sprite_object.name})) ### append root
 
     for bone in armature.data.bones:
+        pbone = armature.pose.bones[bone.name]
         data = {}
         data["name"] = bone.name
         data["transform"] = {}
@@ -728,22 +739,25 @@ def get_bone_data(self,armature,sprite_object,scale):
             data["transform"]["y"] = round(pos[1], 2)
 
         ### get bone angle    
-        angle = get_bone_angle(armature,bone)
+        angle = get_bone_angle(armature,bone) if not bone_uses_constraints[pbone.name] else get_bone_angle(armature,bone,relative=False)
         bone_default_rot[bone.name] = angle
         if angle != 0:
             data["transform"]["skX"] = round(angle, 2)
             data["transform"]["skY"] = round(angle, 2)
 
         ### get bone scale
-        sca = get_bone_scale(armature,bone)
+        sca = get_bone_scale(armature,bone) if not bone_uses_constraints[pbone.name] else get_bone_scale(armature,bone,relative=False)
         if sca != Vector((1.0,1.0,1.0)):
             data["transform"]["scX"] = round(sca[0], 2)
             data["transform"]["scY"] = round(sca[1], 2)
 
-        if int(bone.use_inherit_rotation) != 1:
-            data["inheritRotation"] = int(bone.use_inherit_rotation)
-        if int(bone.use_inherit_scale) != 1:
-            data["inheritScale"] = int(bone.use_inherit_scale)
+        print(pbone.name, " uses constraints ",bone_uses_constraints[pbone.name])
+        if int(bone.use_inherit_rotation) != 1 or bone_uses_constraints[pbone.name]:
+            data["inheritRotation"] = int(bone.use_inherit_rotation) if not bone_uses_constraints[pbone.name] else 0
+        if int(bone.use_inherit_scale) != 1 or bone_uses_constraints[pbone.name]:
+            data["inheritScale"] = int(bone.use_inherit_scale) if not bone_uses_constraints[pbone.name] else 0
+
+
         if bone.parent != None:
             data["parent"] = bone.parent.name
         else:
@@ -780,7 +794,7 @@ def get_bone_weight_data(self,obj,armature):
             b_index = get_bone_index(self,armature,group["group_name"])
             bone_index = b_index+1
             data.append(bone_index)
-            bone_weight = round(group["group"].weight,6)
+            bone_weight = round(group["group"].weight,3)
             data.append(bone_weight)
 
             if group["group_name"] not in bone_names:
@@ -996,7 +1010,11 @@ def get_animation_data(self,sprite_object,armature,armature_orig):
                         if bone_key_on_frame(bone_orig,frame,armature_orig.animation_data.action,type="ROTATION") or frame in [0,anim.frame_end] or const_len > 0 or in_ik_chain or bake_anim:
 
                             # bone_rot = math.fmod(get_bone_angle(armature,bone) - self.armature_restpose[bone.name]["bone_rot"], 360)
-                            bone_rot = get_bone_angle(armature,bone) - self.armature_restpose[bone.name]["bone_rot"]
+                            if not bone_uses_constraints[bone.name]:
+                                bone_rot = get_bone_angle(armature,bone, relative=True) - self.armature_restpose[bone.name]["bone_rot"]
+                            else:
+                                bone_rot = get_bone_angle(armature, bone, relative=False) - self.armature_restpose[bone.name]["bone_rot"]
+
                             if bone_rot < -180:
                                 bone_rot = bone_rot + 360
                             elif bone_rot > 180:
@@ -1026,7 +1044,7 @@ def get_animation_data(self,sprite_object,armature,armature_orig):
                         ### bone scale
                         if bone_key_on_frame(bone_orig,frame,armature_orig.animation_data.action,type="SCALE") or frame in [0,anim.frame_end] or const_len > 0 or in_ik_chain or bake_anim:
 
-                            bone_scale = get_bone_scale(armature,bone)
+                            bone_scale = get_bone_scale(armature,bone,relative=True) if not bone_uses_constraints[bone.name] else get_bone_scale(armature,bone,relative=False)
 
                             keyframe_data = {}
                             keyframe_data["duration"] = bone_keyframe_duration[bone.name]["scale_duration"]
@@ -1076,7 +1094,7 @@ def get_animation_data(self,sprite_object,armature,armature_orig):
                                 key_blocks = []
                                 for key in data.shape_keys.key_blocks:
                                     key_blocks.append(key.name)
-                                if property_key_on_frame(data,key_blocks,frame,type="SHAPEKEY") or (frame in [0,anim.frame_end] and data_name in SHAPEKEY_ANIMATION) or bake_anim:
+                                if property_key_on_frame(data,key_blocks,frame,type="SHAPEKEY") or (frame in [0,anim.frame_end] and data_name in SHAPEKEY_ANIMATION):# or bake_anim:
                                     ffd_data = {}
                                     ffd_data["duration"] = ffd_keyframe_duration[data_name]["ffd_duration"]
                                     ffd_data["curve"] = [.5,0,.5,1] if bake_anim == False else [0,0,1,1]
