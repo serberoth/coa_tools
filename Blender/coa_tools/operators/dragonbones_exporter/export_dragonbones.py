@@ -751,7 +751,6 @@ def get_bone_data(self,armature,sprite_object,scale):
             data["transform"]["scX"] = round(sca[0], 2)
             data["transform"]["scY"] = round(sca[1], 2)
 
-        print(pbone.name, " uses constraints ",bone_uses_constraints[pbone.name])
         if int(bone.use_inherit_rotation) != 1 or bone_uses_constraints[pbone.name]:
             data["inheritRotation"] = int(bone.use_inherit_rotation) if not bone_uses_constraints[pbone.name] else 0
         if int(bone.use_inherit_scale) != 1 or bone_uses_constraints[pbone.name]:
@@ -812,7 +811,8 @@ def get_bone_weight_data(self,obj,armature):
 
 ### Export Animations
 ### get objs and bones that are keyed on given frame    
-def bone_key_on_frame(bone,frame,action,type="LOCATION"): ### LOCATION, ROTATION, SCALE, ANY
+def bone_key_on_frame(bone,frame,animation_data,type="LOCATION"): ### LOCATION, ROTATION, SCALE, ANY
+    action = animation_data.action if animation_data != None else None
     type = "."+type.lower()
     if action != None:
         for fcurve in action.fcurves:
@@ -847,14 +847,14 @@ def property_key_on_frame(obj,prop_names,frame,type="PROPERTY"):
                             if bone_target in armature.data.bones:
                                 bone = armature.data.bones[bone_target]
                                 pbone = armature.pose.bones[bone_target]
-                                key_on_frame = bone_key_on_frame(bone,frame,armature.animation_data.action,type="ANY")
+                                key_on_frame = bone_key_on_frame(bone,frame,armature.animation_data,type="ANY")
                                 if key_on_frame:
                                     return key_on_frame
                                 for const in pbone.constraints:
                                     if const.type == "ACTION":
                                         bone = armature.data.bones[const.subtarget] if const.subtarget in armature.data.bones else None
                                         if bone != None:
-                                            key_on_frame = bone_key_on_frame(bone,frame,armature.animation_data.action,type="ANY")
+                                            key_on_frame = bone_key_on_frame(bone,frame,armature.animation_data,type="ANY")
                                         if key_on_frame:
                                             return key_on_frame
     return False
@@ -980,7 +980,7 @@ def get_animation_data(self,sprite_object,armature,armature_orig):
                         bake_anim = self.scene.coa_export_bake_anim and frame%self.scene.coa_export_bake_steps==0
 
                         ### bone position
-                        if bone_key_on_frame(bone_orig,frame,armature_orig.animation_data.action,type="LOCATION") or frame in [0,anim.frame_end] or const_len > 0 or in_ik_chain or bake_anim:
+                        if bone_key_on_frame(bone_orig,frame,armature_orig.animation_data,type="LOCATION") or frame in [0,anim.frame_end] or const_len > 0 or in_ik_chain or bake_anim:
                             bone_pos = get_bone_pos(armature,bone,scale) - self.armature_restpose[bone.name]["bone_pos"]
 
                             keyframe_data = {}
@@ -1007,7 +1007,7 @@ def get_animation_data(self,sprite_object,armature,armature_orig):
                                 bone_keyframe_duration[bone.name]["last_pos"] = [keyframe_data["x"], keyframe_data["y"]]
 
                         ### bone rotation
-                        if bone_key_on_frame(bone_orig,frame,armature_orig.animation_data.action,type="ROTATION") or frame in [0,anim.frame_end] or const_len > 0 or in_ik_chain or bake_anim:
+                        if bone_key_on_frame(bone_orig,frame,armature_orig.animation_data,type="ROTATION") or frame in [0,anim.frame_end] or const_len > 0 or in_ik_chain or bake_anim:
 
                             # bone_rot = math.fmod(get_bone_angle(armature,bone) - self.armature_restpose[bone.name]["bone_rot"], 360)
                             if not bone_uses_constraints[bone.name]:
@@ -1042,7 +1042,7 @@ def get_animation_data(self,sprite_object,armature,armature_orig):
                                 bone_keyframe_duration[bone.name]["last_rot"] = keyframe_data["rotate"]
 
                         ### bone scale
-                        if bone_key_on_frame(bone_orig,frame,armature_orig.animation_data.action,type="SCALE") or frame in [0,anim.frame_end] or const_len > 0 or in_ik_chain or bake_anim:
+                        if bone_key_on_frame(bone_orig,frame,armature_orig.animation_data,type="SCALE") or frame in [0,anim.frame_end] or const_len > 0 or in_ik_chain or bake_anim:
 
                             bone_scale = get_bone_scale(armature,bone,relative=True) if not bone_uses_constraints[bone.name] else get_bone_scale(armature,bone,relative=False)
 
@@ -1257,14 +1257,12 @@ class DragonBonesExport(bpy.types.Operator):
         ### export texture atlas
         if self.scene.coa_export_image_mode == "ATLAS":
             sprites = [sprite for sprite in self.sprites if sprite.type == "MESH"]
-            generate_texture_atlas(self,
-                                   sprites,
-                                   self.scene.coa_project_name,
-                                   export_path,
-                                   img_width=self.scene.coa_atlas_resolution_x,
-                                   img_height=self.scene.coa_atlas_resolution_y,
-                                   sprite_scale=self.scene.coa_sprite_scale,
-                                   margin=self.scene.coa_atlas_island_margin)
+            if len(sprites) > 0:
+                generate_texture_atlas(self, sprites,self.scene.coa_project_name,export_path,
+                                       img_width=self.scene.coa_atlas_resolution_x,
+                                       img_height=self.scene.coa_atlas_resolution_y,
+                                       sprite_scale=self.scene.coa_sprite_scale,
+                                       margin=self.scene.coa_atlas_island_margin)
 
         ### create texture directory
         if self.scene.coa_export_image_mode == "IMAGES":
@@ -1369,7 +1367,6 @@ class DragonbonesExportPanel(bpy.types.Panel):
 
 
 def generate_texture_atlas(self, sprites, atlas_name, img_path, img_width=512, img_height=1024, sprite_scale=1.0, margin=1):
-    print(img_width, img_height)
     global atlas_data
     atlas_data = {}
 
