@@ -750,6 +750,7 @@ class DrawContour(bpy.types.Operator):
         self.cut_edge = False
         
         self.edit_object = None
+        self.texture_preview_object = None
         
         self.bone = None
         self.bone_shape = None
@@ -1340,7 +1341,7 @@ class DrawContour(bpy.types.Operator):
                     self.contour_length = 0
                 
                 ### deselect verts
-                if event.type in ["ESC"]:
+                if event.type in ["ESC","RET"]:
                     bm = bmesh.from_edit_mesh(context.active_object.data)
                     bm.select_history = []
                     for vert in bm.verts:
@@ -1364,6 +1365,7 @@ class DrawContour(bpy.types.Operator):
         return {'PASS_THROUGH'}
     
     def exit_edit_mode(self,context,event):
+        self.finish_edit_object(context)
         bpy.types.SpaceView3D.draw_handler_remove(self.draw_handler, "WINDOW")
         bpy.types.SpaceView3D.draw_handler_remove(self.draw_handler2, "WINDOW")
         
@@ -1415,18 +1417,70 @@ class DrawContour(bpy.types.Operator):
             if len(self.obj.data.vertices) > 4:
                 self.obj.data.coa_hide_base_sprite = True
             bpy.ops.object.mode_set(mode="OBJECT")    
-        context.scene.objects.active = obj    
+        context.scene.objects.active = obj
         return{'FINISHED'}
     
     _timer = 0
-    
+
+    def prepare_edit_object(self, context):
+        original_object = context.active_object
+
+        keep_vert_index = []
+        v_group = original_object.vertex_groups["coa_base_sprite"]
+        for i,vert in enumerate(original_object.data.vertices):
+            try:
+                if v_group.weight(i) > 0:
+                    keep_vert_index.append(i)
+            except:
+                pass
+
+        texture_preview_object = original_object.copy()
+        texture_preview_object.data = original_object.data.copy()
+        texture_preview_object.name = "TEXTURE PREVIEW"
+        for mod in texture_preview_object.modifiers:
+            if mod.name == "coa_base_sprite":
+                texture_preview_object.modifiers.remove(mod)
+        context.scene.objects.link(texture_preview_object)
+        context.scene.objects.active = texture_preview_object
+        bpy.ops.object.mode_set(mode="EDIT")
+        if "coa_base_sprite" in texture_preview_object.vertex_groups:
+            bm = bmesh.from_edit_mesh(texture_preview_object.data)
+            for vert in bm.verts:
+                vert.hide = False
+                if vert.index not in keep_vert_index:
+                    bm.verts.remove(vert)
+        bpy.ops.object.mode_set(mode="OBJECT")
+
+        context.scene.objects.active = original_object
+        edit_object = context.active_object
+        edit_object.select = True
+        edit_object.draw_type = "WIRE"
+        texture_preview_object.select = True
+        texture_preview_object.location[1] += .1
+
+        return edit_object, texture_preview_object
+
+    def finish_edit_object(self, context):
+        if self.texture_preview_object != None:
+            bpy.data.objects.remove(self.texture_preview_object)
+            context.scene.objects.active = self.edit_object
+            self.edit_object.draw_type = "TEXTURED"
+            if len(self.edit_object.data.vertices) > 4:
+                self.edit_object.coa_hide_base_sprite = True
+            else:
+                self.edit_object.coa_hide_base_sprite = False
+            bpy.ops.coa_tools.reproject_sprite_texture()
+
+
+
     def execute(self, context):
         if context.active_object == None or (context.active_object.type != "MESH" and self.mode != "DRAW_BONE_SHAPE"):
             self.report({"ERROR"},"Sprite is hidden or not selected. Cannot go in Edit Mode.")
             return{"CANCELLED"}
-        
-        obj = context.active_object
-        self.edit_object = obj
+
+        if self.mode == "EDIT_MESH":
+            self.edit_object, self.texture_preview_object = self.prepare_edit_object(context)
+
         #bpy.ops.wm.coa_modal() ### start coa modal mode if not running
         self.sprite_object = get_sprite_object(context.active_object)
         if self.sprite_object != None:
@@ -1441,16 +1495,14 @@ class DrawContour(bpy.types.Operator):
                 
         
         ### get Sprite Boundaries
-        if obj.type == "MESH":
-            obj.active_shape_key_index = 0
-            hide_sprite = obj.data.coa_hide_base_sprite
-            obj.data.coa_hide_base_sprite = False
-            self.mesh_center , self.bounds = get_bounds_and_center(obj)
-            obj.data.coa_hide_base_sprite = hide_sprite
+        if self.texture_preview_object != None and self.texture_preview_object.type == "MESH":
+            self.texture_preview_object.active_shape_key_index = 0
+            self.texture_preview_object.data.coa_hide_base_sprite = False
+            self.mesh_center , self.bounds = get_bounds_and_center(self.texture_preview_object)
         
         if self.mode == "EDIT_MESH":
             #hide_base_sprite(bpy.context.active_object)
-            obj.data.coa_hide_base_sprite = False
+            self.edit_object.data.coa_hide_base_sprite = True
             
         
         if self.mode == "DRAW_BONE_SHAPE":
@@ -1506,14 +1558,7 @@ class DrawContour(bpy.types.Operator):
             self.armature = armature
             bone.custom_shape = None#self.bone_shape
             self.draw_type = self.armature.draw_type
-            self.armature.draw_type = "WIRE"    
-
-
-        
-        self.show_manipulator = bpy.context.space_data.show_manipulator
-        bpy.context.space_data.show_manipulator = False
-        bpy.ops.object.mode_set(mode="EDIT")
-        bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT')
+            self.armature.draw_type = "WIRE"
 
         if self.sprite_object != None:
             self.sprite_object.coa_edit_mode = "MESH"
@@ -1525,7 +1570,12 @@ class DrawContour(bpy.types.Operator):
             set_local_view(True)
         self.prev_coa_view = str(context.screen.coa_view)
         context.screen.coa_view = "2D"
-        
+
+        self.show_manipulator = bpy.context.space_data.show_manipulator
+        bpy.context.space_data.show_manipulator = False
+        bpy.ops.object.mode_set(mode="EDIT")
+        bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT')
+
         args = ()
         self.draw_handler = bpy.types.SpaceView3D.draw_handler_add(self.draw_callback_px, args, "WINDOW", "POST_VIEW")
         self.draw_handler2 = bpy.types.SpaceView3D.draw_handler_add(self.draw_callback_text, args, "WINDOW", "POST_PIXEL")
