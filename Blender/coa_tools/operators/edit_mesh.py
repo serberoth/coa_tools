@@ -464,7 +464,7 @@ class GenerateMeshFromEdgesAndVerts(bpy.types.Operator):
         
 
 class Fill(bpy.types.Operator):
-    bl_idname = "object.coa_fill"
+    bl_idname = "coa_tools.fill_edge_loop"
     bl_label = "Triangle Fill"
     bl_description = ""
     bl_options = {"REGISTER"}
@@ -493,6 +493,12 @@ class Fill(bpy.types.Operator):
             
         
     def triangulate_fill(self,context):
+        selected_objects = []
+        for obj in context.selected_objects:
+            if obj != context.active_object:
+                selected_objects.append(obj)
+                obj.select = False
+
         start_obj = context.active_object
         
         bm = bmesh.from_edit_mesh(start_obj.data)
@@ -617,7 +623,9 @@ class Fill(bpy.types.Operator):
         
         if obj.coa_type == "MESH":    
             self.revert_rest_spritesheet(context,start_obj)
-        
+
+        for obj in selected_objects:
+            obj.select = True
         return fill_ok
     
     def reset_spritesheet(self,context,obj):
@@ -1606,16 +1614,16 @@ class DrawContour(bpy.types.Operator):
             p1 = obj.matrix_world * self.verts_edges_data[0]
             p2 = obj.matrix_world * self.verts_edges_data[1]
             length = (p1-p2).magnitude
-            
+
             font_id = 0
             line = str(round(length,2))
             bgl.glEnable(bgl.GL_BLEND)
             bgl.glColor4f(1,1,1,1)
-            
+
             blf.position(font_id, self.mouse_2d_x-15, self.mouse_2d_y+30, 0)
             blf.size(font_id, 20, 72)
             blf.draw(font_id, line)
-        
+
         if self.mode == "EDIT_MESH":
             draw_edit_mode(self,bpy.context,color=[1.0, 0.39, 0.41, 1.0],text="Edit Mesh Mode",offset=-20)
         elif self.mode == "DRAW_BONE_SHAPE":

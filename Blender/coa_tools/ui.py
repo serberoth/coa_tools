@@ -769,11 +769,11 @@ class CutoutAnimationTools(bpy.types.Panel):
                 operator = row.operator("coa_tools.generate_mesh_from_edges_and_verts",text="Generate Mesh",icon="OUTLINER_OB_SURFACE")
                 
                 row = layout.row(align=True)
-                operator = row.operator("object.coa_fill",text="Normal Fill",icon="OUTLINER_OB_SURFACE")
+                operator = row.operator("coa_tools.fill_edge_loop",text="Normal Fill",icon="OUTLINER_OB_SURFACE")
                 operator.triangulate = False
                 
                 row = layout.row(align=True)
-                operator = row.operator("object.coa_fill",text="Triangle Fill",icon="OUTLINER_OB_SURFACE")
+                operator = row.operator("coa_tools.fill_edge_loop",text="Triangle Fill",icon="OUTLINER_OB_SURFACE")
                 operator.triangulate = True
             
             
