@@ -103,9 +103,16 @@ class AnimationCollections(bpy.types.PropertyGroup):
             for item in sprite_object.coa_anim_collections:
                 name_array.append(item.name_old)
             self.name_change_to = check_name(name_array,self.name)
-            self.name = self.name_change_to 
-        
-        for child in get_children(context,sprite_object,ob_list=[]):
+            self.name = self.name_change_to
+
+        children = get_children(context,sprite_object,ob_list=[])
+        objs = []
+        if sprite_object.type == "ARMATURE":
+            objs.append(sprite_object)
+        for child in children:
+            objs.append(child)
+
+        for child in objs:
             action_name = self.name_old + "_" + child.name
             action_name_new = self.name + "_" + child.name
             if action_name in bpy.data.actions:
@@ -736,7 +743,7 @@ class CutoutAnimationTools(bpy.types.Panel):
                         row = layout.row(align=True)
                         row.operator("coa_tools.leave_sculptmode",text="Finish Edit Shapekey",icon="SHAPEKEY_DATA")  
                     row = layout.row(align=True)
-                    draw_sculpt_ui(self,context,row)
+                    draw_sculpt_ui(self, context, row)
                     
                 if sprite_object.coa_edit_mesh == False and sprite_object.coa_edit_shapekey == False and sprite_object.coa_edit_armature == False and sprite_object.coa_edit_weights == False and not(obj.type == "MESH" and obj.mode in ["EDIT","SCULPT"]) and (sprite_object) != None:
                     pass

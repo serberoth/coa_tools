@@ -246,8 +246,15 @@ class AddAnimationCollection(bpy.types.Operator):
     
     def create_actions(self,context):
         item = self.sprite_object.coa_anim_collections[self.sprite_object.coa_anim_collections_index]
-        
-        for child in get_children(context,self.sprite_object,ob_list=[]):
+
+        children = get_children(context,self.sprite_object,ob_list=[])
+        anim_objects = []
+        if self.sprite_object.type == "ARMATURE":
+            anim_objects.append(self.sprite_object)
+        for child in children:
+            anim_objects.append(child)
+
+        for child in anim_objects:
             if child.type == "ARMATURE":
                 action_name = item.name + "_" + child.name
                 
