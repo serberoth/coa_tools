@@ -28,7 +28,7 @@ from ... functions import *
 import math
 from mathutils import Vector,Matrix, Quaternion, Euler
 import shutil
-from . TextureAtlasGenerator import TextureAtlasGenerator
+from . texture_atlas_generator import TextureAtlasGenerator
 
 json_data = OrderedDict({
             "info":"Generated with COA Tools",
@@ -265,7 +265,7 @@ def get_uv_data(bm):
     width = left - right
     ### get uv coordinates and map them from 0 to 1 to total dimension that have been calculated before
     for vert in bm.verts:
-        uv_first = uv_from_vert_first(uv_layer,vert)
+        uv_first = uv_from_vert_first(uv_layer, vert)
         for i,val in enumerate(uv_first):
             if i == 1:
                 value = -val + height
@@ -344,6 +344,149 @@ def normalize_weights(obj, armature, threshold):
         for group in groups:
             group.weight = 1*(group.weight/weight_total)
 
+### get bone data
+def create_cleaned_armature_copy(self,armature,sprites):
+    context = bpy.context
+    if armature != None:
+        scene = bpy.context.scene
+
+        armature_data = armature.data.copy()
+        armature_copy = armature.copy()
+        armature_copy.data = armature_data
+        armature_copy.name = "COA_EXPORT_ARMATURE"
+
+        scene.objects.link(armature_copy)
+
+        delete_non_deform_bones(self,armature_copy,sprites)
+        create_copy_transform_constraints(self,armature,armature_copy)
+
+        ### store armature rest position. Relevant for later animation calculations
+        scale = 1/get_addon_prefs(context).sprite_import_export_scale
+
+        armature_copy.data.pose_position = "REST"
+        armature.data.pose_position = "REST"
+        bpy.context.scene.frame_set(bpy.context.scene.frame_current)
+        for bone in armature_copy.data.bones:
+            transformations = {}
+            transformations["bone_pos"] = get_bone_pos(armature_copy,bone,scale)
+            transformations["bone_rot"] = get_bone_angle(armature_copy,bone) if not bone_uses_constraints[bone.name] else get_bone_angle(armature_copy,bone,relative=False)
+            transformations["bone_scale"] = get_bone_scale(armature_copy,bone) if not bone_uses_constraints[bone.name] else get_bone_scale(armature_copy,bone,relative=False)
+
+
+            self.armature_restpose[bone.name] = transformations
+        armature_copy.data.pose_position = "POSE"
+        armature.data.pose_position = "POSE"
+        return armature_copy
+    return None
+
+
+### is used for export armature. All non deform bones will be deleted and deform bone animations baked in later process
+def delete_non_deform_bones(self,armature,sprites):
+    global bone_uses_constraints
+    bone_uses_constraints = {}
+    context = bpy.context
+    context.scene.objects.active = armature
+
+    bpy.ops.object.mode_set(mode="EDIT")
+
+    for bone in armature.data.bones:
+        pbone = armature.pose.bones[bone.name]
+        ebone = armature.data.edit_bones[bone.name]
+        bone_uses_constraints[pbone.name] = check_if_bone_uses_constraints(pbone)
+        # if pbone.is_in_ik_chain or len(pbone.constraints) > 0:
+        #     ebone.parent = None
+
+        is_deform_bone = bone_is_deform_bone(self,bone,sprites)
+        is_driver = bone_is_driver(bone,sprites)
+        is_const_target = bone_is_constraint_target(bone,armature)
+        has_children = len(bone.children) > 0
+
+        if (not is_deform_bone and is_driver) or (not is_deform_bone and is_const_target) or (not is_deform_bone and not has_children) or (not is_deform_bone and not bone.use_deform):
+            armature.data.edit_bones.remove(armature.data.edit_bones[bone.name])
+
+    bpy.ops.object.mode_set(mode="OBJECT")
+
+def create_copy_transform_constraints(self, armature_from, armature_to):
+    for bone in armature_to.pose.bones:
+        for const in bone.constraints:
+            bone.constraints.remove(const)
+        if bone.name in armature_from.pose.bones:
+            const = bone.constraints.new("COPY_TRANSFORMS")
+            const.target = armature_from
+            const.subtarget = bone.name
+            const.target_space = "POSE"
+            const.owner_space = "POSE"
+
+def bone_is_deform_bone(self,bone,sprites):
+    for sprite in sprites:
+        if sprite.type == "MESH":
+            init_mesh = sprite.data
+            meshes = []
+            ### get a list of all meshes in sprite -> slot objects containt multiple meshes
+            if sprite.coa_type == "MESH":
+                meshes.append(sprite.data)
+            elif sprite.coa_type == "SLOT":
+                for slot in sprite.coa_slot:
+                    meshes.append(slot.mesh)
+
+            ### check all meshes if bone is deforming that mesh
+            for mesh in meshes:
+                sprite.data = mesh
+                if sprite.parent_bone == bone.name:
+                    sprite.data = init_mesh
+                    return True
+                if not bone.name in sprite.vertex_groups:
+                    break
+                else:
+                    v_group = sprite.vertex_groups[bone.name]
+                    for vert in sprite.data.vertices:
+                        try:
+                            weight = v_group.weight(vert.index)
+                            if weight > 0:
+                                sprite.data = init_mesh
+                                return True
+                        except:
+                            pass
+            sprite.data = init_mesh
+    return False
+
+def check_if_bone_uses_constraints(pbone):
+    return pbone.is_in_ik_chain or len(pbone.constraints) > 0
+
+def bone_is_driver(bone,sprites):
+    for sprite in sprites:
+        if sprite.type == "MESH":
+            meshes = []
+            if sprite.coa_type == "MESH":
+                meshes.append(sprite.data)
+            elif sprite.coa_type == "SLOT":
+                for slot in sprite.coa_slot:
+                    meshes.append(slot.mesh)
+
+            all_bone_targets = []
+            if sprite.animation_data != None:
+                for driver in sprite.animation_data.drivers:
+                    bone_targets = get_driver_bone_target(driver)
+                    all_bone_targets += bone_targets
+            for mesh in meshes:
+                if mesh.animation_data != None:
+                    for driver in mesh.animation_data.drivers:
+                        bone_targets = get_driver_bone_target(driver)
+                        all_bone_targets += bone_targets
+                if mesh.shape_keys != None and mesh.shape_keys.animation_data != None:
+                    for driver in mesh.shape_keys.animation_data.drivers:
+                        bone_targets = get_driver_bone_target(driver)
+                        all_bone_targets += bone_targets
+                if bone.name in all_bone_targets:
+                    return True
+    return False
+
+def bone_is_constraint_target(bone,armature):
+    for pbone in armature.pose.bones:
+        for const in pbone.constraints:
+            if hasattr(const,"subtarget") and const.subtarget == bone.name:
+                return True
+    return False
 
 
 ### get skin data
@@ -503,155 +646,12 @@ def get_skin_data(self,sprites,armature,scale):
             skin_data[0]["slot"].append(slot_data)
     return skin_data
 
-### get bone data
-def create_cleaned_armature_copy(self,armature,sprites):
-    context = bpy.context
-    if armature != None:
-        scene = bpy.context.scene
-
-        armature_data = armature.data.copy()
-        armature_copy = armature.copy()
-        armature_copy.data = armature_data
-        armature_copy.name = "COA_EXPORT_ARMATURE"
-
-        scene.objects.link(armature_copy)
-
-        delete_non_deform_bones(self,armature_copy,sprites)
-        create_copy_transform_constraints(self,armature,armature_copy)
-
-        ### store armature rest position. Relevant for later animation calculations
-        scale = 1/get_addon_prefs(context).sprite_import_export_scale
-
-        armature_copy.data.pose_position = "REST"
-        armature.data.pose_position = "REST"
-        bpy.context.scene.frame_set(bpy.context.scene.frame_current)
-        for bone in armature_copy.data.bones:
-            transformations = {}
-            transformations["bone_pos"] = get_bone_pos(armature_copy,bone,scale)
-            transformations["bone_rot"] = get_bone_angle(armature_copy,bone) if not bone_uses_constraints[bone.name] else get_bone_angle(armature_copy,bone,relative=False)
-            transformations["bone_scale"] = get_bone_scale(armature_copy,bone) if not bone_uses_constraints[bone.name] else get_bone_scale(armature_copy,bone,relative=False)
-
-
-            self.armature_restpose[bone.name] = transformations
-        armature_copy.data.pose_position = "POSE"
-        armature.data.pose_position = "POSE"
-        return armature_copy
-    return None
-
-def bone_is_deform_bone(self,bone,sprites):
-    for sprite in sprites:
-        if sprite.type == "MESH":
-            init_mesh = sprite.data
-            meshes = []
-            ### get a list of all meshes in sprite -> slot objects containt multiple meshes
-            if sprite.coa_type == "MESH":
-                meshes.append(sprite.data)
-            elif sprite.coa_type == "SLOT":
-                for slot in sprite.coa_slot:
-                    meshes.append(slot.mesh)
-
-            ### check all meshes if bone is deforming that mesh        
-            for mesh in meshes:
-                sprite.data = mesh
-                if sprite.parent_bone == bone.name:
-                    sprite.data = init_mesh
-                    return True
-                if not bone.name in sprite.vertex_groups:
-                    break
-                else:
-                    v_group = sprite.vertex_groups[bone.name]
-                    for vert in sprite.data.vertices:
-                        try:
-                            weight = v_group.weight(vert.index)
-                            if weight > 0:
-                                sprite.data = init_mesh
-                                return True
-                        except:
-                            pass
-            sprite.data = init_mesh
-    return False
-
-def check_if_bone_uses_constraints(pbone):
-    return pbone.is_in_ik_chain or len(pbone.constraints) > 0
-
-### is used for export armature. All non deform bones will be deleted and deform bone animations baked in later process
-def delete_non_deform_bones(self,armature,sprites):
-    global bone_uses_constraints
-    bone_uses_constraints = {}
-    context = bpy.context
-    context.scene.objects.active = armature
-
-    bpy.ops.object.mode_set(mode="EDIT")
-
-    for bone in armature.data.bones:
-        pbone = armature.pose.bones[bone.name]
-        ebone = armature.data.edit_bones[bone.name]
-        bone_uses_constraints[pbone.name] = check_if_bone_uses_constraints(pbone)
-        # if pbone.is_in_ik_chain or len(pbone.constraints) > 0:
-        #     ebone.parent = None
-
-        is_deform_bone = bone_is_deform_bone(self,bone,sprites)
-        is_driver = bone_is_driver(bone,sprites)
-        is_const_target = bone_is_constraint_target(bone,armature)
-        has_children = len(bone.children) > 0
-
-        if (not is_deform_bone and is_driver) or (not is_deform_bone and is_const_target) or (not is_deform_bone and not has_children) or (not is_deform_bone and not bone.use_deform):
-            armature.data.edit_bones.remove(armature.data.edit_bones[bone.name])
-
-    bpy.ops.object.mode_set(mode="OBJECT")
-
 def get_driver_bone_target(driver):
     targets = []
     for v in driver.driver.variables:
         if v.targets[0].bone_target != "":
             targets.append(v.targets[0].bone_target)
     return targets
-
-def bone_is_constraint_target(bone,armature):
-    for pbone in armature.pose.bones:
-        for const in pbone.constraints:
-            if hasattr(const,"subtarget") and const.subtarget == bone.name:
-                return True
-    return False
-
-def bone_is_driver(bone,sprites):
-    for sprite in sprites:
-        if sprite.type == "MESH":
-            meshes = []
-            if sprite.coa_type == "MESH":
-                meshes.append(sprite.data)
-            elif sprite.coa_type == "SLOT":
-                for slot in sprite.coa_slot:
-                    meshes.append(slot.mesh)
-
-            all_bone_targets = []
-            if sprite.animation_data != None:
-                for driver in sprite.animation_data.drivers:
-                    bone_targets = get_driver_bone_target(driver)
-                    all_bone_targets += bone_targets
-            for mesh in meshes:
-                if mesh.animation_data != None:
-                    for driver in mesh.animation_data.drivers:
-                        bone_targets = get_driver_bone_target(driver)
-                        all_bone_targets += bone_targets
-                if mesh.shape_keys != None and mesh.shape_keys.animation_data != None:
-                    for driver in mesh.shape_keys.animation_data.drivers:
-                        bone_targets = get_driver_bone_target(driver)
-                        all_bone_targets += bone_targets
-                if bone.name in all_bone_targets:
-                    return True
-    return False
-
-def create_copy_transform_constraints(self,armature_from, armature_to):
-    for bone in armature_to.pose.bones:
-        for const in bone.constraints:
-            bone.constraints.remove(const)
-        if bone.name in armature_from.pose.bones:
-            const = bone.constraints.new("COPY_TRANSFORMS")
-            const.target = armature_from
-            const.subtarget = bone.name
-            const.target_space = "POSE"
-            const.owner_space = "POSE"
 
 def get_bone_matrix(armature,bone,relative=True):
     pose_bone = armature.pose.bones[bone.name]
@@ -1310,7 +1310,7 @@ class DragonBonesExport(bpy.types.Operator):
             bpy.data.objects.remove(self.armature) ### delete copied armature
 
         for key in tmp_slots_data:
-            bpy.data.objects.remove(tmp_slots_data[key]["object"],do_unlink=True)
+            bpy.data.objects.remove(tmp_slots_data[key]["object"], do_unlink=True)
 
         self.scene.coa_nla_mode = coa_nla_mode
 
@@ -1318,9 +1318,9 @@ class DragonBonesExport(bpy.types.Operator):
         return {"FINISHED"}
 
 
-class DragonbonesExportPanel(bpy.types.Panel):
-    bl_idname = "dragonbones_export_panel"
-    bl_label = "Dragonbones Export Panel"
+class COAExportPanel(bpy.types.Panel):
+    bl_idname = "coa_export_panel"
+    bl_label = "COA Export Panel"
     bl_space_type = "PROPERTIES"
     bl_region_type = "WINDOW"
     bl_context = "render"
@@ -1364,6 +1364,9 @@ class DragonbonesExportPanel(bpy.types.Panel):
             subrow.prop(self.scene, "coa_export_bake_steps")
         col.prop(self.scene, "coa_minify_json")
         op = col.operator("coa_tools.export_dragon_bones")
+        op = col.operator("coa_tools.export_creature")
+        op.export_path = self.scene.coa_export_path
+        op.project_name = str(self.scene.coa_project_name).lower()
 
 
 def generate_texture_atlas(self, sprites, atlas_name, img_path, img_width=512, img_height=1024, sprite_scale=1.0, margin=1):

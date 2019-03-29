@@ -221,7 +221,8 @@ class TextureAtlasGenerator:
                     uv += uv_new_pos
                     uv_data.uv += Vector((0, uv_flip_y))
 
-        bpy.ops.object.join()
+        if len(context.selected_objects) > 1:
+            bpy.ops.object.join()
         merged_uv_obj = context.active_object
         merged_uv_obj.data.uv_textures.active = merged_uv_obj.data.uv_textures["COA_UV_ATLAS"]
         atlas_img = bpy.data.images.new(atlas_data.name, atlas_data.width, atlas_data.height, alpha=True)
@@ -241,4 +242,4 @@ class TextureAtlasGenerator:
 
 
     
-#TextureAtlasGenerator.generate_uv_layout(name="texture_atlas", objects=bpy.context.selected_objects, width=256, height=256, max_width=2048, max_height=2048, margin=1, texture_bleed=0, square=True, output_scale=1.0)    
+# TextureAtlasGenerator.generate_uv_layout(name="texture_atlas", objects=bpy.context.selected_objects, width=256, height=256, max_width=1024, max_height=1024, margin=1, texture_bleed=0, square=True, output_scale=1.0)
