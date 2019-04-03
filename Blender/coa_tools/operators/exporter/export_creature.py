@@ -30,6 +30,7 @@ import math
 from mathutils import Vector,Matrix, Quaternion, Euler
 import shutil
 from . texture_atlas_generator import TextureAtlasGenerator
+import zipfile
 
 class Sprite:
     def __init__(self, mesh_object):
@@ -94,6 +95,11 @@ class CreatureExport(bpy.types.Operator):
         self.reduce_size = False
         self.scene = None
         self.init_bone_positions = {}
+        self.bone_weights = {}
+
+        self.export_progress_total = 0
+        self.export_progress_current = 0
+
 
     def setup_json_data(self):
         json_data = OrderedDict()
@@ -164,6 +170,12 @@ class CreatureExport(bpy.types.Operator):
                         vertices.append(vert)
         return vertices, faces
 
+    def get_init_vert_pos(self, obj, vert):
+        if obj.data.shape_keys:
+            return obj.data.shape_keys.key_blocks[0].data[vert.index].co
+        else:
+            return vert.co
+
     def get_uv_from_vert_first(self, uv_layer, v):
         bpy.context.tool_settings.use_uv_select_sync = True
         for l in v.link_loops:
@@ -181,6 +193,83 @@ class CreatureExport(bpy.types.Operator):
             if sprite.name == sprite_name:
                 return sprite, sprite.slots[slot_index]
         return None, None
+
+    def get_bone_weight(self, obj, vert, bone):
+        # check if weights are cached
+        if obj.name in self.bone_weights:
+            if bone.name in self.bone_weights[obj.name]:
+                if str(vert.index) in self.bone_weights[obj.name][bone.name]:
+                    return self.bone_weights[obj.name][bone.name][str(vert.index)]
+
+
+        if bone.name not in obj.vertex_groups:
+            return 0.0
+        else:
+            v_group = obj.vertex_groups[bone.name]
+            for group in vert.groups:
+                group_name = obj.vertex_groups[group.group].name
+
+                if group_name == v_group.name:
+                    self.bone_weights[obj.name] = {bone.name:{vert.index:group.weight}}
+                    return group.weight
+        return 0
+
+    def lerp(self, val1, val2, interpolation):
+        return val1 * (1 - interpolation) + val2 * interpolation
+
+    def scale_verts_by_bone(self, pbone, armature, mesh_object, vert_co, weight=1.0):
+        # verts = mesh_object.data.vertices
+        bone = armature.data.bones[pbone.name]
+        bone_head = self.init_bone_positions[bone.name]["head"]
+        bone_tail = self.init_bone_positions[bone.name]["tail"]
+        bone_axis_x = (bone_tail - bone_head).normalized().xz
+        bone_axis_y = bone_axis_x.orthogonal().normalized()
+
+        world_axis_x = Vector((bone_axis_x.dot(Vector((1, 0))), bone_axis_y.dot(Vector((1, 0)))))
+        world_axis_y = Vector((bone_axis_x.dot(Vector((0, 1))), bone_axis_y.dot(Vector((0, 1)))))
+
+        bone_system_origin = (mesh_object.matrix_world.inverted() * (armature.matrix_world * bone_head)).xz
+
+        bone_scale = pbone.matrix.to_scale()
+        bone_scale_2d = Vector(( self.lerp( 1.0, bone_scale.y, weight), self.lerp(1.0, bone_scale.x, weight) ))
+
+        vert_delta_co = vert_co.xz
+        vert_delta_co -= bone_system_origin
+        vert_delta_co = Vector((bone_axis_x.dot(vert_delta_co), bone_axis_y.dot(vert_delta_co)))
+        vert_delta_co = Vector((vert_delta_co.x * bone_scale_2d.x, vert_delta_co.y * bone_scale_2d.y))
+        vert_delta_co = Vector((world_axis_x.dot(vert_delta_co), world_axis_y.dot(vert_delta_co)))
+        vert_delta_co += bone_system_origin
+
+        scaled_vert_co = Vector((vert_delta_co.x, 0, vert_delta_co.y))
+        return scaled_vert_co
+
+    def get_shapekey_vert_data(self, obj, verts):
+        default_vert_positions = []
+        verts = sorted(verts, key=lambda vert: vert.index, reverse=False)
+        for i,vert in enumerate(verts):
+            default_vert_positions.append(obj.matrix_world * vert.co)
+
+        verts = []
+        index = int(obj.active_shape_key_index)
+        shape_key = obj.shape_key_add("tmp_mixed_mesh", from_mix=True)
+        for i, vert in enumerate(default_vert_positions):
+            # shapekey_vert = obj.matrix_world * shape_key.data[i].co
+            shapekey_vert = shape_key.data[i].co
+            for bone in self.armature.pose.bones:
+                if bone.name in obj.vertex_groups:
+                    bone_weight = self.get_bone_weight(obj, obj.data.vertices[i], bone)
+                    scaled_vert = self.scale_verts_by_bone(bone, self.armature, obj, shapekey_vert, bone_weight)
+                    shapekey_vert = scaled_vert
+            shapekey_vert = obj.matrix_world * shapekey_vert
+
+            relative_offset = (shapekey_vert - vert)
+            verts.append(round(relative_offset.x, 3))
+            verts.append(round(relative_offset.z, 3))
+        obj.shape_key_remove(shape_key)
+        obj.active_shape_key_index = index
+
+
+        return verts
 
     def create_dupli_atlas_objects(self, context):
         atlas_objects = []
@@ -285,14 +374,15 @@ class CreatureExport(bpy.types.Operator):
                     slot["end_pt_index"] = end_pt_index
 
                     # get point data
-                    coords = mathutils.Vector(merged_atlas_obj.matrix_world * vert.co).xzy
-                    points.append(round(coords.x, 4))
-                    points.append(round(coords.y, 4))
+                    # coords = mathutils.Vector(merged_atlas_obj.matrix_world * vert.co).xzy
+                    coords = mathutils.Vector(merged_atlas_obj.matrix_world * self.get_init_vert_pos(merged_atlas_obj, vert)).xzy
+                    points.append(round(coords.x, 3))
+                    points.append(round(coords.y, 3))
 
                     # get uv data
                     uv = self.get_uv_from_vert_first(uv_layer, vert)
-                    uvs.append(round(uv[0], 4))
-                    uvs.append(round(uv[1] + 1 - uv[1]*2, 4))
+                    uvs.append(round(uv[0], 3))
+                    uvs.append(round(uv[1] + 1 - uv[1]*2, 3))
 
                 # get indices data
                 for i, face in enumerate(bm.faces):
@@ -344,7 +434,7 @@ class CreatureExport(bpy.types.Operator):
                             v_group_name = merged_atlas_obj.vertex_groups[group.group].name
                             if v_group_name == bone_v_group_name:
                                 vert_index = vert.index - slot["start_pt_index"]
-                                regions[name]["weights"][bone.name][vert_index] = round(max(group.weight, 0.06), 4)
+                                regions[name]["weights"][bone.name][vert_index] = round(max(group.weight, 0.06), 3)
 
                 region_id += 1
         bpy.ops.object.mode_set(mode="OBJECT")
@@ -376,8 +466,8 @@ class CreatureExport(bpy.types.Operator):
             skeleton[pbone.name]["restParentMat"] = self.get_bone_parent_mat(pbone)
             head = self.get_bone_head_tail(pbone)["head"]
             tail = self.get_bone_head_tail(pbone)["tail"]
-            skeleton[pbone.name]["localRestStartPt"] = [round(head.x, 4), round(head.y, 4)]
-            skeleton[pbone.name]["localRestEndPt"] = [round(tail.x, 4), round(tail.y, 4)]
+            skeleton[pbone.name]["localRestStartPt"] = [round(head.x, 3), round(head.y, 3)]
+            skeleton[pbone.name]["localRestEndPt"] = [round(tail.x, 3), round(tail.y, 3)]
             skeleton[pbone.name]["children"] = []
             for child in pbone.children:
                 skeleton[pbone.name]["children"].append(child["id"])
@@ -397,11 +487,11 @@ class CreatureExport(bpy.types.Operator):
         head = pbone.head.xz - space_origin
         tail = pbone.tail.xz - space_origin
 
-        local_tail_x = round(tail.dot(parent_x_axis), 4)
-        local_tail_y = round(tail.dot(parent_y_axis), 4)
+        local_tail_x = round(tail.dot(parent_x_axis), 3)
+        local_tail_y = round(tail.dot(parent_y_axis), 3)
 
-        local_head_x = round(head.dot(parent_x_axis), 4)
-        local_head_y = round(head.dot(parent_y_axis), 4)
+        local_head_x = round(head.dot(parent_x_axis), 3)
+        local_head_y = round(head.dot(parent_y_axis), 3)
 
         return {"head": Vector((local_head_x, local_head_y)), "tail": Vector((local_tail_x, local_tail_y))}
 
@@ -412,7 +502,7 @@ class CreatureExport(bpy.types.Operator):
             matrix_array = []
             for row in pbone.parent.matrix.row:
                 for value in row:
-                    matrix_array.append(round(value, 4))
+                    matrix_array.append(round(value, 3))
             return matrix_array
 
     def bone_is_keyed_on_frame(self, bone, frame, animation_data, type="LOCATION"):  ### LOCATION, ROTATION, SCALE, ANY
@@ -440,6 +530,9 @@ class CreatureExport(bpy.types.Operator):
                 animation[anim.name]["mesh_opacities"] = OrderedDict()
 
                 for frame in range(anim.frame_end+1):
+                    self.export_progress_current += 1
+                    current_progress = self.export_progress_current/self.export_progress_total
+                    context.window_manager.progress_update(current_progress)
                     context.scene.frame_set(frame)
                     context.scene.update()
 
@@ -452,18 +545,23 @@ class CreatureExport(bpy.types.Operator):
                         # if self.bone_is_keyed_on_frame(pbone, frame, self.armature.animation_data, type="ANY") or frame == 0 or frame == anim.frame_end or bake_animation: # remove baking for now
                         if str(frame) not in animation[anim.name]["bones"]:
                             animation[anim.name]["bones"][str(frame)] = OrderedDict()
-                        animation[anim.name]["bones"][str(frame)][pbone.name] = {"start_pt": [round(start_pt.x, 4), round(start_pt.y, 4)],
-                                                                                     "end_pt": [round(end_pt.x, 4), round(end_pt.y, 4)]}
+                        animation[anim.name]["bones"][str(frame)][pbone.name] = {"start_pt": [round(start_pt.x, 3), round(start_pt.y, 3)],
+                                                                                 "end_pt": [round(end_pt.x, 3), round(end_pt.y, 3)]}
                     # mesh relevant data
                     animation[anim.name]["meshes"][str(frame)] = OrderedDict()
                     animation[anim.name]["uv_swaps"][str(frame)] = OrderedDict()
                     animation[anim.name]["mesh_opacities"][str(frame)] = OrderedDict()
                     for sprite in self.sprite_data:
                         sprite_object = bpy.data.objects[sprite.name]
-                        animation[anim.name]["meshes"][str(frame)][sprite.name] = {"use_dq": True, "use_local_displacements": False, "use_pos_displacements": False}
-                        animation[anim.name]["uv_swaps"][str(frame)][sprite.name] = {"local_offset": [0, 0], "global_offset": [0, 0], "scale": [0, 0]}
-                        if sprite_object.name == "Head.png":
-                            print(sprite_object, " -- ",round(sprite_object.coa_alpha*100))
+                        # collect shapekey animation
+                        local_displacements = self.get_shapekey_vert_data(sprite.object, sprite.object.data.vertices)
+                        animation[anim.name]["meshes"][str(frame)][sprite.name] = {"use_dq": True, "use_local_displacements": True, "use_post_displacements": False, "local_displacements":local_displacements}
+                        # animation[anim.name]["meshes"][str(frame)][sprite.name] = {"use_dq": True, "use_local_displacements": False, "use_post_displacements": False}
+
+                        # collect slot swapping data
+                        animation[anim.name]["uv_swaps"][str(frame)][sprite.name] = {"local_offset": [0, 0], "global_offset": [0, 0], "scale": [-1, -1]}
+
+                        # collect mesh opacity and tint data
                         animation[anim.name]["mesh_opacities"][str(frame)][sprite.name] = {"opacity": round(sprite_object.coa_alpha*100, 1)}
 
         return animation
@@ -472,6 +570,7 @@ class CreatureExport(bpy.types.Operator):
         # get export, project and json path
         export_path = bpy.path.abspath(self.scene.coa_export_path)
         json_path = os.path.join(export_path, self.project_name + "_data.json")
+        zip_path = os.path.join(export_path, self.project_name + "_data.zip")
 
         # write json file
         if self.reduce_size:
@@ -482,7 +581,10 @@ class CreatureExport(bpy.types.Operator):
         text_file = open(json_path, "w")
         text_file.write(json_file)
         text_file.close()
-        # print(json_file)
+
+        zip_file = zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED)
+        zip_file.write(json_path, os.path.basename(json_path))
+        zip_file.close()
 
     def save_texture_atlas(self, context, img_atlas, img_path, atlas_name):
         compression_rate = int(context.scene.render.image_settings.compression)
@@ -490,6 +592,15 @@ class CreatureExport(bpy.types.Operator):
         texture_path = os.path.join(img_path, atlas_name + "_atlas.png")
         img_atlas.save_render(texture_path)
         context.scene.render.image_settings.compression = compression_rate
+
+    def setup_progress(self, context):
+        self.export_progress_total = 0
+        self.export_progress_current = 0
+        for i, anim in enumerate(self.sprite_object.coa_anim_collections):
+            if anim.name not in ["Restpose", "NO ACTION"]:
+                self.export_progress_total += anim.frame_end + 1
+        context.window_manager.progress_begin(0, 100)
+        context.window_manager.progress_update(0)
 
     @classmethod
     def poll(cls, context):
@@ -507,6 +618,7 @@ class CreatureExport(bpy.types.Operator):
         self.export_scale = 1 / get_addon_prefs(context).sprite_import_export_scale
         self.sprite_scale = self.scene.coa_sprite_scale
         self.sprite_data, self.armature = self.prepare_armature_and_sprites_for_export(context, scene)
+        self.setup_progress(context)
         for ob in context.scene.objects:
             ob.select = False
         atlas_objects = self.create_dupli_atlas_objects(context)
@@ -515,6 +627,8 @@ class CreatureExport(bpy.types.Operator):
                                                  height=128, max_width=2048, max_height=2048, margin=1,
                                                  texture_bleed=0, square=False, output_scale=self.sprite_scale)
         self.save_texture_atlas(context, img_atlas, self.export_path, self.project_name)
+
+
 
         points, uvs, indices = self.create_mesh_data(context, merged_atlas_obj)
         self.json_data["mesh"]["points"] = points
@@ -530,4 +644,6 @@ class CreatureExport(bpy.types.Operator):
         bpy.ops.ed.undo()
         bpy.ops.ed.undo_push(message="Export Creature")
         self.report({"INFO"}, "Export successful.")
+
+        context.window_manager.progress_end()
         return {"FINISHED"}
