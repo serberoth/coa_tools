@@ -115,10 +115,11 @@ class AnimationCollections(bpy.types.PropertyGroup):
         for child in objs:
             action_name = self.name_old + "_" + child.name
             action_name_new = self.name + "_" + child.name
-            if action_name in bpy.data.actions:
+            if action_name_new not in bpy.data.actions and action_name in bpy.data.actions:
                 action = bpy.data.actions[action_name]
                 action.name = action_name_new
         self.name_old = self.name
+        self.id_data.coa_anim_collections_index = self.id_data.coa_anim_collections_index
     
     name = StringProperty(update=check_name)
     name_change_to = StringProperty()
