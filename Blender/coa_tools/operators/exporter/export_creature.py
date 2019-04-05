@@ -243,7 +243,7 @@ class CreatureExport(bpy.types.Operator):
         scaled_vert_co = Vector((vert_delta_co.x, 0, vert_delta_co.y))
         return scaled_vert_co
 
-    def get_shapekey_vert_data(self, obj, verts):
+    def get_shapekey_vert_data(self, obj, verts, relative=True):
         default_vert_positions = []
         verts = sorted(verts, key=lambda vert: vert.index, reverse=False)
         for i,vert in enumerate(verts):
@@ -262,9 +262,12 @@ class CreatureExport(bpy.types.Operator):
                     shapekey_vert = scaled_vert
             shapekey_vert = obj.matrix_world * shapekey_vert
 
-            relative_offset = (shapekey_vert - vert)
-            verts.append(round(relative_offset.x, 3))
-            verts.append(round(relative_offset.z, 3))
+            if relative:
+                offset = (shapekey_vert - vert)
+            else:
+                offset = shapekey_vert
+            verts.append(round(offset.x, 3))
+            verts.append(round(offset.z, 3))
         obj.shape_key_remove(shape_key)
         obj.active_shape_key_index = index
 
@@ -554,8 +557,19 @@ class CreatureExport(bpy.types.Operator):
                     for sprite in self.sprite_data:
                         sprite_object = bpy.data.objects[sprite.name]
                         # collect shapekey animation
-                        local_displacements = self.get_shapekey_vert_data(sprite.object, sprite.object.data.vertices)
-                        animation[anim.name]["meshes"][str(frame)][sprite.name] = {"use_dq": True, "use_local_displacements": True, "use_post_displacements": False, "local_displacements":local_displacements}
+
+                        use_local_displacements = True
+                        use_post_displacements = False
+                        animation[anim.name]["meshes"][str(frame)][sprite.name] = {"use_dq": True}
+                        animation[anim.name]["meshes"][str(frame)][sprite.name]["use_local_displacements"] = use_local_displacements
+                        animation[anim.name]["meshes"][str(frame)][sprite.name]["use_post_displacements"] = use_post_displacements
+                        if use_local_displacements:
+                            local_displacements = self.get_shapekey_vert_data(sprite.object, sprite.object.data.vertices, relative=True)
+                            animation[anim.name]["meshes"][str(frame)][sprite.name]["local_displacements"] = local_displacements
+                        if use_post_displacements:
+                            post_displacements = self.get_shapekey_vert_data(sprite.object, sprite.object.data.vertices, relative=True)
+                            animation[anim.name]["meshes"][str(frame)][sprite.name]["post_displacements"] = post_displacements
+
                         # animation[anim.name]["meshes"][str(frame)][sprite.name] = {"use_dq": True, "use_local_displacements": False, "use_post_displacements": False}
 
                         # collect slot swapping data
