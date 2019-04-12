@@ -1326,18 +1326,20 @@ class COAExportPanel(bpy.types.Panel):
     bl_context = "render"
 
     bpy.types.Scene.coa_project_name = bpy.props.StringProperty(default="New Project", name="Project name")
+    bpy.types.Scene.coa_runtime_format = bpy.props.EnumProperty(default="CREATURE", description="Exports for choosen runtime.",items=(("CREATURE","Creature","Creature"),("DRAGONBONES","Dragonbones","Dragonbones")))
     bpy.types.Scene.coa_export_path = bpy.props.StringProperty(default="", name="Export Path",subtype="DIR_PATH")
     bpy.types.Scene.coa_export_image_mode = bpy.props.EnumProperty(default="ATLAS", name="Image Mode",items=(("ATLAS","Atlas","Atlas"),("IMAGES","Images","Images")))
     bpy.types.Scene.coa_atlas_mode = bpy.props.EnumProperty(default="AUTO_SIZE", name="Atlas Mode",items=(("AUTO_SIZE", "Auto Size", "Auto Size"),("LIMIT_SIZE","Limit Size","Limit Size")))
     bpy.types.Scene.coa_sprite_scale = bpy.props.FloatProperty(default=1.0, min=0.1, max=1.0, name="Sprite Output Scale", description="Define the Sprite Output Scale", step=0.1)
     bpy.types.Scene.coa_atlas_resolution_x = bpy.props.IntProperty(default=1024,name="Resolution X",min=8,subtype="PIXEL")
     bpy.types.Scene.coa_atlas_resolution_y = bpy.props.IntProperty(default=1024, name="Resolution Y",min=8,subtype="PIXEL")
-    bpy.types.Scene.coa_atlas_island_margin = bpy.props.IntProperty(default=1, name="Texture Island Margin",min=0,subtype="PIXEL")
+    bpy.types.Scene.coa_atlas_island_margin = bpy.props.IntProperty(default=1, name="Texture Island Margin",min=1,subtype="PIXEL")
     bpy.types.Scene.coa_export_bake_anim = bpy.props.BoolProperty(default=False, name="Bake Animation")
     bpy.types.Scene.coa_export_bake_steps = bpy.props.IntProperty(default=1, min=1, name="Bake Steps",description="Set key every x Frame.")
     bpy.types.Scene.coa_minify_json = bpy.props.BoolProperty(default=True, name="Minify Json File", description="Minifies the json file for a fast loading file. Good if used in Web Applications.")
-
-
+    bpy.types.Scene.coa_export_square_atlas = bpy.props.BoolProperty(default=True, name="Force Square Texture Atlas", description="This option makes sure the exported Atlas is always perfectly squared.")
+    bpy.types.Scene.coa_export_texture_bleed = bpy.props.IntProperty(default=0, min=0, name="Texture Bleeding", subtype="PIXEL", description="Defines how far the texture extends the mesh boundaries.")
+    bpy.types.Scene.coa_armature_scale = bpy.props.FloatProperty(default=1.0, min=0.1, name="Armature Output Scale", description="Define the Armature Output Scale", step=0.1)
 
     def draw(self, context):
 
@@ -1348,25 +1350,42 @@ class COAExportPanel(bpy.types.Panel):
         col.prop(self.scene, "coa_project_name", text="Project Name")
         col.prop(self.scene, "coa_export_path", text="Export Path")
 
-        col = layout.column()
-        col.label(text="Atlas Settings:")
+        col = layout.column(align=True)
         row = col.row()
+        row.prop(self.scene, "coa_runtime_format", expand=True)
+
+        box = col.box()
+
+        box_col = box.column()
+        box_col.label(text="Atlas Settings:")
+        row = box_col.row()
         row.prop(self.scene, "coa_atlas_mode", expand=True)
+        subcol = box_col.column(align=True)
+        subcol.prop(self.scene, "coa_sprite_scale", slider=True)
         if self.scene.coa_atlas_mode == "LIMIT_SIZE":
-            subcol = col.column(align=True)
             subcol.prop(self.scene, "coa_atlas_resolution_x", text="X")
             subcol.prop(self.scene, "coa_atlas_resolution_y", text="Y")
-        col.prop(self.scene, "coa_sprite_scale", slider=True)
-        col.prop(self.scene, "coa_atlas_island_margin")
-        subrow = col.row(align=True)
-        subrow.prop(self.scene, "coa_export_bake_anim")
-        if self.scene.coa_export_bake_anim:
-            subrow.prop(self.scene, "coa_export_bake_steps")
-        col.prop(self.scene, "coa_minify_json")
-        op = col.operator("coa_tools.export_dragon_bones")
-        op = col.operator("coa_tools.export_creature")
-        op.export_path = self.scene.coa_export_path
-        op.project_name = str(self.scene.coa_project_name).lower()
+        subcol.prop(self.scene, "coa_atlas_island_margin")
+        subcol.prop(self.scene, "coa_export_texture_bleed")
+        subcol.prop(self.scene, "coa_export_square_atlas")
+
+        box_col.label(text="Data Settings:")
+        subrow = box_col.row(align=True)
+        if self.scene.coa_runtime_format == "DRAGONBONES":
+            subrow.prop(self.scene, "coa_export_bake_anim")
+            if self.scene.coa_export_bake_anim:
+                subrow.prop(self.scene, "coa_export_bake_steps")
+        box_col.prop(self.scene, "coa_minify_json")
+        box_col.prop(self.scene, "coa_armature_scale")
+
+        if self.scene.coa_runtime_format == "CREATURE":
+            op = col.operator("coa_tools.export_creature", text="Export")
+            op.export_path = self.scene.coa_export_path
+            op.project_name = str(self.scene.coa_project_name).lower()
+
+        elif self.scene.coa_runtime_format == "DRAGONBONES":
+            op = col.operator("coa_tools.export_dragon_bones", text="Export")
+
 
 
 def generate_texture_atlas(self, sprites, atlas_name, img_path, img_width=512, img_height=1024, sprite_scale=1.0, margin=1):

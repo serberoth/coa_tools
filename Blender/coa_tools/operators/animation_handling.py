@@ -509,8 +509,53 @@ class BatchRender(bpy.types.Operator):
         
             sprite_object.coa_anim_collections_index = idx
         return {"FINISHED"}
-    
-    
+
+
+### Add Timeline Event -> Dragonbones
+class AddEvent(bpy.types.Operator):
+    bl_idname = "coa_tools.add_event"
+    bl_label = "Add Event"
+    bl_description = ""
+    bl_options = {"REGISTER"}
+
+    index = IntProperty()
+
+    @classmethod
+    def poll(cls, context):
+        return True
+
+    def execute(self, context):
+        scene = context.scene
+        obj = context.active_object
+        sprite_object = get_sprite_object(obj)
+
+        anim = sprite_object.coa_anim_collections[sprite_object.coa_anim_collections_index]
+        timeline_events = anim.timeline_events[self.index]
+        item = timeline_events.event.add()
+        return {"FINISHED"}
+
+class RemoveEvent(bpy.types.Operator):
+    bl_idname = "coa_tools.remove_event"
+    bl_label = "Remove Event"
+    bl_description = ""
+    bl_options = {"REGISTER"}
+
+    index = IntProperty()
+    event_index = IntProperty()
+
+    @classmethod
+    def poll(cls, context):
+        return True
+
+    def execute(self, context):
+        scene = context.scene
+        obj = context.active_object
+        sprite_object = get_sprite_object(obj)
+
+        anim = sprite_object.coa_anim_collections[sprite_object.coa_anim_collections_index]
+        timeline_events = anim.timeline_events[self.index]
+        timeline_events.event.remove(self.event_index)
+        return {"FINISHED"}
     
 ### Add Timeline Event -> Dragonbones
 class AddTimelineEvent(bpy.types.Operator):
@@ -523,22 +568,31 @@ class AddTimelineEvent(bpy.types.Operator):
     def poll(cls, context):
         return True
 
+    def change_event_order(self, events):
+        for i,event in enumerate(events):
+            event_next = None
+            if i < len(events)-1:
+                event_next = events[i+1]
+            if event_next != None and event_next.frame < event.frame:
+
+                events.move(i+1, i)
+
     def execute(self, context):
         scene = context.scene
         obj = context.active_object
         sprite_object = get_sprite_object(obj)
         
         anim = sprite_object.coa_anim_collections[sprite_object.coa_anim_collections_index]
-        
-        for event in anim.event:
-            if event.frame == context.scene.frame_current:
-                self.report({'INFO'},"Event exists on current frame already")
+
+        for item in anim.timeline_events:
+            if item.frame == context.scene.frame_current:
+                msg = "Timeline Event exists on frame " + str(item.frame) + " already."
+                self.report({'INFO'}, msg)
                 return {"FINISHED"}
-        
-        
-        
-        event = anim.event.add()
+
+        event = anim.timeline_events.add()
         event.frame = context.scene.frame_current
+        self.change_event_order(anim.timeline_events)
         return {"FINISHED"}
     
         
@@ -566,6 +620,5 @@ class RemoveTimelineEvent(bpy.types.Operator):
         else:
             index = anim.event_index    
         
-        anim.event.remove(index)
+        anim.timeline_events.remove(index)
         return {"FINISHED"}
-    
