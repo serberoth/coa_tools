@@ -1474,9 +1474,9 @@ class DrawContour(bpy.types.Operator):
             context.scene.objects.active = self.edit_object
             self.edit_object.draw_type = "TEXTURED"
             if len(self.edit_object.data.vertices) > 4:
-                self.edit_object.coa_hide_base_sprite = True
+                self.edit_object.data.coa_hide_base_sprite = True
             else:
-                self.edit_object.coa_hide_base_sprite = False
+                self.edit_object.data.coa_hide_base_sprite = False
             bpy.ops.coa_tools.reproject_sprite_texture()
 
 
@@ -1511,6 +1511,7 @@ class DrawContour(bpy.types.Operator):
         if self.mode == "EDIT_MESH":
             #hide_base_sprite(bpy.context.active_object)
             self.edit_object.data.coa_hide_base_sprite = True
+            self.edit_object.active_shape_key_index = 0
             
         
         if self.mode == "DRAW_BONE_SHAPE":
