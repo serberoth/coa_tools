@@ -584,15 +584,24 @@ class AddTimelineEvent(bpy.types.Operator):
         
         anim = sprite_object.coa_anim_collections[sprite_object.coa_anim_collections_index]
 
+        event = None
         for item in anim.timeline_events:
             if item.frame == context.scene.frame_current:
+                event = item
                 msg = "Timeline Event exists on frame " + str(item.frame) + " already."
                 self.report({'INFO'}, msg)
-                return {"FINISHED"}
+                break
+                # return {"FINISHED"}
 
-        event = anim.timeline_events.add()
-        event.frame = context.scene.frame_current
+        if event == None:
+            event = anim.timeline_events.add()
+            event.frame = context.scene.frame_current
         self.change_event_order(anim.timeline_events)
+        for e in anim.timeline_events:
+            if e.frame == context.scene.frame_current:
+                e.collapsed = False
+            else:
+                e.collapsed = True
         return {"FINISHED"}
     
         

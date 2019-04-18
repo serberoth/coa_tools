@@ -5,7 +5,8 @@ import math
 
 
 class TextureData:
-    def __init__(self, texture_object, bounds_px, bounds_rel, width, height):
+    def __init__(self, img_name, texture_object, bounds_px, bounds_rel, width, height):
+        self.img_name = img_name
         self.texture_object = texture_object
         self.bounds_px = bounds_px
         self.bounds_rel = bounds_rel
@@ -79,9 +80,9 @@ class TextureAtlasGenerator:
 
             for i, value in enumerate(bounds_px):
                 bounds_px[i] = int(bounds_px[i] * output_scale)
-            width = (bounds_px[2] - bounds_px[0])
-            height = (bounds_px[3] - bounds_px[1])
-            texture_data = TextureData(obj, bounds_px, bounds_rel, width, height)
+            width = abs((bounds_px[2] - bounds_px[0]))
+            height = abs((bounds_px[3] - bounds_px[1]))
+            texture_data = TextureData(texture.image.name, obj, bounds_px, bounds_rel, width, height)
             return texture_data
         return None
 
@@ -208,6 +209,7 @@ class TextureAtlasGenerator:
 
         ### Extract texture data from given objects. Gives texture width, height and boundaries
         texture_data_list = TextureAtlasGenerator.get_sorted_texture_data(objects, output_scale)
+
 
         ### Generates Atlas data which is later used to create uv data
         atlas_data = TextureAtlasGenerator.create_texture_atlas_data(texture_data_list, name, width, height, max_width,

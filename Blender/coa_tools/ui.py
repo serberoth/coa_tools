@@ -76,7 +76,7 @@ class SlotData(bpy.types.PropertyGroup):
 
 class Event(bpy.types.PropertyGroup):
     name = StringProperty()
-    event_type = EnumProperty(name="Object Type",default="SOUND",items=(("SOUND","Sound","Sound","SOUND",0),("EVENT","Event","Event","PHYSICS",1)))
+    type = EnumProperty(name="Object Type",default="SOUND",items=(("SOUND","Sound","Sound","SOUND",0),("EVENT","Event","Event","PHYSICS",1)))
     value = StringProperty(description="Define which sound or event key is triggered.")
 
 class TimelineEvent(bpy.types.PropertyGroup):
@@ -90,8 +90,8 @@ class TimelineEvent(bpy.types.PropertyGroup):
                 timeline_events.move(i+1, i)
 
     event = CollectionProperty(type=Event)
-    frame = IntProperty(default=0 ,min=0, update=change_event_order)
-    collapsed = BoolProperty(default=True)
+    frame = IntProperty(default=0, min=0, update=change_event_order)
+    collapsed = BoolProperty(default=False)
 
 class AnimationCollections(bpy.types.PropertyGroup):
     def set_frame_start(self,context):
@@ -858,10 +858,11 @@ class UIListEventCollection(bpy.types.UIList):
         if not item.collapsed:
             row = col.row(align=True)
             # row.alignment = "RIGHT"
-            row.operator("coa_tools.add_event", icon="ZOOMIN", text="Add new Event", emboss=True)
+            op = row.operator("coa_tools.add_event", icon="ZOOMIN", text="Add new Event", emboss=True)
+            op.index = index
             for i, event in enumerate(item.event):
                 row = col.row(align=True)
-                row.prop(event, "event_type",text="")
+                row.prop(event, "type",text="")
                 row.prop(event, "value",text="")
                 op = row.operator("coa_tools.remove_event", icon="PANEL_CLOSE", text="", emboss=True)
                 op.index = index

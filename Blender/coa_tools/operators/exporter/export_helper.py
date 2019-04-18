@@ -51,7 +51,7 @@ def remove_base_sprite(obj):
         v_group_idx = obj.vertex_groups["coa_base_sprite"].index
         for i,vert in enumerate(obj.data.vertices):
             for g in vert.groups:
-                if g.group == v_group_idx:
+                if g.group == v_group_idx and g.weight > 0:
                     verts.append(bm.verts[i])
                     break
 
