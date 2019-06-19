@@ -36,7 +36,7 @@ from .. ui import preview_collections
 import bpy.utils.previews
 
     
-class SelectFrameThumb(bpy.types.Operator):
+class COATOOLS_OT_SelectFrameThumb(bpy.types.Operator):
     bl_idname = "coa_tools.select_frame_thumb"
     bl_label = "Select Frame Thumb"
     bl_description = "Loads all Spritesheet frames and generates a thumbnail preview. Can take a while when loading the first time."
@@ -80,7 +80,7 @@ class SelectFrameThumb(bpy.types.Operator):
     def execute(self, context):
         return {"FINISHED"}
         
-class CreateSpritesheetPreview(bpy.types.Operator):
+class COATOOLS_OT_CreateSpritesheetPreview(bpy.types.Operator):
     bl_idname = "coa_tools.create_spritesheet_preview"
     bl_label = "Create Spritesheet Preview"
     bl_description = ""
@@ -97,7 +97,7 @@ class CreateSpritesheetPreview(bpy.types.Operator):
         thumb_size = get_addon_prefs(context).sprite_thumb_size
         
         obj = context.active_object
-        thumb_dir_path = os.path.join(context.user_preferences.filepaths.temporary_directory,"coa_thumbs")
+        thumb_dir_path = os.path.join(context.preferences.filepaths.temporary_directory,"coa_thumbs")
         if obj.coa_tiles_changed or not os.path.exists(thumb_dir_path):
             spritesheet = obj.material_slots[0].material.texture_slots[0].texture.image
             assign_tex_to_uv(spritesheet,obj.data.uv_textures[0])

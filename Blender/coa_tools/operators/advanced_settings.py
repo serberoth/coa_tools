@@ -1,13 +1,13 @@
 import bpy
 from bpy.props import StringProperty
 
-class AdvancedSettings(bpy.types.Operator):
+class COATOOLS_OT_AdvancedSettings(bpy.types.Operator):
     bl_idname = "coa_tools.advanced_settings"
     bl_label = "Advanced Settings"
     bl_description = ""
     bl_options = {"REGISTER","UNDO"}
     
-    obj_name = StringProperty()
+    obj_name: StringProperty()
     
     @classmethod
     def poll(cls, context):
@@ -122,7 +122,7 @@ class AdvancedSettings(bpy.types.Operator):
     
     def invoke(self,context,event):
         for obj in bpy.data.objects:
-            obj.select = False
+            obj.select_set(False)
         obj = bpy.data.objects[self.obj_name]
         obj.select = True
         context.scene.objects.active = obj

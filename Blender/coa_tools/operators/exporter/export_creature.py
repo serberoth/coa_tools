@@ -44,7 +44,7 @@ class Sprite:
         sprite = mesh_object.copy()
         sprite.name = mesh_object.name + "_EXPORT"
         if mesh_object.coa_type == "SLOT":
-            for slot in mesh_object.coa_slot:
+            for slot in mesh_object.coa_tools.slot:
                 slot_data = {"slot": slot.mesh.copy(),
                              "start_pt_index": None,
                              "end_pt_index": None,
@@ -75,15 +75,15 @@ class Sprite:
         bpy.data.objects(self.object, do_unlink=True)
         del self
 
-class CreatureExport(bpy.types.Operator):
+class COATOOLS_OT_CreatureExport(bpy.types.Operator):
     bl_idname = "coa_tools.export_creature"
     bl_label = "Creature Export"
     bl_description = ""
     bl_options = {"REGISTER"}
 
-    minify_json = BoolProperty(name="Minify Json", default=True, description="Writes Json data in one line to reduce export size.")
-    export_path = StringProperty(name="Export Path", default="", description="Creature Export Path.")
-    project_name = StringProperty(name="Project Name", default="", description="Creature Project Name")
+    minify_json: BoolProperty(name="Minify Json", default=True, description="Writes Json data in one line to reduce export size.")
+    export_path: StringProperty(name="Export Path", default="", description="Creature Export Path.")
+    project_name: StringProperty(name="Project Name", default="", description="Creature Project Name")
 
     def __init__(self):
         self.json_data = self.setup_json_data()
@@ -667,7 +667,7 @@ class CreatureExport(bpy.types.Operator):
 
                             # collect slot swapping data
                             enabled = False if sprite_object.coa_type == "MESH" else True
-                            scale = [1, 1] if i == sprite_object.coa_slot_index else [-1, -1]
+                            scale = [1, 1] if i == sprite_object.coa_tools.slot_index else [-1, -1]
                             animation[anim_name]["uv_swaps"][str(frame)][slot_name] = {"local_offset": [0, 0], "global_offset": [0, 0], "scale": scale, "enabled": enabled}
 
                             # collect mesh opacity and tint data

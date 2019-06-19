@@ -35,13 +35,13 @@ from .. functions import *
 from .. functions_draw import *        
 import traceback
 
-class BindMeshToBones(bpy.types.Operator):
+class COATOOLS_OT_BindMeshToBones(bpy.types.Operator):
     bl_idname = "coa_tools.bind_mesh_to_bones"
     bl_label = "Bind Mesh To Selected Bones"
     bl_description = "Bind mesh to selected bones."
     bl_options = {"REGISTER"}
     
-    ob_name = StringProperty()
+    ob_name: StringProperty()
     armature = None
     sprite_object = None
     
@@ -61,7 +61,7 @@ class BindMeshToBones(bpy.types.Operator):
         
 
 ######################################################################################################################################### Quick Armature        
-class QuickArmature(bpy.types.Operator):
+class COATOOLS_OT_QuickArmature(bpy.types.Operator):
     bl_idname = "scene.coa_quick_armature" 
     bl_label = "Quick Armature"
     
@@ -234,7 +234,7 @@ class QuickArmature(bpy.types.Operator):
         bpy.ops.object.mode_set(mode='POSE')
         bpy.ops.object.parent_set(type='BONE')
         bpy.ops.object.mode_set(mode='EDIT')
-        obj.select = False
+        obj.select_set(False)
         bpy.ops.ed.undo_push(message="Sprite "+obj.name+ " set parent")
         
     def return_ray_sprites(self,context,event):
@@ -281,7 +281,7 @@ class QuickArmature(bpy.types.Operator):
             if self.in_view_3d:
                 self.mouse_press_hist = self.mouse_press
                 mouse_button = None
-                if context.user_preferences.inputs.select_mouse == "RIGHT":
+                if context.preferences.inputs.select_mouse == "RIGHT":
                     mouse_button = 'LEFTMOUSE' 
                 else:
                     mouse_button = 'RIGHTMOUSE'    
@@ -393,7 +393,7 @@ class QuickArmature(bpy.types.Operator):
                     return{'RUNNING_MODAL'}
             
             ### finish mode  
-            if context.active_object == None or (context.active_object != None and context.active_object != self.armature) or (context.active_object.mode != "EDIT" and context.active_object.type == "ARMATURE" and self.set_waits == False) or not self.sprite_object.coa_edit_armature:
+            if context.active_object == None or (context.active_object != None and context.active_object != self.armature) or (context.active_object.mode != "EDIT" and context.active_object.type == "ARMATURE" and self.set_waits == False) or not self.sprite_object.coa_tools.edit_armature:
                 return self.exit_edit_mode(context)
             
         except Exception as e:
@@ -416,16 +416,16 @@ class QuickArmature(bpy.types.Operator):
                 pose_bone.bone_group = context.active_object.pose.bone_groups["default_bones"]
         
         #lock_sprites(context,get_sprite_object(context.active_object),get_sprite_object(context.active_object).lock_sprites)
-        self.sprite_object.coa_edit_armature = False
-        self.sprite_object.coa_edit_mode = "OBJECT"
+        self.sprite_object.coa_tools.edit_armature = False
+        self.sprite_object.coa_tools.edit_mode = "OBJECT"
         
         ### restore previous selection
         for obj in bpy.context.scene.objects:
-            obj.select = False
+            obj.select_set(False)
         for obj in self.selected_objects:
             obj.select = True
         context.scene.objects.active = self.active_object   
-        context.user_preferences.inputs.use_mouse_emulate_3_button = self.emulate_3_button
+        context.preferences.inputs.use_mouse_emulate_3_button = self.emulate_3_button
         
         ### restore object settings
         for obj in self.obj_settings:
@@ -435,8 +435,8 @@ class QuickArmature(bpy.types.Operator):
     
     def execute(self, context):
         #bpy.ops.wm.coa_modal() ### start coa modal mode if not running
-        self.emulate_3_button = context.user_preferences.inputs.use_mouse_emulate_3_button
-        context.user_preferences.inputs.use_mouse_emulate_3_button = False
+        self.emulate_3_button = context.preferences.inputs.use_mouse_emulate_3_button
+        context.preferences.inputs.use_mouse_emulate_3_button = False
         
         ### store object settings
         for obj in context.scene.objects:
@@ -448,8 +448,8 @@ class QuickArmature(bpy.types.Operator):
         self.active_object = context.active_object
         
         self.sprite_object = get_sprite_object(context.active_object)
-        self.sprite_object.coa_edit_armature = True
-        self.sprite_object.coa_edit_mode = "ARMATURE"
+        self.sprite_object.coa_tools.edit_armature = True
+        self.sprite_object.coa_tools.edit_mode = "ARMATURE"
         
         lock_sprites(context,get_sprite_object(context.active_object),False)
         self.armature = self.create_armature(context)
@@ -475,7 +475,7 @@ class QuickArmature(bpy.types.Operator):
     
     
 ######################################################################################################################################### Set Stretch To Constraint
-class SetStretchBone(bpy.types.Operator):
+class COATOOLS_OT_SetStretchBone(bpy.types.Operator):
     bl_idname = "bone.coa_set_stretch_bone"
     bl_label = "Set Stretch Bone"
     
@@ -504,7 +504,7 @@ class SetStretchBone(bpy.types.Operator):
 
 ######################################################################################################################################### Set IK Constraint 
 
-class RemoveIK(bpy.types.Operator):
+class COATOOLS_OT_RemoveIK(bpy.types.Operator):
     bl_idname = "coa_tools.remove_ik"
     bl_label = "Remove IK"
     bl_description = "Remove Bone IK"
@@ -558,11 +558,11 @@ class RemoveIK(bpy.types.Operator):
         return {"FINISHED"}
         
 
-class SetIK(bpy.types.Operator):
-    bl_idname = "object.coa_set_ik"
+class COATOOLS_OT_SetIK(bpy.types.Operator):
+    bl_idname = "coa_tools.set_ik"
     bl_label = "Set IK Bone"
     
-    replace_bone = BoolProperty(name="Replace IK Bone",description="Replaces active Bone as IK Bone", default=True)
+    replace_bone: BoolProperty(name="Replace IK Bone",description="Replaces active Bone as IK Bone", default=True)
     
     def invoke(self, context, event):
         wm = context.window_manager 
@@ -627,7 +627,7 @@ class SetIK(bpy.types.Operator):
         bpy.ops.ed.undo_push(message="Set Ik")
         return{'FINISHED'}
     
-class CreateStretchIK(bpy.types.Operator):
+class COATOOLS_OT_CreateStretchIK(bpy.types.Operator):
     bl_idname = "coa_tools.create_stretch_ik"
     bl_label = "Create Stretch Ik"
     bl_description = ""
@@ -861,13 +861,13 @@ class CreateStretchIK(bpy.types.Operator):
         
         return {"FINISHED"}
     
-class RemoveStretchIK(bpy.types.Operator):
+class COATOOLS_OT_RemoveStretchIK(bpy.types.Operator):
     bl_idname = "coa_tools.remove_stretch_ik"
     bl_label = "Remove Stretch Ik"
     bl_description = ""
     bl_options = {"REGISTER"}
     
-    stretch_ik_name = StringProperty()
+    stretch_ik_name: StringProperty()
     
     @classmethod
     def poll(cls, context):

@@ -34,14 +34,14 @@ from bpy.app.handlers import persistent
 from .. functions import *
 
 ######################################################################################################################################### Create Sprite Object
-class CreateOrtpographicCamera(bpy.types.Operator):
+class COATOOLS_OT_CreateOrtpographicCamera(bpy.types.Operator):
     bl_idname = "wm.coa_create_ortho_cam"
     bl_label = "Camera Settings"
     bl_options = {"REGISTER","UNDO"}
     
-    set_resolution = BoolProperty(name="Set Resolution", default = True)
-    resolution = IntVectorProperty(name="Resolution", default=(960,600), size=2)
-    create = BoolProperty(name="Create Camera",default=True)
+    set_resolution: BoolProperty(name="Set Resolution", default = True)
+    resolution: IntVectorProperty(name="Resolution", default=(960,600), size=2)
+    create: BoolProperty(name="Create Camera",default=True)
     
     def draw(self, context):
         layout = self.layout
@@ -88,14 +88,14 @@ class CreateOrtpographicCamera(bpy.types.Operator):
         return{"FINISHED"}
     
 
-class AlignCamera(bpy.types.Operator):
+class COATOOLS_OT_AlignCamera(bpy.types.Operator):
     bl_idname = "coa_tools.align_camera"
     bl_label = "Align 2D Camera"
     bl_description = ""
     bl_options = {"REGISTER"}
     
     
-    align = EnumProperty(name="Align Position",description="Align Position",items=(
+    align: EnumProperty(name="Align Position",description="Align Position",items=(
                                 ("BOTTOM_RIGHT","Bottom Right","Bottom Right"),
                                 ("BOTTOM_CENTER","Bottom Center","Bottom Center"),
                                 ("BOTTOM_LEFT","Bottom Left","Bottom Left"),

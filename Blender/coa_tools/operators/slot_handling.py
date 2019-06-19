@@ -33,7 +33,7 @@ import json
 from bpy.app.handlers import persistent
 from .. functions import *
 
-class ExtractSlots(bpy.types.Operator):
+class COATOOLS_OT_ExtractSlots(bpy.types.Operator):
     bl_idname = "coa_tools.extract_slots"
     bl_label = "Extract Slots"
     bl_description = ""
@@ -57,7 +57,7 @@ class ExtractSlots(bpy.types.Operator):
                     ob.coa_slot.remove(0)
                 ob.matrix_world = obj.matrix_world
                 ob.parent = obj.parent
-                ob.select = True
+                ob.select_set(True)
                 context.scene.objects.active = ob
         
         context.scene.objects.unlink(obj)        
@@ -65,7 +65,7 @@ class ExtractSlots(bpy.types.Operator):
         return {"FINISHED"}
         
 
-class CreateSlotObject(bpy.types.Operator):
+class COATOOLS_OT_CreateSlotObject(bpy.types.Operator):
     bl_idname = "coa_tools.create_slot_object"
     bl_label = "Create Slot Object"
     bl_description = ""
@@ -75,8 +75,8 @@ class CreateSlotObject(bpy.types.Operator):
     def poll(cls, context):
         return True
     
-    slot_name = StringProperty(name="Slot Name")
-    keep_sprite_position = BoolProperty(name="Keep Sprite Position",description="Keeps the sprite at current position by applying a new origin.",default=True)
+    slot_name: StringProperty(name="Slot Name")
+    keep_sprite_position: BoolProperty(name="Keep Sprite Position",description="Keeps the sprite at current position by applying a new origin.",default=True)
     
     def draw(self,context):
         layout = self.layout
@@ -196,15 +196,15 @@ class CreateSlotObject(bpy.types.Operator):
         return {"FINISHED"}
     
 
-class MoveSlotItem(bpy.types.Operator):
+class COATOOLS_OT_MoveSlotItem(bpy.types.Operator):
     bl_idname = "coa_tools.move_slot_item"
     bl_label = "Move Slot Item"
     bl_description = ""
     bl_options = {"REGISTER"}
     
-    idx = IntProperty()
-    ob_name = StringProperty()
-    mode = StringProperty()
+    idx: IntProperty()
+    ob_name: StringProperty()
+    mode: StringProperty()
         
     @classmethod
     def poll(cls, context):
@@ -226,14 +226,14 @@ class MoveSlotItem(bpy.types.Operator):
         return {"FINISHED"}
         
     
-class RemoveFromSlot(bpy.types.Operator):
+class COATOOLS_OT_RemoveFromSlot(bpy.types.Operator):
     bl_idname = "coa_tools.remove_from_slot"
     bl_label = "Remove From Slot"
     bl_description = ""
     bl_options = {"REGISTER"}
     
-    idx = IntProperty()
-    ob_name = StringProperty()
+    idx: IntProperty()
+    ob_name: StringProperty()
     
     @classmethod
     def poll(cls, context):

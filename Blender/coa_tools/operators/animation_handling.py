@@ -33,17 +33,17 @@ import json
 from bpy.app.handlers import persistent
 from .. functions import *
 
-class AddKeyframe(bpy.types.Operator):
+class COATOOLS_OT_AddKeyframe(bpy.types.Operator):
     bl_idname = "coa_tools.add_keyframe"
     bl_label = "Add Keyframe"
     bl_description = "Add Keyframe"
     bl_options = {"REGISTER"}
     
-    prop_name = StringProperty()
-    add_keyframe = BoolProperty(default=True)
-    interpolation = EnumProperty(default="BEZIER",items=(("BEZIER","BEZIER","BEZIER","IPO_BEZIER",0),("LINEAR","LINEAR","LINEAR","IPO_LINEAR",1),("CONSTANT","CONSTANT","CONSTANT","IPO_CONSTANT",2)))
-    default_interpolation = StringProperty()
-    obj = StringProperty(default="")
+    prop_name: StringProperty()
+    add_keyframe: BoolProperty(default=True)
+    interpolation: EnumProperty(default="BEZIER",items=(("BEZIER","BEZIER","BEZIER","IPO_BEZIER",0),("LINEAR","LINEAR","LINEAR","IPO_LINEAR",1),("CONSTANT","CONSTANT","CONSTANT","IPO_CONSTANT",2)))
+    default_interpolation: StringProperty()
+    obj: StringProperty(default="")
     key_obj = None
     @classmethod
     def poll(cls, context):
@@ -166,7 +166,7 @@ class AddKeyframe(bpy.types.Operator):
         self.key_obj = None    
         return {"FINISHED"}   
 
-class DuplicateAnimationCollection(bpy.types.Operator):
+class COATOOLS_OT_DuplicateAnimationCollection(bpy.types.Operator):
     bl_idname = "coa_tools.duplicate_animation_collection"
     bl_label = "Duplicate Animation Collection"
     bl_description = "Duplicate Animation Collection"
@@ -212,7 +212,7 @@ class DuplicateAnimationCollection(bpy.types.Operator):
         return {"FINISHED"}
         
 
-class AddAnimationCollection(bpy.types.Operator):
+class COATOOLS_OT_AddAnimationCollection(bpy.types.Operator):
     bl_idname = "coa_tools.add_animation_collection"
     bl_label = "Add Animation Collection"
     bl_description = "Add new Animation Collection"
@@ -277,7 +277,7 @@ class AddAnimationCollection(bpy.types.Operator):
         
         return {"FINISHED"}
         
-class RemoveAnimationCollection(bpy.types.Operator):
+class COATOOLS_OT_RemoveAnimationCollection(bpy.types.Operator):
     bl_idname = "coa_tools.remove_animation_collection"
     bl_label = "Remove Animation Collection"
     bl_description = "Delete selected Animation Collection"
@@ -327,20 +327,20 @@ class RemoveAnimationCollection(bpy.types.Operator):
             
         return {"FINISHED"}
                 
-class CreateNlaTrack(bpy.types.Operator):
+class COATOOLS_OT_CreateNlaTrack(bpy.types.Operator):
     bl_idname = "coa_operator.create_nla_track"
     bl_label = "Create NLA Track"
     bl_description = "Generate NLA Strips."
     bl_options = {"REGISTER","UNDO"}
     
     
-    start = IntProperty(default=0)
-    repeat = IntProperty(default=1)
-    scale = FloatProperty(default=1.0)
-    insert_at_cursor = BoolProperty(default=True)
-    anim_collection_name = StringProperty()
-    auto_blend = BoolProperty(default=True)
-    extrapolation = EnumProperty(default="NOTHING",items=(("HOLD_FORWARD","Hold Forward","HOLD_FORWARD"),("HOLD","Hold","HOLD"),("NOTHING","Nothing","NOTHING")) )
+    start: IntProperty(default=0)
+    repeat: IntProperty(default=1)
+    scale: FloatProperty(default=1.0)
+    insert_at_cursor: BoolProperty(default=True)
+    anim_collection_name: StringProperty()
+    auto_blend: BoolProperty(default=True)
+    extrapolation: EnumProperty(default="NOTHING",items=(("HOLD_FORWARD","Hold Forward","HOLD_FORWARD"),("HOLD","Hold","HOLD"),("NOTHING","Nothing","NOTHING")) )
 
     def check(self,context):
         return True
@@ -448,7 +448,7 @@ class CreateNlaTrack(bpy.types.Operator):
                     
         return {"FINISHED"}
     
-class BatchRender(bpy.types.Operator):
+class COATOOLS_OT_BatchRender(bpy.types.Operator):
 #class BatchRender(bpy.types.RenderEngine):
     bl_idname = "coa_tools.batch_render"
     bl_label = "Batch Render"
@@ -512,13 +512,13 @@ class BatchRender(bpy.types.Operator):
 
 
 ### Add Timeline Event -> Dragonbones
-class AddEvent(bpy.types.Operator):
+class COATOOLS_OT_AddEvent(bpy.types.Operator):
     bl_idname = "coa_tools.add_event"
     bl_label = "Add Event"
     bl_description = ""
     bl_options = {"REGISTER"}
 
-    index = IntProperty()
+    index: IntProperty()
 
     @classmethod
     def poll(cls, context):
@@ -534,14 +534,14 @@ class AddEvent(bpy.types.Operator):
         item = timeline_events.event.add()
         return {"FINISHED"}
 
-class RemoveEvent(bpy.types.Operator):
+class COATOOLS_OT_RemoveEvent(bpy.types.Operator):
     bl_idname = "coa_tools.remove_event"
     bl_label = "Remove Event"
     bl_description = ""
     bl_options = {"REGISTER"}
 
-    index = IntProperty()
-    event_index = IntProperty()
+    index: IntProperty()
+    event_index: IntProperty()
 
     @classmethod
     def poll(cls, context):
@@ -558,7 +558,7 @@ class RemoveEvent(bpy.types.Operator):
         return {"FINISHED"}
     
 ### Add Timeline Event -> Dragonbones
-class AddTimelineEvent(bpy.types.Operator):
+class COATOOLS_OT_AddTimelineEvent(bpy.types.Operator):
     bl_idname = "coa_tools.add_timeline_event"
     bl_label = "Add Timeline Event"
     bl_description = ""
@@ -605,13 +605,13 @@ class AddTimelineEvent(bpy.types.Operator):
         return {"FINISHED"}
     
         
-class RemoveTimelineEvent(bpy.types.Operator):
+class COATOOLS_OT_RemoveTimelineEvent(bpy.types.Operator):
     bl_idname = "coa_tools.remove_timeline_event"
     bl_label = "Remove Timeline Event"
     bl_description = ""
     bl_options = {"REGISTER"}
     
-    index = IntProperty(default=-1)
+    index: IntProperty(default=-1)
     
     @classmethod
     def poll(cls, context):

@@ -3,7 +3,7 @@ import blf, bgl
 from .. functions import get_sprite_object
 
 
-class ShowHelp(bpy.types.Operator):
+class COATOOLS_OT_ShowHelp(bpy.types.Operator):
     bl_idname = "coa_tools.show_help"
     bl_label = "Show Help"
     bl_description = "Show Help"
@@ -69,7 +69,7 @@ class ShowHelp(bpy.types.Operator):
                 self.scale_x = self.region_width/self.display_width
                 self.scale_x = min(1.0,max(.0,self.scale_x))
         
-        if context.user_preferences.system.use_region_overlap:
+        if context.preferences.system.use_region_overlap:
             pass
         else:
             self.region_offset = 0
@@ -262,17 +262,17 @@ class ShowHelp(bpy.types.Operator):
                 ["      W   -   Specials Menu",15]]
         
         texts += text_headline
-        if self.sprite_object == None or (self.sprite_object != None and self.sprite_object.coa_edit_mode in ["OBJECT"]):
+        if self.sprite_object == None or (self.sprite_object != None and self.sprite_object.coa_tools.edit_mode in ["OBJECT"]):
             texts += text_general
-        if self.sprite_object == None or (self.sprite_object != None and self.sprite_object.coa_edit_mode in ["OBJECT"]):    
+        if self.sprite_object == None or (self.sprite_object != None and self.sprite_object.coa_tools.edit_mode in ["OBJECT"]):
             texts += text_blender
-        if self.sprite_object == None or (self.sprite_object != None and self.sprite_object.coa_edit_mode in ["ARMATURE"]):
+        if self.sprite_object == None or (self.sprite_object != None and self.sprite_object.coa_tools.edit_mode in ["ARMATURE"]):
             texts += text_armature
-        if self.sprite_object == None or (self.sprite_object != None and self.sprite_object.coa_edit_mode in ["SHAPEKEY"]):
+        if self.sprite_object == None or (self.sprite_object != None and self.sprite_object.coa_tools.edit_mode in ["SHAPEKEY"]):
             texts += text_shapekey
-        if self.sprite_object == None or (self.sprite_object != None and self.sprite_object.coa_edit_mode in ["WEIGHTS"]):
+        if self.sprite_object == None or (self.sprite_object != None and self.sprite_object.coa_tools.edit_mode in ["WEIGHTS"]):
             texts += text_weights
-        if self.sprite_object == None or (self.sprite_object != None and self.sprite_object.coa_edit_mode in ["MESH"]):
+        if self.sprite_object == None or (self.sprite_object != None and self.sprite_object.coa_tools.edit_mode in ["MESH"]):
             texts += text_mesh
         
         linebreak_size = 0

@@ -35,7 +35,7 @@ from .. functions import *
 
 
 ######################################################################################################################################### Cutout Animatin Tools Modal Operator    
-class COAModal(bpy.types.Operator):
+class COATOOLS_OT_Modal(bpy.types.Operator):
     bl_idname = "wm.coa_modal"
     bl_label = "Cutout Animation Tools Modal"
     bl_options = {"REGISTER","INTERNAL"}

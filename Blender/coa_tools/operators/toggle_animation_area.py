@@ -1,13 +1,13 @@
 import bpy
 from bpy.props import EnumProperty
 
-class ToggleAnimationArea(bpy.types.Operator):
+class COATOOLS_OT_ToggleAnimationArea(bpy.types.Operator):
     bl_idname = "coa_tools.toggle_animation_area"
     bl_label = "Toggle Animation Area"
     bl_description = "Toggle Animation Editors"
     bl_options = {"REGISTER"}
     
-    mode = EnumProperty(items=(("TOGGLE","TOGGLE","TOGGLE"),("UPDATE","UPDATE","UPDATE")),default="TOGGLE")
+    mode: EnumProperty(items=(("TOGGLE","TOGGLE","TOGGLE"),("UPDATE","UPDATE","UPDATE")),default="TOGGLE")
     
     black_list = ["__module__","type","has_ghost_curves"]
     editor = "DOPESHEET_EDITOR"

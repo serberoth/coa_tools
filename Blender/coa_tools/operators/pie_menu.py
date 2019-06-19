@@ -19,7 +19,7 @@ class VIEW3D_PIE_coa_menu(Menu):
             return True
         
         if sprite_object != None:
-            if (obj != None and ("coa_sprite" in obj or "sprite_object" in obj)) or (sprite_object != None and obj.type == "ARMATURE"):
+            if (obj != None and ("coa_sprite" in obj or "coa_sprite_object" in obj)) or (sprite_object != None and obj.type == "ARMATURE"):
                 return True
     
     def draw(self, context):
@@ -35,15 +35,15 @@ class VIEW3D_PIE_coa_menu(Menu):
             if obj.type == "MESH":
                 pie.operator("coa_tools.select_frame_thumb",text="Select Frame",icon="IMAGE_COL")
                 pie.operator("wm.call_menu_pie", icon="SPACE2", text="Add Keyframe(s)").name = "view3d.coa_pie_keyframe_menu_add"
-                pie.operator("object.coa_edit_weights",text="Edit Weights",icon="MOD_VERTEX_WEIGHT")
-                pie.operator("object.coa_edit_mesh",text="Edit Mesh",icon="GREASEPENCIL")
+                pie.operator("coa_tools.edit_weights",text="Edit Weights",icon="MOD_VERTEX_WEIGHT")
+                pie.operator("coa_tools.edit_mesh",text="Edit Mesh",icon="GREASEPENCIL")
                 pie.operator("scene.coa_quick_armature",text="Edit Armature",icon="ARMATURE_DATA")
                 pie.operator("coa_tools.edit_shapekey",text="Edit Shapekey",icon="SHAPEKEY_DATA")
                 pie.row()    
                 pie.operator("wm.call_menu_pie", icon="SPACE3", text="Delete Keyframe(s)").name = "view3d.coa_pie_keyframe_menu_remove"
                 
             elif obj.type == "ARMATURE":
-                pie.operator("object.coa_set_ik",text="Create IK Bone",icon="CONSTRAINT_BONE")
+                pie.operator("coa_tools.set_ik",text="Create IK Bone",icon="CONSTRAINT_BONE")
                 pie.operator("wm.call_menu_pie", icon="SPACE2", text="Add Keyframe(s)").name = "view3d.coa_pie_keyframe_menu_add"
                 pie.operator("bone.coa_draw_bone_shape",text="Draw Bone Shape",icon="BONE_DATA")
                 pie.operator("scene.coa_quick_armature",text="Edit Armature",icon="ARMATURE_DATA")

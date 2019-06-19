@@ -1153,13 +1153,13 @@ def get_animation_data(self,sprite_object,armature,armature_orig):
     return animations
 
 
-class DragonBonesExport(bpy.types.Operator):
+class COATOOLS_OT_DragonBonesExport(bpy.types.Operator):
     bl_idname = "coa_tools.export_dragon_bones"
     bl_label = "Dragonbones Export"
     bl_description = ""
     bl_options = {"REGISTER"}
 
-    reduce_size = BoolProperty(default=False)
+    reduce_size: BoolProperty(default=False)
 
     sprite_object = None
     armature = None
@@ -1214,7 +1214,7 @@ class DragonBonesExport(bpy.types.Operator):
             if obj in self.selected_objects:
                 obj.select = True
             else:
-                obj.select = False
+                obj.select_set(False)
         context.scene.objects.active = self.active_object
 
         if len(self.sprite_object.coa_anim_collections) > 0:
@@ -1318,28 +1318,28 @@ class DragonBonesExport(bpy.types.Operator):
         return {"FINISHED"}
 
 
-class COAExportPanel(bpy.types.Panel):
-    bl_idname = "coa_export_panel"
+class COATOOLS_PT_ExportPanel(bpy.types.Panel):
+    bl_idname = "COATOOLS_PT_export_panel"
     bl_label = "COA Export Panel"
     bl_space_type = "PROPERTIES"
     bl_region_type = "WINDOW"
     bl_context = "render"
 
-    bpy.types.Scene.coa_project_name = bpy.props.StringProperty(default="New Project", name="Project name")
-    bpy.types.Scene.coa_runtime_format = bpy.props.EnumProperty(default="CREATURE", description="Exports for choosen runtime.",items=(("CREATURE","Creature","Creature"),("DRAGONBONES","Dragonbones","Dragonbones")))
-    bpy.types.Scene.coa_export_path = bpy.props.StringProperty(default="", name="Export Path",subtype="DIR_PATH")
-    bpy.types.Scene.coa_export_image_mode = bpy.props.EnumProperty(default="ATLAS", name="Image Mode",items=(("ATLAS","Atlas","Atlas"),("IMAGES","Images","Images")))
-    bpy.types.Scene.coa_atlas_mode = bpy.props.EnumProperty(default="AUTO_SIZE", name="Atlas Mode",items=(("AUTO_SIZE", "Auto Size", "Auto Size"),("LIMIT_SIZE","Limit Size","Limit Size")))
-    bpy.types.Scene.coa_sprite_scale = bpy.props.FloatProperty(default=1.0, min=0.1, max=1.0, name="Sprite Output Scale", description="Define the Sprite Output Scale", step=0.1)
-    bpy.types.Scene.coa_atlas_resolution_x = bpy.props.IntProperty(default=1024,name="Resolution X",min=8,subtype="PIXEL")
-    bpy.types.Scene.coa_atlas_resolution_y = bpy.props.IntProperty(default=1024, name="Resolution Y",min=8,subtype="PIXEL")
-    bpy.types.Scene.coa_atlas_island_margin = bpy.props.IntProperty(default=1, name="Texture Island Margin",min=1,subtype="PIXEL")
-    bpy.types.Scene.coa_export_bake_anim = bpy.props.BoolProperty(default=False, name="Bake Animation")
-    bpy.types.Scene.coa_export_bake_steps = bpy.props.IntProperty(default=1, min=1, name="Bake Steps",description="Set key every x Frame.")
-    bpy.types.Scene.coa_minify_json = bpy.props.BoolProperty(default=True, name="Minify Json File", description="Minifies the json file for a fast loading file. Good if used in Web Applications.")
-    bpy.types.Scene.coa_export_square_atlas = bpy.props.BoolProperty(default=True, name="Force Square Texture Atlas", description="This option makes sure the exported Atlas is always perfectly squared.")
-    bpy.types.Scene.coa_export_texture_bleed = bpy.props.IntProperty(default=0, min=0, name="Texture Bleeding", subtype="PIXEL", description="Defines how far the texture extends the mesh boundaries.")
-    bpy.types.Scene.coa_armature_scale = bpy.props.FloatProperty(default=1.0, min=0.1, name="Armature Output Scale", description="Define the Armature Output Scale", step=0.1)
+    bpy.types.Scene.coa_project_name: bpy.props.StringProperty(default="New Project", name="Project name")
+    bpy.types.Scene.coa_runtime_format: bpy.props.EnumProperty(default="CREATURE", description="Exports for choosen runtime.",items=(("CREATURE","Creature","Creature"),("DRAGONBONES","Dragonbones","Dragonbones")))
+    bpy.types.Scene.coa_export_path: bpy.props.StringProperty(default="", name="Export Path",subtype="DIR_PATH")
+    bpy.types.Scene.coa_export_image_mode: bpy.props.EnumProperty(default="ATLAS", name="Image Mode",items=(("ATLAS","Atlas","Atlas"),("IMAGES","Images","Images")))
+    bpy.types.Scene.coa_atlas_mode: bpy.props.EnumProperty(default="AUTO_SIZE", name="Atlas Mode",items=(("AUTO_SIZE", "Auto Size", "Auto Size"),("LIMIT_SIZE","Limit Size","Limit Size")))
+    bpy.types.Scene.coa_sprite_scale: bpy.props.FloatProperty(default=1.0, min=0.1, max=1.0, name="Sprite Output Scale", description="Define the Sprite Output Scale", step=0.1)
+    bpy.types.Scene.coa_atlas_resolution_x: bpy.props.IntProperty(default=1024,name="Resolution X",min=8,subtype="PIXEL")
+    bpy.types.Scene.coa_atlas_resolution_y: bpy.props.IntProperty(default=1024, name="Resolution Y",min=8,subtype="PIXEL")
+    bpy.types.Scene.coa_atlas_island_margin: bpy.props.IntProperty(default=1, name="Texture Island Margin",min=1,subtype="PIXEL")
+    bpy.types.Scene.coa_export_bake_anim: bpy.props.BoolProperty(default=False, name="Bake Animation")
+    bpy.types.Scene.coa_export_bake_steps: bpy.props.IntProperty(default=1, min=1, name="Bake Steps",description="Set key every x Frame.")
+    bpy.types.Scene.coa_minify_json: bpy.props.BoolProperty(default=True, name="Minify Json File", description="Minifies the json file for a fast loading file. Good if used in Web Applications.")
+    bpy.types.Scene.coa_export_square_atlas: bpy.props.BoolProperty(default=True, name="Force Square Texture Atlas", description="This option makes sure the exported Atlas is always perfectly squared.")
+    bpy.types.Scene.coa_export_texture_bleed: bpy.props.IntProperty(default=0, min=0, name="Texture Bleeding", subtype="PIXEL", description="Defines how far the texture extends the mesh boundaries.")
+    bpy.types.Scene.coa_armature_scale: bpy.props.FloatProperty(default=1.0, min=0.1, name="Armature Output Scale", description="Define the Armature Output Scale", step=0.1)
 
     def draw(self, context):
 
@@ -1396,7 +1396,7 @@ def generate_texture_atlas(self, sprites, atlas_name, img_path, img_width=512, i
 
     ### deselect all objects
     for obj in context.scene.objects:
-        obj.select = False
+        obj.select_set(False)
 
     ### get a list of all sprites and containing slots    
     slots = []
