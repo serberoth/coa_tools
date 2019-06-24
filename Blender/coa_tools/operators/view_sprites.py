@@ -120,6 +120,10 @@ class COATOOLS_OT_ViewSprite(bpy.types.Operator):
                     obj.select_set(False)
             context.view_layer.objects.active = active_object
             active_object.select_set(True)
+
+            for area in context.screen.areas:
+                if area.type == "VIEW_3D":
+                    area.spaces[0].region_3d.view_distance = area.width * 0.007
             
         bpy.ops.object.mode_set(mode=active_object_mode)
         return {"FINISHED"}

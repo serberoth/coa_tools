@@ -47,7 +47,7 @@ def get_bone_shapes(self, context):
     for name in names_list:
         enum_items.append((name,name,name,"MESH_DATA",i))
         i += 1
-    enum_items.append(("NEW_SHAPE","New Shape","Create new Shape","NEW",i+1))        
+    enum_items.append(("NEW_SHAPE","New Shape","Create new Shape","FILE_NEW",i+1))        
     return enum_items        
 
 

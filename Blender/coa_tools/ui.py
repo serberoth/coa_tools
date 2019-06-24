@@ -264,16 +264,178 @@ class COATOOLS_PT_Tools(bpy.types.Panel):
         scene = context.scene
         screen = context.screen
 
-        col = layout.column()
 
-        subrow = col.row()
-        subrow.prop(screen.coa_tools,"view",expand=True)
+        row = layout.row(align=True)
+        row.prop(screen.coa_tools, "view", expand=True)
 
-        col.operator("coa_tools.create_sprite_object", text="Create new Sprite Object", icon="TEXTURE_DATA")
+        if not wm.coa_tools.show_help:
+            row.operator("coa_tools.show_help", text="", icon="INFO")
+        else:
+            row.prop(wm.coa_tools, "show_help", text="", icon="INFO")
+
+        if obj != None and sprite_object != None:
+            ### draw Edit Mode Operator
+            if obj.mode in ["OBJECT", "POSE"]:
+                row = layout.row()
+                row.label(text="Edit Modes:")
+
+            if sprite_object.coa_tools.edit_mesh == False and sprite_object.coa_tools.edit_shapekey == False and sprite_object.coa_tools.edit_armature == False and sprite_object.coa_tools.edit_weights == False and obj.mode not in ["SCULPT"]:
+                row = layout.row(align=True)
+                row.operator("coa_tools.edit_mesh", text="Edit Mesh", icon="GREASEPENCIL")
+
+            if sprite_object.coa_tools.edit_mesh == False and sprite_object.coa_tools.edit_shapekey == False and sprite_object.coa_tools.edit_armature == False and sprite_object.coa_tools.edit_weights == False and not (
+                    obj.type == "MESH" and obj.mode in ["EDIT", "SCULPT"]):
+                row = layout.row(align=True)
+                row.operator("coa_tools.quick_armature", text="Edit Armature", icon="ARMATURE_DATA")
+            elif sprite_object.coa_tools.edit_armature:
+                row = layout.row(align=True)
+                row.prop(sprite_object.coa_tools, "edit_armature", text="Finish Edit Armature", icon="ARMATURE_DATA")
+
+            if sprite_object.coa_tools.edit_mesh == False and sprite_object.coa_tools.edit_shapekey == False and sprite_object.coa_tools.edit_armature == False and sprite_object.coa_tools.edit_weights == False and obj.mode not in [
+                "SCULPT"]:
+                row = layout.row(align=True)
+                row.operator("coa_tools.edit_shapekey", text="Edit Shapekey", icon="SHAPEKEY_DATA")
+
+            if sprite_object.coa_tools.edit_mesh == False and sprite_object.coa_tools.edit_shapekey == False and sprite_object.coa_tools.edit_armature == False and sprite_object.coa_tools.edit_weights == False and not (
+                    obj.type == "MESH" and obj.mode in ["EDIT", "SCULPT"]) and (sprite_object) != None:
+                row = layout.row(align=True)
+                row.operator("coa_tools.edit_weights", text="Edit Weights", icon="MOD_VERTEX_WEIGHT")
+            elif sprite_object.coa_tools.edit_weights:
+                row = layout.row(align=True)
+                row.prop(sprite_object, "coa_tools.edit_weights", text="Finish Edit Weights", toggle=True,
+                         icon="MOD_VERTEX_WEIGHT")
+            ###
+
+        no_edit_mode_active = sprite_object != None and sprite_object.coa_tools.edit_shapekey == False and sprite_object.coa_tools.edit_mesh == False and sprite_object.coa_tools.edit_armature == False and sprite_object.coa_tools.edit_weights == False
+        if obj == None or (obj != None):
+            if sprite_object != None and sprite_object.coa_tools.edit_mesh:
+                row = layout.row(align=True)
+                row.prop(sprite_object.coa_tools, "edit_mesh", text="Finish Edit Mesh", toggle=True, icon="GREASEPENCIL")
+            elif sprite_object != None and sprite_object.coa_tools.edit_shapekey:
+                row = layout.row(align=True)
+                row.prop(sprite_object.coa_tools, "edit_shapekey", text="Finish Edit Shapekey", toggle=True,
+                         icon="SHAPEKEY_DATA")
+
+            if obj != None and obj.mode in ["OBJECT", "POSE"] and no_edit_mode_active:
+                row = layout.row(align=True)
+                row.label(text="General Operator:")
+
+                row = layout.row(align=True)
+                op = row.operator("coa_tools.create_ortho_cam", text="Create Camera", icon="OUTLINER_DATA_CAMERA")
+                op.create = True
+        if obj != None and obj.type == "CAMERA":
+            row = layout.row(align=True)
+            op = row.operator("coa_tools.create_ortho_cam", text="Reset Camera Resolution", icon="OUTLINER_DATA_CAMERA")
+            op.create = False
+
+        if obj == None or (obj != None and obj.mode not in ["EDIT", "WEIGHT_PAINT", "SCULPT"]):
+            row = layout.row(align=True)
+            row.operator("coa_tools.create_sprite_object", text="Create new Sprite Object", icon="TEXTURE_DATA")
+
         if sprite_object != None:
-            col.operator("coa_tools.import_sprites", text="Re/Import Sprites", icon="FILEBROWSER")
+            if obj != None and obj.mode in ["OBJECT", "SCULPT", "POSE"]:
+                if functions.operator_exists("object.create_driver_constraint") and len(context.selected_objects) > 1:
+                    row = layout.row()
+                    row.operator("object.create_driver_constraint", text="Driver Constraint", icon="DRIVER")
+
+            if sprite_object.coa_tools.edit_weights == False and sprite_object.coa_tools.edit_shapekey == False:
+                if sprite_object != None and (
+                        (obj != None and obj.mode not in ["EDIT", "WEIGHT_PAINT", "SCULPT"]) or obj == None):
+                    row = layout.row(align=True)
+                    row.operator("coa_tools.import_sprites", text="Re / Import Sprites", icon="FILEBROWSER")
+
+
+                    row = layout.row(align=True)
+                    row.operator("coa_tools.create_slot_object", text="Merge to Slot Object", icon="FILEBROWSER",emboss=True)
+                    if obj != None and obj.coa_tools.type == "SLOT":
+                        row.operator("coa_tools.extract_slots", text="Extract Slots", icon="EXPORT", emboss=True)
+
+                    if functions.operator_exists("object.create_driver_constraint") and len(context.selected_objects) > 1:
+                        row = layout.row()
+                        row.operator("object.create_driver_constraint", text="Driver Constraint", icon="DRIVER")
+
+                if obj != None:
+                    if obj.type == "ARMATURE" and obj.mode == "POSE":
+                        row = layout.row(align=True)
+                        row.operator("bone.coa_tools.draw_bone_shape", text="Draw Bone Shape", icon="BONE_DATA")
+
+                    if obj != None and obj.mode == "POSE":
+                        row = layout.row(align=True)
+                        row.label(text="Bone Constraint Operator:")
+                        row = layout.row(align=True)
+                        row.operator("object.coa_set_ik", text="Create IK Bone", icon="CONSTRAINT_BONE")
+                        row = layout.row(align=True)
+                        row.operator("bone.coa_set_stretch_bone", text="Create Stretch Bone", icon="CONSTRAINT_BONE")
+
+                        row = layout.row(align=True)
+                        row.operator("coa_tools.create_stretch_ik", text="Create Stretch IK", icon="CONSTRAINT_BONE")
+
             if obj != None and obj.type == "MESH":
-                col.operator("coa_tools.edit_mesh", text="Edit Mesh", icon="GREASEPENCIL")
+
+                if obj != None and obj.mode == "SCULPT":
+                    if not sprite_object.coa_tools.edit_shapekey:
+                        row = layout.row(align=True)
+                        row.operator("coa_tools.leave_sculptmode", text="Finish Edit Shapekey", icon="SHAPEKEY_DATA")
+                    row = layout.row(align=True)
+                    functions.draw_sculpt_ui(self, context, row)
+
+                if sprite_object.coa_tools.edit_mesh == False and sprite_object.coa_tools.edit_shapekey == False and sprite_object.coa_tools.edit_armature == False and sprite_object.coa_tools.edit_weights == False and not (
+                        obj.type == "MESH" and obj.mode in ["EDIT", "SCULPT"]) and (sprite_object) != None:
+                    pass
+                elif sprite_object.coa_tools.edit_weights:
+                    col = layout.split().column()
+                    tool_settings = scene.tool_settings
+                    brush_data = tool_settings.weight_paint
+
+                    col.template_ID_preview(brush_data, "brush", new="brush.add", rows=3, cols=8)
+                    col = layout.column(align=True)
+                    row = col.row(align=True)
+                    row.prop(tool_settings.unified_paint_settings, "weight")
+                    row = col.row(align=True)
+                    row.prop(tool_settings.unified_paint_settings, "size")
+                    row.prop(tool_settings.unified_paint_settings, "use_pressure_size", text="")
+                    row = col.row(align=True)
+                    row.prop(tool_settings.unified_paint_settings, "strength")
+                    row.prop(tool_settings.unified_paint_settings, "use_pressure_strength", text="")
+                    row = col.row(align=True)
+                    row.prop(tool_settings, "use_auto_normalize", text="Auto Normalize")
+
+        if obj != None and (
+                "coa_sprite" in obj or "coa_bone_shape" in obj) and obj.mode == "EDIT" and obj.type == "MESH" and sprite_object.coa_tools.edit_mesh:
+            row = layout.row(align=True)
+            row.label(text="Mesh Tools:")
+
+            if "coa_sprite" in obj:
+                row = layout.row(align=True)
+                operator = row.operator("coa_tools.generate_mesh_from_edges_and_verts", text="Generate Mesh",
+                                        icon="OUTLINER_OB_SURFACE")
+
+                row = layout.row(align=True)
+                operator = row.operator("coa_tools.fill_edge_loop", text="Normal Fill", icon="OUTLINER_OB_SURFACE")
+                operator.triangulate = False
+
+                row = layout.row(align=True)
+                operator = row.operator("coa_tools.fill_edge_loop", text="Triangle Fill", icon="OUTLINER_OB_SURFACE")
+                operator.triangulate = True
+
+            col = layout.column(align=True)
+
+            row2 = col.row(align=True)
+            row2.prop(scene.coa_tools, 'distance', text="Stroke Distance")
+            row2.operator("coa_tools.pick_edge_length", text="", icon="EYEDROPPER")
+
+            row2 = col.row(align=True)
+            row2.prop(scene.coa_tools, 'snap_distance', text="Snap Distance")
+            row2 = col.row(align=True)
+            if scene.coa_tools.surface_snap:
+                row2.prop(scene.coa_tools, 'surface_snap', text="Snap Vertices", icon="SNAP_ON")
+            else:
+                row2.prop(scene.coa_tools, 'surface_snap', text="Snap Vertices", icon="SNAP_OFF")
+
+            col = layout.column(align=True)
+            operator = col.operator("mesh.knife_tool", text="Knife")
+            if "coa_sprite" in obj:
+                operator = col.operator("coa_tools.reproject_sprite_texture", text="Reproject Sprite")
 
 ### Custom template_list look
 class COATOOLS_UL_AnimationCollections(bpy.types.UIList):

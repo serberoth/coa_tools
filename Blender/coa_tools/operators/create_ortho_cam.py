@@ -35,7 +35,7 @@ from .. functions import *
 
 ######################################################################################################################################### Create Sprite Object
 class COATOOLS_OT_CreateOrtpographicCamera(bpy.types.Operator):
-    bl_idname = "wm.coa_create_ortho_cam"
+    bl_idname = "coa_tools.create_ortho_cam"
     bl_label = "Camera Settings"
     bl_options = {"REGISTER","UNDO"}
     
@@ -123,8 +123,8 @@ class COATOOLS_OT_AlignCamera(bpy.types.Operator):
     def draw(self,context):
         layout = self.layout
         row = layout.row()
-        
-        row.prop(self,"align",text="Align Position")
+
+        row.prop(self, "align", text="Align Position")
     
     def execute(self, context):
         cam = context.active_object
@@ -182,4 +182,4 @@ class COATOOLS_OT_AlignCamera(bpy.types.Operator):
             cam.location[2] = self.y_multiplier * context.scene.render.resolution_y * get_addon_prefs(context).sprite_import_export_scale * self.offset_y   
             
         return {"FINISHED"}
-            
+

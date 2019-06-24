@@ -62,7 +62,7 @@ class COATOOLS_OT_BindMeshToBones(bpy.types.Operator):
 
 ######################################################################################################################################### Quick Armature        
 class COATOOLS_OT_QuickArmature(bpy.types.Operator):
-    bl_idname = "scene.coa_quick_armature" 
+    bl_idname = "coa_tools.quick_armature"
     bl_label = "Quick Armature"
     
     def __init__(self):
@@ -904,5 +904,3 @@ class COATOOLS_OT_RemoveStretchIK(bpy.types.Operator):
         bpy.ops.object.mode_set(mode="POSE")            
         
         return {"FINISHED"}
-            
-        

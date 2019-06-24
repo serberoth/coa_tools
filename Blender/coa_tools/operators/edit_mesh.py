@@ -138,7 +138,7 @@ def clean_verts(bm,obj):
                 i += 1
             if i == len(face.edges):
                 faces.append(face)           
-    bmesh.ops.delete(bm,geom=faces,context=5)
+    bmesh.ops.delete(bm,geom=faces,context="FACES_ONLY")
 
     edges = []
     for face in bm.faces:
@@ -270,10 +270,10 @@ class COATOOLS_OT_GenerateMeshFromEdgesAndVerts(bpy.types.Operator):
                 if face_editable:    
                     faces.append(face)
                 
-        bmesh.ops.delete(bm,geom=faces,context=3)        
+        bmesh.ops.delete(bm,geom=faces,context="FACES_ONLY")
         wm.progress_update(30)
         ### delete double verts
-        edges_len_average, shortest_edge = get_average_edge_length(bm,context.active_object)
+        edges_len_average, shortest_edge = get_average_edge_length(bm, context.active_object)
         verts = []
         for edge in bm.edges:
             if not edge.hide:
@@ -422,13 +422,13 @@ class COATOOLS_OT_GenerateMeshFromEdgesAndVerts(bpy.types.Operator):
                 edge_center = (edge.verts[0].co + edge.verts[1].co) * .5
                 if edge_center not in edges_center and edge.is_boundary:
                     delete_edges.append(edge)
-        bmesh.ops.delete(bm, geom=delete_edges, context=2)
+        bmesh.ops.delete(bm, geom=delete_edges, context="EDGES")
 
         delete_edges = []       
         for edge in bm.edges:
             if not edge.hide and edge.is_wire and not edge.verts[0].hide and not edge.verts[1].hide:
                 delete_edges.append(edge)
-        bmesh.ops.delete(bm, geom=delete_edges, context=2)
+        bmesh.ops.delete(bm, geom=delete_edges, context="EDGES")
 
 
         ### triangulate mesh
@@ -717,6 +717,23 @@ result = bpy.context.scene.ray_cast(start,end)
 result = [result[0],result[4],result[5],result[1],result[2]]
 '''
 
+class COATOOLS_TO_DrawPolygon(bpy.types.WorkSpaceTool):
+    bl_space_type='VIEW_3D'
+    bl_context_mode='EDIT_MESH'
+
+    # The prefix of the idname should be your add-on name.
+    bl_idname = "coa_tools.draw_polygon"
+    bl_label = "Draw 2D Polygon"
+    bl_description = (
+        "Draws COA Tools Mesh Polygon"
+    )
+    bl_icon = ""
+    bl_widget = None
+    # bl_keymap = (
+    #     ("coa_tools.draw_polygon", {"type": 'LEFTMOUSE', "value": 'PRESS'},
+    #      {"properties": []}),
+    # )
+
 class COATOOLS_OT_DrawContour(bpy.types.Operator):
     bl_idname = "coa_tools.edit_mesh"
     bl_label = "Edit Mesh"
@@ -841,7 +858,7 @@ class COATOOLS_OT_DrawContour(bpy.types.Operator):
                         
                 if invalid_edges == len(face.edges):
                     faces.append(face)
-        bmesh.ops.delete(bm,geom=faces,context=3)
+        bmesh.ops.delete(bm,geom=faces,context="FACES_ONLY")
         bmesh.update_edit_mesh(obj.data)
         
     def draw_verts(self,context,obj,bm,position,use_snap=False):
@@ -1179,7 +1196,6 @@ class COATOOLS_OT_DrawContour(bpy.types.Operator):
             if (getattr(keyconfig.preferences, "select_mouse") == "RIGHT"):
                 click_button = 'LEFTMOUSE'
                 select_button = 'RIGHTMOUSE'
-                
             else:
                 click_button = 'LEFTMOUSE'
                 select_button = 'RIGHTMOUSE'
@@ -1220,11 +1236,8 @@ class COATOOLS_OT_DrawContour(bpy.types.Operator):
                 if rayEnd != None:
                     pos = rayEnd
                     pos[1] = obj.matrix_world.to_translation()[1]-0.00001
-                    # bpy.context.scene.cursor.location = rayEnd
                     self.mouse_pos_3d = rayEnd
-                # if scene.coa_tools.lock_to_bounds and self.mode == "EDIT_MESH":
-                #     bpy.context.scene.cursor.location = self.limit_cursor_by_bounds(context,scene.cursor.location)
-                
+
                 ### get visible verts in list | get intersecting points | get edge slide points  -> add everything in separate lists
                 self.visible_verts = self.get_visible_verts(context,bm)
                 if scene.coa_tools.surface_snap:
@@ -1239,7 +1252,7 @@ class COATOOLS_OT_DrawContour(bpy.types.Operator):
                 else:
                     self.intersection_points = []
                 
-                self.snapped_vert_coord = self.limit_cursor_by_bounds(context,self.snapped_vert_coord)
+                self.snapped_vert_coord = self.limit_cursor_by_bounds(context, self.snapped_vert_coord)
                 
                     
                 ### check if mouse is in 3d View
@@ -1270,8 +1283,8 @@ class COATOOLS_OT_DrawContour(bpy.types.Operator):
                         self.mouse_press = True
                         
                         ### add vert on first mouse press
-                        self.cursor_pos_hist = Vector(context.scene.cursor.location)
-                        
+                        self.cursor_pos_hist = Vector(self.mouse_pos_3d)
+
                         self.draw_verts(context,obj,bm,self.cursor_pos_hist,use_snap=True)
                     return{'RUNNING_MODAL'}
                     
@@ -1279,20 +1292,18 @@ class COATOOLS_OT_DrawContour(bpy.types.Operator):
                     self.mouse_press = False    
                 
                 
-                self.cur_distance = (context.scene.cursor.location - self.cursor_pos_hist).magnitude
-                self.draw_dir = (context.scene.cursor.location - self.cursor_pos_hist).normalized()
-                
+                self.cur_distance = (self.mouse_pos_3d - self.cursor_pos_hist).magnitude
+                self.draw_dir = (self.mouse_pos_3d - self.cursor_pos_hist).normalized()
+
                 
                 ### add verts while mouse is pressed and moved
-                mult = 1.0
                 if not self.ctrl:
                     if self.mouse_press and self.inside_area:
-                        if self.cur_distance > context.scene.coa_tools.distance * mult:
-                            i = int(self.cur_distance / (context.scene.coa_tools.distance * mult))
-                            
+                        if self.cur_distance > context.scene.coa_tools.distance:
+                            i = int(self.cur_distance / (context.scene.coa_tools.distance))
                             for j in range(i):
-                                new_vertex_pos = (self.cursor_pos_hist + (self.draw_dir * context.scene.coa_tools.distance * mult))
-                                self.draw_verts(context,obj,bm,new_vertex_pos,use_snap=False)
+                                new_vertex_pos = (self.cursor_pos_hist + (self.draw_dir * context.scene.coa_tools.distance))
+                                self.draw_verts(context, obj, bm, new_vertex_pos, use_snap=False)
 
                                 self.cursor_pos_hist = Vector(new_vertex_pos)
                     else:
@@ -1476,6 +1487,7 @@ class COATOOLS_OT_DrawContour(bpy.types.Operator):
 
 
     def invoke(self, context, event):
+        bpy.ops.ed.undo_push(message="Edit Mesh")
         if context.active_object == None or (context.active_object.type != "MESH" and self.mode != "DRAW_BONE_SHAPE"):
             self.report({"ERROR"},"Sprite is hidden or not selected. Cannot go in Edit Mode.")
             return{"CANCELLED"}
@@ -1571,6 +1583,7 @@ class COATOOLS_OT_DrawContour(bpy.types.Operator):
         
         if self.mode == "EDIT_MESH":
             functions.set_local_view(True)
+        self.texture_preview_object.select_set(False)
         self.prev_coa_view = str(context.screen.coa_tools.view)
         context.screen.coa_tools.view = "2D"
 
@@ -1588,7 +1601,6 @@ class COATOOLS_OT_DrawContour(bpy.types.Operator):
         return {'RUNNING_MODAL'}
 
     def cancel(self, context):
-        bpy.context.window_manager.sketch_assets_enabled = False
         return {'CANCELLED'}
     
     def draw_callback_text(self):
@@ -1644,7 +1656,7 @@ class COATOOLS_OT_DrawContour(bpy.types.Operator):
         red = [1, 0, 0, 1.0]
         yellow = [1, 1, 0, 1.0]
 
-        if obj.mode == "EDIT":
+        if obj != None and obj.mode == "EDIT":
 
             y_offset = Vector((0, -0.0001, 0))
 
@@ -1756,8 +1768,6 @@ class COATOOLS_OT_PickEdgeLength(bpy.types.Operator):
         bm = bmesh.from_edit_mesh(obj.data)
         
         mult = 1
-#        if context.scene.coa_tools.distance_constraint:
-#            mult = bpy.context.space_data.region_3d.view_distance * .05
         
         for edge in bm.edges:
             if edge.select:

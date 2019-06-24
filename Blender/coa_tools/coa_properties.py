@@ -133,7 +133,7 @@ def enum_sprite_previews(self, context):
 def snapping(self,context):
     if self.surface_snap:
         bpy.context.scene.tool_settings.use_snap = True
-        bpy.context.scene.tool_settings.snap_element = 'FACE'
+        bpy.context.scene.tool_settings.snap_elements = {'FACE'}
     else:
         bpy.context.scene.tool_settings.use_snap = False
 
@@ -145,15 +145,29 @@ def update_stroke_distance(self,context):
         context.scene.coa_distance *= mult
 
 def lock_view(self,context):
-    screen = context.screen
-    if "-nonnormal" in self.name:
-        bpy.data.screens[context.screen.name.split("-nonnormal")[0]].coa_view = self.coa_view
-    if screen.coa_tools.view == "3D":
+    screens = []
+    screens.append(context.screen)
+    # screen = context.screen
+
+    for scr in bpy.data.screens:
+        if scr not in screens:
+            screens.append(scr)
+
+    for screen in screens:
+        if screen != self.id_data:
+            screen.coa_tools["view"] = self["view"]
+        if "-nonnormal" in screen.name:
+            bpy.data.screens[screen.name.split("-nonnormal")[0]].coa_tools.view = self.view
+        if self.view == "3D":
+            functions.set_view(screen, "3D")
+        elif self.view == "2D":
+            functions.set_view(screen, "2D")
+    if self.view == "3D":
         functions.set_middle_mouse_move(False)
-        functions.set_view(screen, "3D")
-    elif screen.coa_tools.view == "2D":
+    elif self.view == "2D":
         functions.set_middle_mouse_move(True)
-        functions.set_view(screen, "2D")
+
+
 
 class UVData(bpy.types.PropertyGroup):
     uv: FloatVectorProperty(default=(0,0),size=2)
@@ -235,10 +249,10 @@ class AnimationCollections(bpy.types.PropertyGroup):
     name_change_to: StringProperty()
     name_old: StringProperty()
     action_collection: BoolProperty(default=False)
-    frame_start: IntProperty(default=0 ,update=set_frame_start)
-    frame_end: IntProperty(default=250 ,min=1,update=set_frame_end)
+    frame_start: IntProperty(default=0, update=set_frame_start)
+    frame_end: IntProperty(default=250, min=1, update=set_frame_end)
     timeline_events: CollectionProperty(type=TimelineEvent)
-    event_index: IntProperty(default=-1,max=-1)
+    event_index: IntProperty(default=-1, max=-1)
 
 class ObjectProperties(bpy.types.PropertyGroup):
     anim_collections: bpy.props.CollectionProperty(type=AnimationCollections)
@@ -334,6 +348,7 @@ def register():
     bpy.types.Mesh.coa_tools = PointerProperty(type=MeshProperties)
     bpy.types.Bone.coa_tools = PointerProperty(type=BoneProperties)
     bpy.types.WindowManager.coa_tools = PointerProperty(type=WindowManagerProperties)
+    bpy.types.SpaceView3D.coa_tools_test = PointerProperty(type=MeshProperties)
     print("COATools Properties have been registered")
 def unregister():
     del bpy.types.Object.coa_tools

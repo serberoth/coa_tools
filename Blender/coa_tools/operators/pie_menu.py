@@ -50,7 +50,7 @@ class VIEW3D_PIE_coa_menu(Menu):
                 pie.operator("bone.coa_set_stretch_bone",text="Create Stretch Bone",icon="CONSTRAINT_BONE")
                 pie.operator("wm.call_menu_pie", icon="SPACE3", text="Delete Keyframe(s)").name = "view3d.coa_pie_keyframe_menu_remove"
             elif obj.type == "EMPTY":
-                pie.operator("import.coa_import_sprites",text="Import Sprites",icon="IMASEL")
+                pie.operator("import.coa_import_sprites",text="Import Sprites",icon="FILEBROWSER")
                 if get_addon_prefs(context).dragon_bones_export:
                     pie.operator("coa_tools.export_dragon_bones",text="Export Dragonbones",icon_value=db_icon.icon_id)
                 else:

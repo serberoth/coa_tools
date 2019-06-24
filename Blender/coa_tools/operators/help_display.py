@@ -44,7 +44,7 @@ class COATOOLS_OT_ShowHelp(bpy.types.Operator):
             
     def invoke(self, context, event):
         wm = context.window_manager
-        wm.coa_show_help = True
+        wm.coa_tools.show_help = True
         args = ()
         self.draw_handler = bpy.types.SpaceView3D.draw_handler_add(self.draw_callback_px, args, "WINDOW", "POST_PIXEL")
         self._timer = wm.event_timer_add(0.1, context.window)
@@ -74,10 +74,10 @@ class COATOOLS_OT_ShowHelp(bpy.types.Operator):
         else:
             self.region_offset = 0
         
-        if not wm.coa_show_help:
+        if not wm.coa_tools.show_help:
             self.alpha = 0.0
             
-        if not wm.coa_show_help and round(self.alpha_current,1) == 0:#event.type in {"RIGHTMOUSE", "ESC"}:
+        if not wm.coa_tools.show_help and round(self.alpha_current,1) == 0:#event.type in {"RIGHTMOUSE", "ESC"}:
             return self.finish()
         
         if self.alpha != round(self.alpha_current,1):
@@ -301,4 +301,3 @@ class COATOOLS_OT_ShowHelp(bpy.types.Operator):
         bgl.glLineWidth(1)
         bgl.glDisable(bgl.GL_BLEND)
         bgl.glColor4f(0.0, 0.0, 0.0, 1.0)
-        

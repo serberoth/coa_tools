@@ -57,7 +57,7 @@ def draw_sculpt_ui(self,context,layout):
             col.label(text="No Shapekeys available yet.",icon="ERROR")
         subrow = col.row(align=True)
         subrow.prop(obj.coa_tools,"selected_shapekey",text="")
-        op = subrow.operator("coa_tools.shapekey_add",icon="NEW",text="")
+        op = subrow.operator("coa_tools.shapekey_add",icon="FILE_NEW",text="")
         
         if obj.data.shape_keys != None and len(obj.data.shape_keys.key_blocks) > 0:
             op = subrow.operator("coa_tools.shapekey_rename",icon="OUTLINER_DATA_FONT",text="")
@@ -523,7 +523,7 @@ def set_local_view(local):
 
 def actions_callback(self,context):
     actions = []
-    actions.append(("New Action...","New Action...","New Action","NEW",0))
+    actions.append(("New Action...","New Action...","New Action","FILE_NEW",0))
     actions.append(("Clear Action","Clear Action","Clear Action","RESTRICT_SELECT_ON",1))
     i = 2
     for action in bpy.data.actions:
@@ -566,21 +566,28 @@ def lock_view(screen, lock):
 
 def set_view(screen,mode):
     if mode == "2D":
-        active_space_data = bpy.context.space_data
-        if active_space_data != None:
-            if hasattr(active_space_data,"region_3d"):
-                region_3d = active_space_data.region_3d
-                bpy.ops.view3d.view_axis(type='FRONT', align_active=False, relative=False)
-                if region_3d.view_perspective != "ORTHO":
-                    bpy.ops.view3d.view_persportho()  
-    elif mode == "3D":
-        active_space_data = bpy.context.space_data
-        if active_space_data != None:
-            if hasattr(active_space_data,"region_3d"):
-                region_3d = active_space_data.region_3d
-                if region_3d.view_perspective == "ORTHO":
-                    bpy.ops.view3d.view_persportho()        
+        for area in screen.areas:
+            if area.type == "VIEW_3D":
+                active_space_data = area.spaces[0]
+                if active_space_data != None:
+                    if hasattr(active_space_data,"region_3d"):
+                        region_3d = active_space_data.region_3d
+                        region_3d.view_perspective = "ORTHO"
+                        override = bpy.context.copy()
+                        override["screen"] = screen
+                        override["space_data"] = active_space_data
+                        override["area"] = area
 
+                        bpy.ops.view3d.view_axis(override, type='FRONT', align_active=False, relative=False)
+
+    elif mode == "3D":
+        for area in screen.areas:
+            if area.type == "VIEW_3D":
+                active_space_data = area.spaces[0]
+                if active_space_data != None:
+                    if hasattr(active_space_data,"region_3d"):
+                        region_3d = active_space_data.region_3d
+                        region_3d.view_perspective = "PERSP"
 
 def set_middle_mouse_move(enable):
     km = bpy.context.window_manager.keyconfigs.addon.keymaps["3D View"]
@@ -1007,12 +1014,12 @@ def draw_children(self,context,sprite_object,layout,box,row,col,children,obj,cur
                                 
                                 
                             if child.coa_tools.hide:
-                                icon = "VISIBLE_IPO_OFF"
+                                icon = "HIDE_ON"
                                 if not child.hide_viewport:
-                                    icon = "VISIBLE_IPO_ON"
+                                    icon = "HIDE_OFF"
                                 subrow2.prop(child.coa_tools, "hide", emboss=False, text="", icon=icon)
                             else:   
-                                subrow2.prop(child.coa_tools, "hide", emboss=False, text="", icon="VISIBLE_IPO_ON")
+                                subrow2.prop(child.coa_tools, "hide", emboss=False, text="", icon="HIDE_OFF")
                             if child.coa_tools.hide_select:   
                                 subrow2.prop(child.coa_tools, "hide_select", emboss=False, text="", icon="RESTRICT_SELECT_ON")
                             else:   
@@ -1109,9 +1116,9 @@ def draw_bone_entry(self,bone,row,col,child,indentation_level=0):
     else:
         row.prop(bone,"coa_tools.favorite",emboss=False,text="",icon="SOLO_OFF")
     if bone.hide:
-        row.prop(bone,"coa_tools.hide",text="",emboss=False,icon="VISIBLE_IPO_OFF")
+        row.prop(bone,"coa_tools.hide",text="",emboss=False,icon="HIDE_ON")
     else:   
-        row.prop(bone,"coa_tools.hide",text="",emboss=False,icon="VISIBLE_IPO_ON")
+        row.prop(bone,"coa_tools.hide",text="",emboss=False,icon="HIDE_OFF")
     if bone.hide_select:
         row.prop(bone,"coa_tools.hide_select",text="",emboss=False,icon="RESTRICT_SELECT_ON")
     else:   

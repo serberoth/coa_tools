@@ -146,7 +146,7 @@ class COATOOLS_OT_EditShapekeyMode(bpy.types.Operator):
 
     def get_shapekeys(self,context):
         SHAPEKEYS = []
-        SHAPEKEYS.append(("NEW_KEY","New Shapekey","New Shapekey","NEW",0))
+        SHAPEKEYS.append(("NEW_KEY","New Shapekey","New Shapekey","FILE_NEW",0))
         obj = context.active_object
         if obj.type == "MESH" and obj.data.shape_keys != None:
             i = 0
@@ -315,4 +315,3 @@ class COATOOLS_OT_EditShapekeyMode(bpy.types.Operator):
     
     def draw_callback_px(self):
         draw_edit_mode(self,bpy.context,offset=2)
-           

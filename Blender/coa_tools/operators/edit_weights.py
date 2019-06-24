@@ -246,4 +246,3 @@ class COATOOLS_OT_EditWeights(bpy.types.Operator):
     
     def draw_callback_px(self):
         draw_edit_mode(self,bpy.context,color=[0.367356, 1.000000, 0.632293, 1.000000],text="Edit Weights Mode",offset=-5)
-            

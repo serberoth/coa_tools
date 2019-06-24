@@ -88,11 +88,6 @@ class COATOOLS_OT_CreateSlotObject(bpy.types.Operator):
     def invoke(self,context,event):
         wm = context.window_manager
         return wm.invoke_props_dialog(self)
-        if context.active_object.coa_type != "SLOT":
-            return wm.invoke_props_dialog(self)        
-        else:
-            self.execute(context)
-            return{"FINISHED"}
     
     def objects_are_valid(self,context):
         count = 0
@@ -263,9 +258,4 @@ class COATOOLS_OT_RemoveFromSlot(bpy.types.Operator):
 #        for s in obj.coa_slot:
 #            if s.index > self.idx:
 #                s["index"] -= 1
-        
-        
-        
-        
         return {"FINISHED"}
-            

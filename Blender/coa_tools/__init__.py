@@ -130,8 +130,32 @@ classes = (
 
     advanced_settings.COATOOLS_OT_AdvancedSettings,
 
-    edit_mesh.COATOOLS_OT_DrawContour,
     edit_mesh.COATOOLS_OT_ReprojectSpriteTexture,
+    edit_mesh.COATOOLS_OT_GenerateMeshFromEdgesAndVerts,
+    edit_mesh.COATOOLS_OT_Fill,
+    edit_mesh.COATOOLS_OT_DrawContour,
+    edit_mesh.COATOOLS_OT_PickEdgeLength,
+
+    edit_armature.COATOOLS_OT_BindMeshToBones,
+    edit_armature.COATOOLS_OT_QuickArmature,
+    edit_armature.COATOOLS_OT_SetStretchBone,
+    edit_armature.COATOOLS_OT_RemoveIK,
+    edit_armature.COATOOLS_OT_SetIK,
+    edit_armature.COATOOLS_OT_CreateStretchIK,
+    edit_armature.COATOOLS_OT_RemoveStretchIK,
+
+    edit_shapekey.COATOOLS_OT_LeaveSculptmode,
+    edit_shapekey.COATOOLS_OT_ShapekeyAdd,
+    edit_shapekey.COATOOLS_OT_ShapekeyRemove,
+    edit_shapekey.COATOOLS_OT_ShapekeyRename,
+    edit_shapekey.COATOOLS_OT_EditShapekeyMode,
+
+    edit_weights.COATOOLS_OT_EditWeights,
+
+    slot_handling.COATOOLS_OT_ExtractSlots,
+    slot_handling.COATOOLS_OT_CreateSlotObject,
+    slot_handling.COATOOLS_OT_MoveSlotItem,
+    slot_handling.COATOOLS_OT_RemoveFromSlot,
 
     animation_handling.COATOOLS_OT_AddKeyframe,
     animation_handling.COATOOLS_OT_DuplicateAnimationCollection,
@@ -143,6 +167,11 @@ classes = (
     animation_handling.COATOOLS_OT_RemoveEvent,
     animation_handling.COATOOLS_OT_AddTimelineEvent,
     animation_handling.COATOOLS_OT_RemoveTimelineEvent,
+
+    create_ortho_cam.COATOOLS_OT_CreateOrtpographicCamera,
+    create_ortho_cam.COATOOLS_OT_AlignCamera,
+
+    help_display.COATOOLS_OT_ShowHelp,
 
 )
 
@@ -176,12 +205,17 @@ def register():
     for cls in classes:
         register_class(cls)
 
+    # register tools
+    bpy.utils.register_tool(edit_mesh.COATOOLS_TO_DrawPolygon, after={"builtin.cursor"}, separator=True, group=True)
+
     # register props and keymap
     props.register()
     register_keymaps()
 
     # create handler
     bpy.app.handlers.depsgraph_update_post.append(check_view_2D_3D)
+    bpy.app.handlers.load_post.append(check_view_2D_3D)
+    bpy.app.handlers.load_post.append(set_shading)
 
 
 def unregister():
@@ -190,27 +224,40 @@ def unregister():
     for cls in classes:
         unregister_class(cls)
 
+    # unregister tools
+    bpy.utils.unregister_tool(edit_mesh.COATOOLS_TO_DrawPolygon)
+
     # unregisters props and keymap
     props.unregister()
     unregister_keymaps()
 
     # delete handler
     bpy.app.handlers.depsgraph_update_post.remove(check_view_2D_3D)
+    bpy.app.handlers.load_post.remove(check_view_2D_3D)
+    bpy.app.handlers.load_post.remove(set_shading)
 
 
-screen_name_prev = None
-
-
+screen_prev = None
 @persistent
 def check_view_2D_3D(dummy):
-    global screen_name_prev
+    global screen_prev
     context = bpy.context
     if context != None:
         screen = context.screen
         if screen != None:
-            if screen_name_prev != context.screen.name:
+            if screen_prev != context.screen.name:
                 if screen.coa_tools.view == "2D":
                     set_middle_mouse_move(True)
                 elif screen.coa_tools.view == "3D":
                     set_middle_mouse_move(False)
-            screen_name_prev = str(screen.name)
+            screen_prev = screen
+
+
+@persistent
+def set_shading(dummy):
+    for obj in bpy.data.objects:
+        if "coa_sprite_object" in obj:
+            for area in bpy.context.screen.areas:
+                if area.type == "VIEW_3D":
+                    area.spaces[0].shading.type = "RENDERED"
+            break
