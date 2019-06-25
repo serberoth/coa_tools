@@ -26,9 +26,7 @@ def hide_select(self, context):
 
 def update_uv(self, context):
     self.sprite_frame_last = -1
-    if self.sprite_frame >= (self.tiles_x * self.tiles_y):
-        self.sprite_frame = (self.tiles_x * self.tiles_y) - 1
-    update_uv(context, context.active_object)
+    functions.update_uv(context, context.active_object)
 
 
 def set_z_value(self, context):
@@ -65,11 +63,11 @@ def set_sprite_frame(self, context):
         if context.scene.tool_settings.use_keyframe_insert_auto:
             bpy.ops.coa_tools.add_keyframe(prop_name="coa_sprite_frame", interpolation="CONSTANT")
     elif self.type == "SLOT":
-        self.coa_slot_index = int(self.coa_sprite_frame_previews)
+        self.slot_index = int(self.sprite_frame_previews)
 
 
 def exit_edit_weights(self, context):
-    if not self.coa_edit_weights:
+    if not self.edit_weights:
         obj = context.active_object
         if obj != None and obj.mode == "WEIGHT_PAINT":
             bpy.ops.object.mode_set(mode="OBJECT")
@@ -81,10 +79,10 @@ def hide_base_sprite(self, context):
 
 
 def change_slot_mesh(self, context):
-    self.coa_slot_index_last = -1
-    self.coa_slot_index_last = self.coa_slot_index
-    functions.change_slot_mesh_data(context, self)
-    self.data.coa_hide_base_sprite = self.data.coa_hide_base_sprite
+    self.slot_index_last = -1
+    self.slot_index_last = self.id_data.coa_tools.slot_index
+    functions.change_slot_mesh_data(context, self.id_data)
+    self.id_data.data.coa_tools.hide_base_sprite = self.id_data.data.coa_tools.hide_base_sprite
 
 
 def change_edit_mode(self, context):
@@ -121,12 +119,17 @@ def enum_sprite_previews(self, context):
     if context is None:
         return enum_items
 
-    if self.coa_type == "SLOT":
-        for i, slot in enumerate(self.coa_slot):
+    if self.type == "SLOT":
+        for i, slot in enumerate(self.slot):
             if slot.mesh != None:
-                img = slot.mesh.materials[0].texture_slots[0].texture.image
-                icon = bpy.types.UILayout.icon(img)
-                enum_items.append((str(i), slot.mesh.name, "", icon, i))
+                mat = slot.mesh.materials[0]
+                for node in mat.node_tree.nodes:
+                    if node.label == "COA Material":
+                        tex_node = node.inputs["Texture Color"].links[0].from_node
+                        if tex_node != None:
+                            img = tex_node.image
+                            icon = bpy.types.UILayout.icon(img)
+                            enum_items.append((str(i), slot.mesh.name, "", icon, i))
 
     return enum_items
 
@@ -145,41 +148,128 @@ def update_stroke_distance(self,context):
         context.scene.coa_distance *= mult
 
 def lock_view(self,context):
-    screens = []
-    screens.append(context.screen)
-    # screen = context.screen
+    scenes = []
+    scenes.append(context.scene)
 
-    for scr in bpy.data.screens:
-        if scr not in screens:
-            screens.append(scr)
+    for scene in bpy.data.scenes:
+        if scene not in scenes:
+            scenes.append(scene)
 
-    for screen in screens:
-        if screen != self.id_data:
-            screen.coa_tools["view"] = self["view"]
-        if "-nonnormal" in screen.name:
-            bpy.data.screens[screen.name.split("-nonnormal")[0]].coa_tools.view = self.view
+    for scene in scenes:
+        if scene != self.id_data:
+            scene.coa_tools["view"] = self["view"]
         if self.view == "3D":
-            functions.set_view(screen, "3D")
+            functions.set_view(scene, "3D")
         elif self.view == "2D":
-            functions.set_view(screen, "2D")
+            functions.set_view(scene, "2D")
     if self.view == "3D":
         functions.set_middle_mouse_move(False)
     elif self.view == "2D":
         functions.set_middle_mouse_move(True)
 
 
+COLLECTIONS = []
+def get_collection_recursive(collection):
+    global COLLECTIONS
+    if len(collection.children) > 0:
+        for child in collection.children:
+            COLLECTIONS.append(child)
+            get_collection_recursive(child)
+
+
+def get_available_collections(self, context):
+    global COLLECTIONS
+    COLLECTIONS = []
+    get_collection_recursive(context.scene.collection)
+    ITEMS = []
+    for i, child_collection in enumerate(COLLECTIONS):
+        ITEMS.append((child_collection.name,child_collection.name,"","GROUP",i))
+    return ITEMS
+
+
+def set_actions(self, context):
+    scene = context.scene
+    sprite_object = functions.get_sprite_object(context.active_object)
+
+    if context.scene.coa_tools.nla_mode == "ACTION":
+        scene.frame_start = sprite_object.coa_tools.anim_collections[sprite_object.coa_tools.anim_collections_index].frame_start
+        scene.frame_end = sprite_object.coa_tools.anim_collections[sprite_object.coa_tools.anim_collections_index].frame_end
+        functions.set_action(context)
+    for obj in context.visible_objects:
+        if obj.type == "MESH" and "coa_sprite" in obj:
+            functions.update_uv(context,obj)
+            functions.set_alpha(obj,bpy.context,obj.coa_tools.alpha)
+            functions.set_z_value(context,obj,obj.coa_tools.z_value)
+            functions.set_modulate_color(obj,context,obj.coa_tools.modulate_color)
+
+    ### set export name
+    if scene.coa_tools.nla_mode == "ACTION":
+        action_name = sprite_object.coa_tools.anim_collections[sprite_object.coa_tools.anim_collections_index].name
+        if action_name in ["Restpose","NO ACTION"]:
+            action_name = ""
+        else:
+            action_name += "_"
+        path = context.scene.render.filepath.replace("\\","/")
+        dirpath = path[:path.rfind("/")]
+        final_path = dirpath + "/" + action_name
+        context.scene.render.filepath = final_path
+
+
+def set_nla_mode(self, context):
+    sprite_object = functions.get_sprite_object(context.active_object)
+    children = functions.get_children(context,sprite_object,ob_list=[])
+    if self.coa_tools.nla_mode == "NLA":
+        for child in children:
+            if child.animation_data != None:
+                child.animation_data.action = None
+        context.scene.frame_start = context.scene.coa_tools.frame_start
+        context.scene.frame_end = context.scene.coa_tools.coa_frame_end
+
+        for child in children:
+            if child.animation_data != None:
+                for track in child.animation_data.nla_tracks:
+                    track.mute = False
+    else:
+        if len(sprite_object.coa_tools.anim_collections) > 0:
+            anim_collection = sprite_object.coa_tools.anim_collections[sprite_object.coa_tools.anim_collections_index]
+            context.scene.frame_start = anim_collection.frame_start
+            context.scene.frame_end = anim_collection.frame_end
+            functions.set_action(context)
+            for obj in context.visible_objects:
+                if obj.type == "MESH" and "coa_sprite" in obj:
+                    functions.update_uv(context,obj)
+                    functions.set_alpha(obj,bpy.context,obj.coa_alpha)
+                    functions.set_z_value(context,obj,obj.coa_z_value)
+                    functions.set_modulate_color(obj,context,obj.coa_modulate_color)
+            for child in children:
+                if child.animation_data != None:
+                    for track in child.animation_data.nla_tracks:
+                        track.mute = True
+
+    bpy.ops.coa_tools.toggle_animation_area(mode="UPDATE")
+
+
+def update_frame_range(self,context):
+    sprite_object = functions.get_sprite_object(context.active_object)
+    if len(sprite_object.coa_tools.anim_collections) > 0:
+        anim_collection = sprite_object.coa_tools.anim_collections[sprite_object.coa_tools.anim_collections_index]
+
+    if context.scene.coa_tools.nla_mode == "NLA" or len(sprite_object.coa_tools.anim_collections) == 0:
+        context.scene.frame_start = self.coa_tools.frame_start
+        context.scene.frame_end = self.coa_tools.coa_frame_end
 
 class UVData(bpy.types.PropertyGroup):
     uv: FloatVectorProperty(default=(0,0),size=2)
 
 class SlotData(bpy.types.PropertyGroup):
-    def change_slot_mesh(self,context):
+    def change_slot_mesh(self, context):
+        context
         obj = self.id_data
         self["active"] = True
         if self.active:
-            obj.coa_slot_index = self.index
-            hide_base_sprite(obj)
-            for slot in obj.coa_slot:
+            obj.coa_tools.slot_index = self.index
+            functions.hide_base_sprite(obj)
+            for slot in obj.coa_tools.slot:
                 if slot != self:
                     slot["active"] = False
 
@@ -196,7 +286,7 @@ class Event(bpy.types.PropertyGroup):
 
 class TimelineEvent(bpy.types.PropertyGroup):
     def change_event_order(self, context):
-        timeline_events = self.id_data.coa_anim_collections[self.id_data.coa_anim_collections_index].timeline_events
+        timeline_events = self.id_data.coa_tools.anim_collections[self.id_data.coa_tools.anim_collections_index].timeline_events
         for i, event in enumerate(timeline_events):
             event_next = None
             if i < len(timeline_events)-1:
@@ -219,7 +309,7 @@ class AnimationCollections(bpy.types.PropertyGroup):
 
         if self.name_old != "" and self.name_change_to != self.name:
             name_array = []
-            for item in sprite_object.coa_anim_collections:
+            for item in sprite_object.coa_tools.anim_collections:
                 name_array.append(item.name_old)
             self.name_change_to = functions.check_name(name_array,self.name)
             self.name = self.name_change_to
@@ -243,7 +333,7 @@ class AnimationCollections(bpy.types.PropertyGroup):
                 action = bpy.data.actions[action_name]
                 action.name = action_name_new
         self.name_old = self.name
-        self.id_data.coa_anim_collections_index = self.id_data.coa_anim_collections_index
+        self.id_data.coa_tools.anim_collections_index = self.id_data.coa_tools.anim_collections_index
 
     name: StringProperty(update=check_name)
     name_change_to: StringProperty()
@@ -306,6 +396,8 @@ class ObjectProperties(bpy.types.PropertyGroup):
     edit_shapekey: BoolProperty(default=False)
     edit_mesh: BoolProperty(default=False, update=change_edit_mode)
 
+    anim_collections_index: IntProperty(update=set_actions)
+
 class SceneProperties(bpy.types.PropertyGroup):
     display_all: BoolProperty(default=True)
     display_page: IntProperty(default=0, min=0, name="Display Page",
@@ -320,11 +412,14 @@ class SceneProperties(bpy.types.PropertyGroup):
     distance_constraint: BoolProperty(default=False,description="Constraint Distance to Viewport", update=update_stroke_distance)
     lock_to_bounds: BoolProperty(default=True,description="Lock Cursor to Object Bounds")
     frame_last: IntProperty(description="Stores last frame Number",default=0)
-
-class ScreenProperties(bpy.types.PropertyGroup):
     view: EnumProperty(default="3D",
                        items=(("3D", "3D View", "3D", "MESH_CUBE", 0), ("2D", "2D View", "2D", "MESH_PLANE", 1)),
                        update=lock_view)
+    active_collection: EnumProperty(name="Active Collection", description="Shows content of active collection.", items=get_available_collections)
+
+    nla_mode: EnumProperty(description="Animation Mode. Can be set to NLA or Action to playback all NLA Strips or only Single Actions",items=(("ACTION","ACTION","ACTION","ACTION",0),("NLA","NLA","NLA","NLA",1)),update=set_nla_mode)
+    frame_start: IntProperty(name="Frame Start",default=0,min=0,update=update_frame_range)
+    coa_frame_end: IntProperty(name="Frame End",default=250,min=1,update=update_frame_range)
 
 class MeshProperties(bpy.types.PropertyGroup):
     hide_base_sprite: BoolProperty(default=False, update=hide_base_sprite,
@@ -344,11 +439,9 @@ class WindowManagerProperties(bpy.types.PropertyGroup):
 def register():
     bpy.types.Object.coa_tools = PointerProperty(type=ObjectProperties)
     bpy.types.Scene.coa_tools = PointerProperty(type=SceneProperties)
-    bpy.types.Screen.coa_tools = PointerProperty(type=ScreenProperties)
     bpy.types.Mesh.coa_tools = PointerProperty(type=MeshProperties)
     bpy.types.Bone.coa_tools = PointerProperty(type=BoneProperties)
     bpy.types.WindowManager.coa_tools = PointerProperty(type=WindowManagerProperties)
-    bpy.types.SpaceView3D.coa_tools_test = PointerProperty(type=MeshProperties)
     print("COATools Properties have been registered")
 def unregister():
     del bpy.types.Object.coa_tools

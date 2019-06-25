@@ -231,7 +231,7 @@ class COATOOLS_OT_CreatureExport(bpy.types.Operator):
         bone_scaled = {}
         for anim_index, anim in enumerate(anim_collections):
             if anim.name not in ["NO ACTION", "Restpose"]:
-                self.sprite_object.coa_anim_collections_index = anim_index  ### set animation
+                self.sprite_object.coa_tools.anim_collections_index = anim_index  ### set animation
 
                 for frame in range(anim.frame_end+1):
                     context.scene.frame_set(frame)
@@ -610,7 +610,7 @@ class COATOOLS_OT_CreatureExport(bpy.types.Operator):
                     if "default" in anim_collections:
                         continue
                 anim_name = anim.name if anim.name != "Restpose" else "default"
-                self.sprite_object.coa_anim_collections_index = anim_index  ### set animation
+                self.sprite_object.coa_tools.anim_collections_index = anim_index  ### set animation
 
                 animation[anim_name] = OrderedDict()
                 animation[anim_name]["bones"] = OrderedDict()
@@ -745,7 +745,7 @@ class COATOOLS_OT_CreatureExport(bpy.types.Operator):
         self.bone_weights = self.store_bone_weights()
         self.mesh_deformed = self.check_mesh_deformation(context)
 
-        self.sprite_object.coa_anim_collections_index = 0
+        self.sprite_object.coa_tools.anim_collections_index = 0
         self.setup_progress(context)
         for ob in context.scene.objects:
             ob.select = False

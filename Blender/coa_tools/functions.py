@@ -33,6 +33,12 @@ import json
 from bpy.app.handlers import persistent
 from . import constants as CONSTANTS
 
+
+def link_object(context, obj):
+    active_collection = bpy.data.collections[context.scene.coa_tools.active_collection]
+    active_collection.objects.link(obj)
+    return obj
+
 def set_uv_image(obj):
     data = obj.data
     if len(data.materials) > 0:
@@ -220,8 +226,8 @@ def set_weights(self,context,obj):
             orig_armature.data.bones[i].use_deform = True
         else:
             orig_armature.data.bones[i].use_deform = False
-    orig_armature.select = True     
-    obj.select = True       
+    orig_armature.select_set(True)
+    obj.select_set(True)
     
     #return{'FINISHED'}
     
@@ -247,7 +253,7 @@ def set_weights(self,context,obj):
             modifier.object = orig_armature
     obj.parent = orig_armature
     #obj.parent = parent
-    orig_armature.select = True
+    orig_armature.select_set(True)
     context.view_layer.objects.active = orig_armature
     obj.select_set(False)
     
@@ -413,11 +419,11 @@ def check_name(name_array,name):
 def create_action(context,item=None,obj=None):
     sprite_object = get_sprite_object(context.active_object)
     
-    if len(sprite_object.coa_anim_collections) < 3:
+    if len(sprite_object.coa_tools.anim_collections) < 3:
         bpy.ops.coa_tools.add_animation_collection()
     
     if item == None:
-        item = sprite_object.coa_anim_collections[sprite_object.coa_anim_collections_index]
+        item = sprite_object.coa_tools.anim_collections[sprite_object.coa_tools.anim_collections_index]
     if obj == None:
         obj = context.active_object
         
@@ -442,12 +448,12 @@ def clear_pose(obj):
             bone.rotation_euler = Euler((0,0,0),"XYZ")
             bone.rotation_quaternion = Euler((0,0,0),"XYZ").to_quaternion()
     elif obj.type == "MESH":
-        obj.coa_sprite_frame = 0
-        obj.coa_alpha = 1.0
-        obj.coa_modulate_color = (1.0,1.0,1.0)
-        #obj["coa_slot_index"] = max(0,len(obj.coa_slot)-1)
-        #obj["coa_slot_index"] = obj.coa_slot_reset_index
-        obj.coa_slot_index = 0
+        obj.coa_tools.sprite_frame = 0
+        obj.coa_tools.alpha = 1.0
+        obj.coa_tools.modulate_color = (1.0,1.0,1.0)
+        #obj["coa_tools.slot_index"] = max(0,len(obj.coa_tools.slot)-1)
+        #obj["coa_tools.slot_index"] = obj.coa_slot_reset_index
+        obj.coa_tools.slot_index = 0
 
 def set_direction(obj):
     if obj.coa_flip_direction:
@@ -460,7 +466,7 @@ def set_direction(obj):
 def set_action(context,item=None):
     sprite_object = get_sprite_object(context.active_object)
     if item == None:
-        item = sprite_object.coa_anim_collections[sprite_object.coa_anim_collections_index]
+        item = sprite_object.coa_tools.anim_collections[sprite_object.coa_tools.anim_collections_index]
     
     children = get_children(context,sprite_object,ob_list=[])
 
@@ -482,12 +488,10 @@ def set_action(context,item=None):
                 bone.rotation_euler = Euler((0,0,0),"XYZ")
                 bone.rotation_quaternion = Euler((0,0,0),"XYZ").to_quaternion()
         if child.type == "MESH" and item.name == "Restpose":
-            child.coa_sprite_frame = 0
-            child.coa_alpha = 1.0
-            child.coa_modulate_color = (1.0,1.0,1.0)
-            #child["coa_slot_index"] = len(child.coa_slot)-1#child.coa_slot_reset_index
-            #print(child["coa_slot_index"])
-        elif not (child.type == "MESH" and item.name == "Restpose") and context.scene.coa_nla_mode == "ACTION":
+            child.coa_tools.sprite_frame = 0
+            child.coa_tools.alpha = 1.0
+            child.coa_tools.modulate_color = (1.0,1.0,1.0)
+        elif not (child.type == "MESH" and item.name == "Restpose") and context.scene.coa_tools.nla_mode == "ACTION":
             action_name = item.name + "_" + child.name
             action = None
             if action_name in bpy.data.actions:
@@ -498,7 +502,7 @@ def set_action(context,item=None):
                     child.animation_data_create()
                 child.animation_data.action = action
     context.scene.frame_set(context.scene.frame_current)
-    context.scene.update()        
+    context.view_layer.update()
 
 def create_armature_parent(context):
     sprite = context.active_object
@@ -564,30 +568,32 @@ def lock_view(screen, lock):
                         region.lock_rotation = False    
 
 
-def set_view(screen,mode):
+def set_view(scene,mode):
     if mode == "2D":
-        for area in screen.areas:
-            if area.type == "VIEW_3D":
-                active_space_data = area.spaces[0]
-                if active_space_data != None:
-                    if hasattr(active_space_data,"region_3d"):
-                        region_3d = active_space_data.region_3d
-                        region_3d.view_perspective = "ORTHO"
-                        override = bpy.context.copy()
-                        override["screen"] = screen
-                        override["space_data"] = active_space_data
-                        override["area"] = area
+        for screen in bpy.data.screens:
+            for area in screen.areas:
+                if area.type == "VIEW_3D":
+                    active_space_data = area.spaces[0]
+                    if active_space_data != None:
+                        if hasattr(active_space_data,"region_3d"):
+                            region_3d = active_space_data.region_3d
+                            region_3d.view_perspective = "ORTHO"
+                            override = bpy.context.copy()
+                            override["screen"] = screen
+                            override["space_data"] = active_space_data
+                            override["area"] = area
 
-                        bpy.ops.view3d.view_axis(override, type='FRONT', align_active=False, relative=False)
+                            bpy.ops.view3d.view_axis(override, type='FRONT', align_active=False, relative=False)
 
     elif mode == "3D":
-        for area in screen.areas:
-            if area.type == "VIEW_3D":
-                active_space_data = area.spaces[0]
-                if active_space_data != None:
-                    if hasattr(active_space_data,"region_3d"):
-                        region_3d = active_space_data.region_3d
-                        region_3d.view_perspective = "PERSP"
+        for screen in bpy.data.screens:
+            for area in screen.areas:
+                if area.type == "VIEW_3D":
+                    active_space_data = area.spaces[0]
+                    if active_space_data != None:
+                        if hasattr(active_space_data,"region_3d"):
+                            region_3d = active_space_data.region_3d
+                            region_3d.view_perspective = "PERSP"
 
 def set_middle_mouse_move(enable):
     km = bpy.context.window_manager.keyconfigs.addon.keymaps["3D View"]
@@ -600,7 +606,7 @@ def assign_tex_to_uv(image,uv):
 def set_bone_group(self, armature, pose_bone,group = "ik_group" ,theme = "THEME09"):
     new_group = None
     if group not in armature.pose.bone_groups:
-        new_group = armature.pose.bone_groups.new(group)
+        new_group = armature.pose.bone_groups.new(name=group)
         new_group.color_set = theme
     else:
         new_group = armature.pose.bone_groups[group]
@@ -644,12 +650,10 @@ def get_bounds_and_center(obj):
     
     
 def ray_cast(start,end,list=[]):
-    if b_version_bigger_than((2,76,0)):
-        end = end - start
-    result = bpy.context.scene.ray_cast(start,end)
-    
-    if b_version_bigger_than((2,76,0)):
-        result = [result[0],result[4],result[5],result[1],result[2]]
+    end = end - start
+    result = bpy.context.scene.ray_cast(bpy.context.view_layer, start, end)
+
+    result = [result[0],result[4],result[5],result[1],result[2]]
     
     if result[0]:
         if result not in list:
@@ -726,8 +730,8 @@ def update_uv(context,obj):
     #     sprite_object = get_sprite_object(obj)
     #
     #     frame_size = Vector((1 / obj.coa_tiles_x,1 / obj.coa_tiles_y))
-    #     pos_x = frame_size.x * (obj.coa_sprite_frame % obj.coa_tiles_x)
-    #     pos_y = frame_size.y *  -int(int(obj.coa_sprite_frame) / int(obj.coa_tiles_x))
+    #     pos_x = frame_size.x * (obj.coa_tools.sprite_frame % obj.coa_tiles_x)
+    #     pos_y = frame_size.y *  -int(int(obj.coa_tools.sprite_frame) / int(obj.coa_tiles_x))
     #     frame = Vector((pos_x,pos_y))
     #     offset = Vector((0,1-(1/obj.coa_tiles_y)))
     #
@@ -806,17 +810,17 @@ def set_alpha(obj, context, alpha):
 
 
 def change_slot_mesh_data(context,obj):
-    if len(obj.coa_slot) > 0:
-        slot_len = len(obj.coa_slot)-1
-        obj["coa_slot_index"] = min(obj.coa_slot_index,max(0,len(obj.coa_slot)-1))
+    if len(obj.coa_tools.slot) > 0:
+        slot_len = len(obj.coa_tools.slot)-1
+        obj.coa_tools["slot_index"] = min(obj.coa_tools.slot_index,max(0,len(obj.coa_tools.slot)-1))
         
-        idx = max(min(obj.coa_slot_index,len(obj.coa_slot)-1),0)
+        idx = max(min(obj.coa_tools.slot_index,len(obj.coa_tools.slot)-1),0)
         
-        slot = obj.coa_slot[idx]
+        slot = obj.coa_tools.slot[idx]
         obj = slot.id_data
         obj.data = slot.mesh
-        set_alpha(obj,context,obj.coa_alpha)
-        for slot2 in obj.coa_slot:
+        set_alpha(obj,context,obj.coa_tools.alpha)
+        for slot2 in obj.coa_tools.slot:
             if slot != slot2:
                 slot2["active"] = False
             else:
@@ -831,16 +835,20 @@ def change_slot_mesh_data(context,obj):
 
 def display_children(self, context, obj):
     obj = get_sprite_object(obj)
+    active_collection = None
+    if context.scene.coa_tools.active_collection in bpy.data.collections:
+        active_collection = bpy.data.collections[context.scene.coa_tools.active_collection]
     if obj != None:
         layout = self.layout
         col = layout.column(align=True)
         row = col.row(align=True)
         if context.scene.coa_tools.display_all:
-            row.prop(context.scene.coa_tools, "display_all",text="",toggle=True,icon="DISCLOSURE_TRI_RIGHT")
-        else:    
-            row.prop(context.scene.coa_tools, "display_all",text="",toggle=True,icon="DISCLOSURE_TRI_DOWN")
-            row.prop(context.scene.coa_tools, "display_length",text="Length")
-            row.prop(context.scene.coa_tools, "display_page",text="Page")
+            row.prop(context.scene.coa_tools, "display_all", text="", toggle=True, icon="DISCLOSURE_TRI_RIGHT")
+        else:
+            row.prop(context.scene.coa_tools, "display_all", text="", toggle=True, icon="DISCLOSURE_TRI_DOWN")
+            row.prop(context.scene.coa_tools, "display_length", text="Length")
+            row.prop(context.scene.coa_tools, "display_page", text="Page")
+        row.prop(context.scene.coa_tools, "active_collection", text="")
         box = col.box()
         col = box.column(align=True)
         sprite_object = get_sprite_object(obj)
@@ -869,8 +877,8 @@ def display_children(self, context, obj):
         current_display_item = 0
         ### Sprite Objects display for all that are in active Scene
         disable_list = sprite_object.coa_tools.edit_mesh or sprite_object.coa_tools.edit_armature or sprite_object.coa_tools.edit_weights or sprite_object.coa_tools.edit_shapekey
-        
-        for obj2 in context.scene.objects:
+
+        for obj2 in context.view_layer.objects:
             if get_sprite_object(obj2) == obj2:
                 in_range = current_display_item in range(context.scene.coa_tools.display_page * context.scene.coa_tools.display_length , context.scene.coa_tools.display_page * context.scene.coa_tools.display_length + context.scene.coa_tools.display_length)
                 
@@ -924,6 +932,7 @@ def filter_bone_name(armature,filter):
 
 def draw_children(self,context,sprite_object,layout,box,row,col,children,obj,current_display_item, disable_list):    
     obj = get_sprite_object(obj)
+    active_collection = bpy.data.collections[context.scene.coa_tools.active_collection]
     ### Sprite Object Children Display
     
     if disable_list:
@@ -944,155 +953,152 @@ def draw_children(self,context,sprite_object,layout,box,row,col,children,obj,cur
         if len(children) > 1 and type(children[1]) == bpy.types.Object and children[1].type == "CAMERA":
             children.insert(0,children.pop(1))
         for i,child in enumerate(children):
-                
-            child_obj = child
-            in_range = current_display_item in range(context.scene.coa_tools.display_page * context.scene.coa_tools.display_length , context.scene.coa_tools.display_page * context.scene.coa_tools.display_length + context.scene.coa_tools.display_length)
-            
-            name_found = obj.coa_tools.filter_names.upper() in child.name.upper() and not obj.coa_tools.filter_names == ""
-            current_display_item += 1
-            if in_range or context.scene.coa_tools.display_all or name_found:
-                if (sprite_object.coa_tools.favorite and child.coa_tools.favorite) or not sprite_object.coa_tools.favorite or (child.type == "ARMATURE" and (favorite_bones(child))):
-                    if obj.coa_tools.filter_names.upper() in child.name.upper():
-                        
-                        row = col.row(align=True)
-                        subrow2 = row.row(align=True)
-                        subrow3 = row.row(align=True)
-                        if disable_list:
-                            subrow2.enabled = False
-                        
-                        if child.type == "MESH" and len(child.data.vertices) > 4 and child.data.coa_tools.hide_base_sprite == False and "coa_base_sprite" in child.vertex_groups and "coa_base_sprite" in child.modifiers:
-                            subrow = row.row()
-                            subrow.alignment = "LEFT"
-                            subrow.prop(child.data,'coa_tools.hide_base_sprite',text="",icon="ERROR",emboss=False)
-                        else:
-                            subrow2.separator()
-                            subrow2.separator()
-                            subrow2.separator()
-                        name = child.name
-                        icon = "LAYER_USED"
-                        if child.select_get():
-                            icon = "LAYER_ACTIVE"
-                        subrow2.label(text="",icon=icon)
-                        if child.type == "ARMATURE":
-                            subrow2.label(text="",icon="ARMATURE_DATA")
-                        elif child.type == "MESH":
-                            op = subrow2.operator("coa_tools.advanced_settings",text="",icon="TEXTURE",emboss=False)
-                            op.obj_name = child.name
-                        elif child.type == "CAMERA":
-                            
-                            subrow2.label(text="",icon="CAMERA_DATA")
-                        
-                        
-                        op = subrow2.operator("coa_tools.show_children",text=name,emboss=False)
-                        op.mode = "object"
-                        op.ob_name = child.name
-                        
-                        if child.type == "ARMATURE":
-                            if child.coa_tools.show_bones:
-                                subrow2.prop(child,"coa_tools.show_bones",text="",icon="TRIA_DOWN",emboss=False)
-                            else:
-                                subrow2.prop(child,"coa_tools.show_bones",text="",icon="TRIA_LEFT",emboss=False) 
-                        
-                        if child.type == "MESH" and child.coa_tools.type == "SLOT":
-                            if child.coa_tools.slot_show:
-                                subrow2.prop(child.coa_tools,"slot_show",text="",icon="TRIA_DOWN",emboss=False)
-                            else:
-                                subrow2.prop(child.coa_tools,"slot_show",text="",icon="TRIA_LEFT",emboss=False)
-                            
-                            if sprite_object.coa_tools.edit_armature:
-                                op = subrow2.operator("coa_tools.bind_mesh_to_bones", text="", icon="BONE_DATA", emboss=False)
-                                op.ob_name = child.name
-    #                    if child.type == "MESH":
-    #                        op = row.operator("import.coa_reimport_sprite",text="",icon="FILE_REFRESH",emboss=False)
-    #                        op.name = child.name
-                        
-                        if not sprite_object.coa_tools.change_z_ordering:
-                            if child.coa_tools.favorite:
-                                subrow2.prop(child.coa_tools, "favorite",emboss=False,text="",icon="SOLO_ON")
-                            else:
-                                subrow2.prop(child.coa_tools, "favorite",emboss=False,text="",icon="SOLO_OFF")
-                                
-                                
-                            if child.coa_tools.hide:
-                                icon = "HIDE_ON"
-                                if not child.hide_viewport:
-                                    icon = "HIDE_OFF"
-                                subrow2.prop(child.coa_tools, "hide", emboss=False, text="", icon=icon)
-                            else:   
-                                subrow2.prop(child.coa_tools, "hide", emboss=False, text="", icon="HIDE_OFF")
-                            if child.coa_tools.hide_select:   
-                                subrow2.prop(child.coa_tools, "hide_select", emboss=False, text="", icon="RESTRICT_SELECT_ON")
-                            else:   
-                                subrow2.prop(child.coa_tools, "hide_select", emboss=False, text="", icon="RESTRICT_SELECT_OFF")
-                        else:
-                            children_names = []
-                            for child in children:
-                                children_names.append(child.name)
-                            
-                            if child_obj.type == "MESH":      
-                                op = subrow2.operator("coa_tools.change_z_ordering", text="", icon="TRIA_DOWN")
-                                op.index = i
-                                op.direction = "DOWN"
-                                op.active_sprite = children[i].name
-                                op.all_sprites = str(children_names)
-                                op = row.operator("coa_tools.change_z_ordering", text="", icon="TRIA_UP")
-                                op.index = i
-                                op.direction = "UP"
-                                op.active_sprite = children[i].name
-                                op.all_sprites = str(children_names)
-                            
-                        #row.prop(child,"hide_select",emboss=False,text="")
-                        
-                        if child.type == "MESH" and child.coa_tools.type == "SLOT" and child.coa_tools.slot_show:
-                            for i,slot in enumerate(child.coa_tools.slot):
-                                row = col.row()
-                                subrow = row.row(align=True)
+
+            if child.name in active_collection.objects:
+                child_obj = child
+                in_range = current_display_item in range(context.scene.coa_tools.display_page * context.scene.coa_tools.display_length , context.scene.coa_tools.display_page * context.scene.coa_tools.display_length + context.scene.coa_tools.display_length)
+
+                name_found = obj.coa_tools.filter_names.upper() in child.name.upper() and not obj.coa_tools.filter_names == ""
+                current_display_item += 1
+                if in_range or context.scene.coa_tools.display_all or name_found:
+                    if (sprite_object.coa_tools.favorite and child.coa_tools.favorite) or not sprite_object.coa_tools.favorite or (child.type == "ARMATURE" and (favorite_bones(child))):
+                        if obj.coa_tools.filter_names.upper() in child.name.upper():
+
+                            row = col.row(align=True)
+                            subrow2 = row.row(align=True)
+                            subrow3 = row.row(align=True)
+                            if disable_list:
+                                subrow2.enabled = False
+
+                            if child.type == "MESH" and len(child.data.vertices) > 4 and child.data.coa_tools.hide_base_sprite == False and "coa_base_sprite" in child.vertex_groups and "coa_base_sprite" in child.modifiers:
+                                subrow = row.row()
                                 subrow.alignment = "LEFT"
-                                subrow.separator()
-                                subrow.separator()
-                                subrow.separator()
-                                subrow.separator()
-                                subrow.separator()
-                                subrow.separator()
-                                    
-                                if slot.mesh != None:
-                                    name = slot.mesh.name
-                                else:
-                                    name = "No Data found"    
-                                    subrow.label(text="",icon="ERROR")
-                                if slot.active:
-                                    subrow.prop(slot,"active",text=name,icon="RADIOBUT_ON",emboss=False)
-                                else:
-                                    subrow.prop(slot,"active",text=name,icon="RADIOBUT_OFF",emboss=False)
-                                
-                                subrow = row.row(align=True)
-                                
-                                op = subrow.operator("coa_tools.move_slot_item",icon="TRIA_DOWN",emboss=False,text="")
-                                op.idx = i
-                                op.ob_name = child.name
-                                op.mode = "DOWN"
-                                op = subrow.operator("coa_tools.move_slot_item",icon="TRIA_UP",emboss=False,text="")
-                                op.idx = i
-                                op.ob_name = child.name
-                                op.mode = "UP"
-                                
-                                subrow.alignment = "RIGHT"
-                                op = subrow.operator("coa_tools.remove_from_slot",icon="PANEL_CLOSE",emboss=False,text="")
-                                op.idx = i
-                                op.ob_name = child.name
-                        
-                        if child.type == "MESH" and sprite_object.coa_tools.edit_armature:
-                            op = subrow3.operator("coa_tools.bind_mesh_to_bones", text="", icon="BONE_DATA", emboss=False)
+                                subrow.prop(child.data.coa_tools,'hide_base_sprite',text="",icon="ERROR",emboss=False)
+                            else:
+                                subrow2.separator()
+                                subrow2.separator()
+                                subrow2.separator()
+                            name = child.name
+                            icon = "LAYER_USED"
+                            if child.select_get():
+                                icon = "LAYER_ACTIVE"
+                            subrow2.label(text="",icon=icon)
+                            if child.type == "ARMATURE":
+                                subrow2.label(text="",icon="ARMATURE_DATA")
+                            elif child.type == "MESH":
+                                op = subrow2.operator("coa_tools.advanced_settings",text="",icon="TEXTURE",emboss=False)
+                                op.obj_name = child.name
+                            elif child.type == "CAMERA":
+
+                                subrow2.label(text="",icon="CAMERA_DATA")
+
+
+                            op = subrow2.operator("coa_tools.show_children",text=name,emboss=False)
+                            op.mode = "object"
                             op.ob_name = child.name
-                        
-                        if child.type == "ARMATURE":
-                            if (not sprite_object.coa_tools.favorite and child.coa_tools.show_bones) or sprite_object.coa_tools.favorite:
-                                for bone in child.data.bones:
-                                    if (sprite_object.coa_tools.favorite and bone.coa_tools.favorite or not sprite_object.coa_tools.favorite):
-                                        draw_bone_entry(self,bone,subrow2,col,child)
-                        
-                                        
-                                            
+
+                            if child.type == "ARMATURE":
+                                if child.coa_tools.show_bones:
+                                    subrow2.prop(child.coa_tools,"show_bones",text="",icon="TRIA_DOWN",emboss=False)
+                                else:
+                                    subrow2.prop(child.coa_tools,"show_bones",text="",icon="TRIA_LEFT",emboss=False)
+
+                            if child.type == "MESH" and child.coa_tools.type == "SLOT":
+                                if child.coa_tools.slot_show:
+                                    subrow2.prop(child.coa_tools,"slot_show",text="",icon="TRIA_DOWN",emboss=False)
+                                else:
+                                    subrow2.prop(child.coa_tools,"slot_show",text="",icon="TRIA_LEFT",emboss=False)
+
+                                if sprite_object.coa_tools.edit_armature:
+                                    op = subrow2.operator("coa_tools.bind_mesh_to_bones", text="", icon="BONE_DATA", emboss=False)
+                                    op.ob_name = child.name
+
+                            if not sprite_object.coa_tools.change_z_ordering:
+                                if child.coa_tools.favorite:
+                                    subrow2.prop(child.coa_tools, "favorite", emboss=False, text="", icon="SOLO_ON")
+                                else:
+                                    subrow2.prop(child.coa_tools, "favorite", emboss=False, text="", icon="SOLO_OFF")
+
+
+                                if child.coa_tools.hide:
+                                    icon = "HIDE_ON"
+                                    if not child.hide_viewport:
+                                        icon = "HIDE_OFF"
+                                    subrow2.prop(child.coa_tools, "hide", emboss=False, text="", icon=icon)
+                                else:
+                                    subrow2.prop(child.coa_tools, "hide", emboss=False, text="", icon="HIDE_OFF")
+                                if child.coa_tools.hide_select:
+                                    subrow2.prop(child.coa_tools, "hide_select", emboss=False, text="", icon="RESTRICT_SELECT_ON")
+                                else:
+                                    subrow2.prop(child.coa_tools, "hide_select", emboss=False, text="", icon="RESTRICT_SELECT_OFF")
+                            else:
+                                children_names = []
+                                for child in children:
+                                    children_names.append(child.name)
+
+                                if child_obj.type == "MESH":
+                                    op = subrow2.operator("coa_tools.change_z_ordering", text="", icon="TRIA_DOWN")
+                                    op.index = i
+                                    op.direction = "DOWN"
+                                    op.active_sprite = children[i].name
+                                    op.all_sprites = str(children_names)
+                                    op = row.operator("coa_tools.change_z_ordering", text="", icon="TRIA_UP")
+                                    op.index = i
+                                    op.direction = "UP"
+                                    op.active_sprite = children[i].name
+                                    op.all_sprites = str(children_names)
+
+                            #row.prop(child,"hide_select",emboss=False,text="")
+
+                            if child.type == "MESH" and child.coa_tools.type == "SLOT" and child.coa_tools.slot_show:
+                                for i,slot in enumerate(child.coa_tools.slot):
+                                    row = col.row()
+                                    subrow = row.row(align=True)
+                                    subrow.alignment = "LEFT"
+                                    subrow.separator()
+                                    subrow.separator()
+                                    subrow.separator()
+                                    subrow.separator()
+                                    subrow.separator()
+                                    subrow.separator()
+
+                                    if slot.mesh != None:
+                                        name = slot.mesh.name
+                                    else:
+                                        name = "No Data found"
+                                        subrow.label(text="",icon="ERROR")
+                                    if slot.active:
+                                        subrow.prop(slot,"active",text=name,icon="RADIOBUT_ON",emboss=False)
+                                    else:
+                                        subrow.prop(slot,"active",text=name,icon="RADIOBUT_OFF",emboss=False)
+
+                                    subrow = row.row(align=True)
+
+                                    op = subrow.operator("coa_tools.move_slot_item",icon="TRIA_DOWN",emboss=False,text="")
+                                    op.idx = i
+                                    op.ob_name = child.name
+                                    op.mode = "DOWN"
+                                    op = subrow.operator("coa_tools.move_slot_item",icon="TRIA_UP",emboss=False,text="")
+                                    op.idx = i
+                                    op.ob_name = child.name
+                                    op.mode = "UP"
+
+                                    subrow.alignment = "RIGHT"
+                                    op = subrow.operator("coa_tools.remove_from_slot",icon="PANEL_CLOSE",emboss=False,text="")
+                                    op.idx = i
+                                    op.ob_name = child.name
+
+                            if child.type == "MESH" and sprite_object.coa_tools.edit_armature:
+                                op = subrow3.operator("coa_tools.bind_mesh_to_bones", text="", icon="BONE_DATA", emboss=False)
+                                op.ob_name = child.name
+
+                            if child.type == "ARMATURE":
+                                if (not sprite_object.coa_tools.favorite and child.coa_tools.show_bones) or sprite_object.coa_tools.favorite:
+                                    for bone in child.data.bones:
+                                        if (sprite_object.coa_tools.favorite and bone.coa_tools.favorite or not sprite_object.coa_tools.favorite):
+                                            draw_bone_entry(self,bone,subrow2,col,child)
+
+
 def draw_bone_entry(self,bone,row,col,child,indentation_level=0):
     row = col.row(align=True)
     row.separator()

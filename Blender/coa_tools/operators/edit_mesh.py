@@ -600,7 +600,7 @@ class COATOOLS_OT_Fill(bpy.types.Operator):
         
         ### unwrap
         obj = context.active_object
-        if obj.coa_type == "MESH":
+        if obj.coa_tools.type == "MESH":
             self.reset_spritesheet(context,start_obj)
         bm = bmesh.from_edit_mesh(obj.data)
         unselected_verts = []
@@ -620,7 +620,7 @@ class COATOOLS_OT_Fill(bpy.types.Operator):
         for face in unselected_faces:
             face.select = False
         
-        if obj.coa_type == "MESH":    
+        if obj.coa_tools.type == "MESH":    
             self.revert_rest_spritesheet(context,start_obj)
 
         for obj in selected_objects:
@@ -1172,9 +1172,19 @@ class COATOOLS_OT_DrawContour(bpy.types.Operator):
         bm.edges.ensure_lookup_table()
             
         bmesh.update_edit_mesh(obj.data)                  
-    
+
+    def suspend_area_fullscreen(self, context, event):
+        if self.ctrl and event.type == "SPACE":
+            return 'SUSPEND'
+        return 'PASS_THROUGH'
+
     def modal(self, context, event):
-        context.area.tag_redraw()
+        if self.suspend_area_fullscreen(context, event) == "SUSPEND":
+            return {'RUNNING_MODAL'}
+
+        for area in context.screen.areas:
+            if area.type == "VIEW_3D":
+                area.tag_redraw()
         try:
             wm = context.window_manager
             ### set variables
@@ -1269,7 +1279,7 @@ class COATOOLS_OT_DrawContour(bpy.types.Operator):
                     
                     if self.alt:
                         bpy.context.window.cursor_set("CROSSHAIR")
-                    else:        
+                    elif not self.alt and not self.shift:
                         if self.point_type == "EDGE":
                             bpy.context.window.cursor_set("KNIFE")
                         else:
@@ -1376,11 +1386,12 @@ class COATOOLS_OT_DrawContour(bpy.types.Operator):
         except Exception as e:
             traceback.print_exc()
             self.report({"ERROR"},"An Error occured, please check console for more Information.")
-            self.exit_edit_mode(context,event)
+            self.exit_edit_mode(context,event,error=True)
         return {'PASS_THROUGH'}
     
-    def exit_edit_mode(self,context,event):
-        self.finish_edit_object(context)
+    def exit_edit_mode(self,context,event,error=False):
+        if not error:
+            self.finish_edit_object(context)
         bpy.types.SpaceView3D.draw_handler_remove(self.draw_handler, "WINDOW")
         # bpy.types.SpaceView3D.draw_handler_remove(self.draw_handler2, "WINDOW")
         
@@ -1395,16 +1406,14 @@ class COATOOLS_OT_DrawContour(bpy.types.Operator):
         
         obj = context.active_object
         context.view_layer.objects.active = self.edit_object
-        context.screen.coa_tools.view = self.prev_coa_view
+        context.scene.coa_tools.view = self.prev_coa_view
         bpy.ops.object.mode_set(mode="EDIT")
         if self.mode == "DRAW_BONE_SHAPE":
             self.set_bone_shape_color_and_wireframe(context,self.bone_shape)
 
         bpy.context.window.cursor_set("CROSSHAIR")
         bpy.ops.object.mode_set(mode="OBJECT")
-        
-        
-        
+
         self.sprite_object.coa_tools.edit_mesh = False
         functions.set_local_view(False)
         
@@ -1584,8 +1593,8 @@ class COATOOLS_OT_DrawContour(bpy.types.Operator):
         if self.mode == "EDIT_MESH":
             functions.set_local_view(True)
         self.texture_preview_object.select_set(False)
-        self.prev_coa_view = str(context.screen.coa_tools.view)
-        context.screen.coa_tools.view = "2D"
+        self.prev_coa_view = str(context.scene.coa_tools.view)
+        context.scene.coa_tools.view = "2D"
 
         bpy.ops.object.mode_set(mode="EDIT")
         bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT')
@@ -1595,7 +1604,7 @@ class COATOOLS_OT_DrawContour(bpy.types.Operator):
         # self.draw_handler2 = bpy.types.SpaceView3D.draw_handler_add(self.draw_callback_text, args, "WINDOW", "POST_PIXEL")
                 
         bpy.ops.view3d.view_axis(type='FRONT', align_active=False, relative=False)        
-        #self._timer = wm.event_timer_add(0.1, context.window)
+        #self._timer = wm.event_timer_add(0.1, window=context.window)
         wm.modal_handler_add(self)        
         #context.window_manager.modal_handler_add(self)
         return {'RUNNING_MODAL'}
@@ -1614,7 +1623,7 @@ class COATOOLS_OT_DrawContour(bpy.types.Operator):
             font_id = 0
             line = str(round(length,2))
             # bgl.glEnable(bgl.GL_BLEND)
-            bgl.glColor4f(1,1,1,1)
+            blf.color(font_id, 1, 1, 1, 1)
 
             blf.position(font_id, self.mouse_2d_x-15, self.mouse_2d_y+30, 0)
             blf.size(font_id, 20, 72)

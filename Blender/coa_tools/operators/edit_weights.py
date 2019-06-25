@@ -47,7 +47,6 @@ class COATOOLS_OT_EditWeights(bpy.types.Operator):
     def __init__(self):
         self.sprite_object_name = None
         self.obj_name = None
-        self.shadeless = False
         self.armature_name = None
         self.active_object_name = None
         self.selected_objects = []
@@ -58,12 +57,12 @@ class COATOOLS_OT_EditWeights(bpy.types.Operator):
 
     def armature_set_mode(self,context,mode,select):
         armature = bpy.data.objects[self.armature_name]
-        armature.select = select
-        active_object_name = context.scene.objects.active.name
-        context.scene.objects.active = armature
+        armature.select_set(select)
+        active_object_name = context.view_layer.objects.active.name
+        context.view_layer.objects.active = armature
         bpy.ops.object.mode_set(mode=mode)
 
-        context.scene.objects.active = bpy.data.objects[active_object_name]
+        context.view_layer.objects.active = bpy.data.objects[active_object_name]
 
     def select_bone(self):
         armature = bpy.data.objects[self.armature_name]
@@ -83,19 +82,19 @@ class COATOOLS_OT_EditWeights(bpy.types.Operator):
         tool_settings.unified_paint_settings.use_unified_strength = self.use_unified_strength
         set_local_view(False)
         obj = bpy.data.objects[self.obj_name]
-        obj.hide = False
-        obj.select = True
-        context.scene.objects.active = obj
+        obj.hide_viewport = False
+        obj.select_set(True)
+        context.view_layer.objects.active = obj
         armature = get_armature(get_sprite_object(obj))
-        armature.hide = False
+        armature.hide_viewport = False
         bpy.ops.object.mode_set(mode="OBJECT")
         for i,bone_layer in enumerate(bone_layers):
             armature.data.layers[i] = bone_layer
 
         for name in self.selected_objects:
             obj = bpy.data.objects[name]
-            obj.select = True
-        context.scene.objects.active = bpy.data.objects[self.active_object_name]
+            obj.select_set(True)
+        context.view_layer.objects.active = bpy.data.objects[self.active_object_name]
         self.unhide_non_deform_bones(context)
 
     def exit_edit_mode(self,context):
@@ -107,9 +106,12 @@ class COATOOLS_OT_EditWeights(bpy.types.Operator):
         self.exit_edit_weights(context)
         sprite_object.coa_tools.edit_weights = False
         sprite_object.coa_tools.edit_mode = "OBJECT"
+        bpy.context.space_data.shading.type = 'RENDERED'
+        for area in bpy.context.screen.areas:
+            if area.type == "VIEW_3D":
+                area.spaces[0].overlay.show_paint_wire = False
+
         bpy.ops.ed.undo_push(message="Exit Edit Weights")
-        self.disable_object_color(False)
-        context.active_object.active_material.use_shadeless = self.shadeless
         return {"FINISHED"}
 
     def modal(self, context, event):
@@ -122,18 +124,6 @@ class COATOOLS_OT_EditWeights(bpy.types.Operator):
             self.exit_edit_mode(context)
 
         return {"PASS_THROUGH"}
-
-    def disable_object_color(self,disable):
-        sprite_object = get_sprite_object(bpy.context.active_object)
-        children = get_children(bpy.context,sprite_object,ob_list=[])
-        for obj in children:
-            if obj.type == "MESH":
-                if len(obj.material_slots) > 0:
-                    if disable:
-                        self.object_color_settings[obj.name] = obj.material_slots[0].material.use_object_color
-                        obj.material_slots[0].material.use_object_color = not disable
-                    else:
-                        obj.material_slots[0].material.use_object_color = self.object_color_settings[obj.name]
 
     def unhide_deform_bones(self,context):
         armature = bpy.data.objects[self.armature_name]
@@ -180,8 +170,6 @@ class COATOOLS_OT_EditWeights(bpy.types.Operator):
         self.armature_name = get_armature(sprite_object).name
         armature = bpy.data.objects[self.armature_name]
 
-        self.shadeless = context.active_object.active_material.use_shadeless
-        context.active_object.active_material.use_shadeless = True
 
         self.create_armature_modifier(context,obj,armature)
 
@@ -190,7 +178,6 @@ class COATOOLS_OT_EditWeights(bpy.types.Operator):
         self.use_unified_strength = tool_settings.unified_paint_settings.use_unified_strength
         tool_settings.unified_paint_settings.use_unified_strength = True
 
-        self.disable_object_color(True)
         context.window_manager.modal_handler_add(self)
 
         self.active_object_name = context.active_object.name
@@ -226,13 +213,15 @@ class COATOOLS_OT_EditWeights(bpy.types.Operator):
         for obj in bpy.context.selected_objects:
             obj.select_set(False)
         obj = bpy.data.objects[self.obj_name]    
-        obj.select = True
-        context.scene.objects.active = obj
+        obj.select_set(True)
+        context.view_layer.objects.active = obj
         bpy.ops.view3d.view_selected()
-        
-        ### set uv image
-        bpy.context.space_data.viewport_shade = 'TEXTURED'
-        set_uv_image(obj)
+
+        ### set correct viewport shading
+        bpy.context.space_data.shading.type = 'SOLID'
+        for area in bpy.context.screen.areas:
+            if area.type == "VIEW_3D":
+                area.spaces[0].overlay.show_paint_wire = True
         
         ### enter weights mode
         bpy.ops.object.mode_set(mode="WEIGHT_PAINT")
@@ -245,4 +234,5 @@ class COATOOLS_OT_EditWeights(bpy.types.Operator):
     
     
     def draw_callback_px(self):
-        draw_edit_mode(self,bpy.context,color=[0.367356, 1.000000, 0.632293, 1.000000],text="Edit Weights Mode",offset=-5)
+        pass
+        # draw_edit_mode(self,bpy.context,color=[0.367356, 1.000000, 0.632293, 1.000000],text="Edit Weights Mode",offset=-5)

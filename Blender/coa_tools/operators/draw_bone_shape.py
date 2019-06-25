@@ -52,7 +52,7 @@ def get_bone_shapes(self, context):
 
 
 class COATOOLS_OT_DrawBoneShape(bpy.types.Operator):
-    bl_idname = "bone.coa_draw_bone_shape" 
+    bl_idname = "coa_tools.draw_bone_shape"
     bl_label = "Create Bone Shape"
     
     bone_shapes: EnumProperty(name="Bone Shapes",description="List of all custom Bone Shapes.",items=get_bone_shapes)

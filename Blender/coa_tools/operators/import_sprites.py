@@ -31,7 +31,7 @@ import os
 from bpy_extras.io_utils import ExportHelper, ImportHelper
 import json
 from bpy.app.handlers import persistent
-from .. functions import *
+from .. import functions
 from .. import constants as CONSTANTS
 
 
@@ -218,7 +218,7 @@ class COATOOLS_OT_LoadJsonData(bpy.types.Operator):
         for object in bpy.context.selected_objects:
             object.select_set(False)
                 
-        sprite_object = get_sprite_object(context.active_object)                
+        sprite_object = functions.get_sprite_object(context.active_object)
             
 
         
@@ -233,7 +233,7 @@ class COATOOLS_OT_LoadJsonData(bpy.types.Operator):
                     pos = [sprite["position"][0],-sprite["z"],sprite["position"][1]]
                     offset = [sprite["offset"][0],0,sprite["offset"][1]]
                     parent = sprite_object.name
-                    scale = get_addon_prefs(context).sprite_import_export_scale
+                    scale = functions.get_addon_prefs(context).sprite_import_export_scale
                     
                     
                     if self.mode == "ADD":
@@ -294,7 +294,8 @@ class COATOOLS_OT_ImportSprite(bpy.types.Operator):
     def create_mesh(self, context, name="Sprite", width=100, height=100, pos=Vector((0, 0, 0))):
         me = bpy.data.meshes.new(name)
         obj = bpy.data.objects.new(name, me)
-        context.collection.objects.link(obj)
+        # context.collection.objects.link(obj)
+        functions.link_object(context, obj)
         context.scene.view_layers[0].objects.active = obj
         obj.select_set(True)
 
@@ -311,7 +312,7 @@ class COATOOLS_OT_ImportSprite(bpy.types.Operator):
         mod.show_on_cage = True
         
         obj.data.uv_layers.new(name="UVMap")
-        set_uv_default_coords(context, obj)
+        functions.set_uv_default_coords(context, obj)
         
         obj.location = Vector((pos[0],pos[1],-pos[2]))*self.scale + Vector((self.offset[0],self.offset[1],self.offset[2]))*self.scale
         obj["coa_sprite"] = True
@@ -410,7 +411,7 @@ class COATOOLS_OT_ImportSprites(bpy.types.Operator, ImportHelper):
     filter_image: BoolProperty(default=True,options={'HIDDEN','SKIP_SAVE'})
     filter_movie: BoolProperty(default=True,options={'HIDDEN','SKIP_SAVE'})
     filter_folder: BoolProperty(default=True,options={'HIDDEN','SKIP_SAVE'})
-    filter_glob: StringProperty(default="*.json",options={'HIDDEN'})
+    filter_glob: StringProperty(default='*.json',options={'HIDDEN'})
 
     # List of operator properties, the attributes will be assigned
     # to the class instance from the operator settings before calling.
@@ -418,7 +419,7 @@ class COATOOLS_OT_ImportSprites(bpy.types.Operator, ImportHelper):
     replace: BoolProperty(name="Update Existing",default=True)
     
     def execute(self, context):
-        sprite_object = get_sprite_object(context.active_object)
+        sprite_object = functions.get_sprite_object(context.active_object)
         
         context.space_data.shading.type = "RENDERED"
         context.scene.view_settings.view_transform = "Standard"
@@ -433,7 +434,7 @@ class COATOOLS_OT_ImportSprites(bpy.types.Operator, ImportHelper):
             for i in self.files:
                 filepath = (os.path.join(folder, i.name))
                 if not self.replace or i.name not in bpy.data.objects:
-                    bpy.ops.coa_tools.import_sprite(path=filepath,parent=sprite_object.name,scale=get_addon_prefs(context).sprite_import_export_scale)
+                    bpy.ops.coa_tools.import_sprite(path=filepath,parent=sprite_object.name,scale=functions.get_addon_prefs(context).sprite_import_export_scale)
                 else:
                     bpy.ops.coa_tools.reimport_sprite(filepath=filepath,name=i.name, reposition=False)
         else:
@@ -491,7 +492,7 @@ class COATOOLS_OT_ReImportSprite(bpy.types.Operator, ImportHelper):
                 vert.co = Vector((co_x,0,co_y))
             
             
-        obj.coa_tools.sprite_dimension = Vector((get_local_dimension(obj)[0],0,get_local_dimension(obj)[1]))
+        obj.coa_tools.sprite_dimension = Vector((functions.get_local_dimension(obj)[0],0,functions.get_local_dimension(obj)[1]))
     
     def draw(self,context):
         obj = context.active_object
@@ -515,7 +516,7 @@ class COATOOLS_OT_ReImportSprite(bpy.types.Operator, ImportHelper):
             img = bpy.data.images.load(self.filepath)
         
         
-        scale = get_addon_prefs(context).sprite_import_export_scale
+        scale = functions.get_addon_prefs(context).sprite_import_export_scale
         if self.name in bpy.data.objects:
             active_obj = bpy.data.objects[self.name]
             obj_hide = active_obj.hide_viewport

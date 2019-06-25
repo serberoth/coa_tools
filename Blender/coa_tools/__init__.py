@@ -105,7 +105,6 @@ classes = (
     props.AnimationCollections,
     props.ObjectProperties,
     props.SceneProperties,
-    props.ScreenProperties,
     props.MeshProperties,
     props.BoneProperties,
     props.WindowManagerProperties,
@@ -121,9 +120,14 @@ classes = (
     import_sprites.COATOOLS_OT_ReImportSprite,
 
     user_interface.COATOOLS_OT_ChangeShadingMode,
-    user_interface.COATOOLS_OT_SelectChild,
+    user_interface.COATOOLS_PT_Info,
     user_interface.COATOOLS_PT_ObjectProperties,
     user_interface.COATOOLS_PT_Tools,
+    user_interface.COATOOLS_UL_AnimationCollections,
+    user_interface.COATOOLS_UL_EventCollection,
+    user_interface.COATOOLS_OT_SelectChild,
+    user_interface.COATOOLS_PT_Collections,
+
 
     view_sprites.COATOOLS_OT_ChangeZOrdering,
     view_sprites.COATOOLS_OT_ViewSprite,
@@ -171,7 +175,19 @@ classes = (
     create_ortho_cam.COATOOLS_OT_CreateOrtpographicCamera,
     create_ortho_cam.COATOOLS_OT_AlignCamera,
 
+    create_spritesheet_preview.COATOOLS_OT_SelectFrameThumb,
+
     help_display.COATOOLS_OT_ShowHelp,
+
+    draw_bone_shape.COATOOLS_OT_DrawBoneShape,
+
+    pie_menu.COATOOLS_MT_menu,
+    pie_menu.COATOOLS_MT_keyframe_menu_01,
+    pie_menu.COATOOLS_MT_keyframe_menu_add,
+    pie_menu.COATOOLS_MT_keyframe_menu_remove,
+
+    toggle_animation_area.COATOOLS_OT_ToggleAnimationArea,
+
 
 )
 
@@ -187,7 +203,7 @@ def register_keymaps():
     km = addon.keymaps.new(name="3D View", space_type="VIEW_3D")
     # insert keymap items here
     kmi = km.keymap_items.new("wm.call_menu_pie", type = "F", value = "PRESS")
-    kmi.properties.name = "view3d.coa_pie_menu"
+    kmi.properties.name = "coa_tools.pie_menu"
     addon_keymaps.append(km)
 
 def unregister_keymaps():
@@ -213,7 +229,6 @@ def register():
     register_keymaps()
 
     # create handler
-    bpy.app.handlers.depsgraph_update_post.append(check_view_2D_3D)
     bpy.app.handlers.load_post.append(check_view_2D_3D)
     bpy.app.handlers.load_post.append(set_shading)
 
@@ -232,32 +247,28 @@ def unregister():
     unregister_keymaps()
 
     # delete handler
-    bpy.app.handlers.depsgraph_update_post.remove(check_view_2D_3D)
     bpy.app.handlers.load_post.remove(check_view_2D_3D)
     bpy.app.handlers.load_post.remove(set_shading)
 
 
-screen_prev = None
 @persistent
 def check_view_2D_3D(dummy):
-    global screen_prev
     context = bpy.context
     if context != None:
-        screen = context.screen
-        if screen != None:
-            if screen_prev != context.screen.name:
-                if screen.coa_tools.view == "2D":
-                    set_middle_mouse_move(True)
-                elif screen.coa_tools.view == "3D":
-                    set_middle_mouse_move(False)
-            screen_prev = screen
+        scene = context.scene
+        if scene != None:
+            if scene.coa_tools.view == "2D":
+                set_middle_mouse_move(True)
+            elif scene.coa_tools.view == "3D":
+                set_middle_mouse_move(False)
 
 
 @persistent
 def set_shading(dummy):
     for obj in bpy.data.objects:
         if "coa_sprite_object" in obj:
-            for area in bpy.context.screen.areas:
-                if area.type == "VIEW_3D":
-                    area.spaces[0].shading.type = "RENDERED"
+            for screen in bpy.data.screens:
+                for area in screen.areas:
+                    if area.type == "VIEW_3D":
+                        area.spaces[0].shading.type = "RENDERED"
             break

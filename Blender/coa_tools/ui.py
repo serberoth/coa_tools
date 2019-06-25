@@ -129,7 +129,7 @@ class COATOOLS_PT_ObjectProperties(bpy.types.Panel):
 
             col.prop(obj, "name", text="", icon=icon)
             if obj.type == "MESH" and obj.coa_tools.type == "SLOT":
-                col.prop(obj.coa_slot[obj.coa_slot_index].mesh,"name",text="",icon="OUTLINER_DATA_MESH")
+                col.prop(obj.coa_tools.slot[obj.coa_tools.slot_index].mesh,"name",text="",icon="OUTLINER_DATA_MESH")
             if obj.type == "ARMATURE":
                 row = layout.row(align=True)
                 if context.active_bone != None:
@@ -182,7 +182,7 @@ class COATOOLS_PT_ObjectProperties(bpy.types.Panel):
                     row = layout.row(align=True)
                     slot_text = "Slot Index (" + str(len(obj.coa_tools.slot)) + ")"
                     row.prop(obj.coa_tools,'slot_index',text="Slot Index")
-                    op = row.operator("coa_tools.select_frame_thumb",text="",icon="IMAGE_COL")
+                    op = row.operator("coa_tools.select_frame_thumb",text="",icon="IMAGE_RGB")
                     op = row.operator("coa_tools.add_keyframe",text="",icon="KEYTYPE_MOVING_HOLD_VEC")
                     op.prop_name = "coa_slot_index"
                     op.add_keyframe = True
@@ -262,11 +262,9 @@ class COATOOLS_PT_Tools(bpy.types.Panel):
 
         sprite_object = functions.get_sprite_object(obj)
         scene = context.scene
-        screen = context.screen
-
 
         row = layout.row(align=True)
-        row.prop(screen.coa_tools, "view", expand=True)
+        row.prop(scene.coa_tools, "view", expand=True)
 
         if not wm.coa_tools.show_help:
             row.operator("coa_tools.show_help", text="", icon="INFO")
@@ -302,7 +300,7 @@ class COATOOLS_PT_Tools(bpy.types.Panel):
                 row.operator("coa_tools.edit_weights", text="Edit Weights", icon="MOD_VERTEX_WEIGHT")
             elif sprite_object.coa_tools.edit_weights:
                 row = layout.row(align=True)
-                row.prop(sprite_object, "coa_tools.edit_weights", text="Finish Edit Weights", toggle=True,
+                row.prop(sprite_object.coa_tools, "edit_weights", text="Finish Edit Weights", toggle=True,
                          icon="MOD_VERTEX_WEIGHT")
             ###
 
@@ -357,15 +355,15 @@ class COATOOLS_PT_Tools(bpy.types.Panel):
                 if obj != None:
                     if obj.type == "ARMATURE" and obj.mode == "POSE":
                         row = layout.row(align=True)
-                        row.operator("bone.coa_tools.draw_bone_shape", text="Draw Bone Shape", icon="BONE_DATA")
+                        row.operator("coa_tools.draw_bone_shape", text="Draw Bone Shape", icon="BONE_DATA")
 
                     if obj != None and obj.mode == "POSE":
                         row = layout.row(align=True)
                         row.label(text="Bone Constraint Operator:")
                         row = layout.row(align=True)
-                        row.operator("object.coa_set_ik", text="Create IK Bone", icon="CONSTRAINT_BONE")
+                        row.operator("coa_tools.set_ik", text="Create IK Bone", icon="CONSTRAINT_BONE")
                         row = layout.row(align=True)
-                        row.operator("bone.coa_set_stretch_bone", text="Create Stretch Bone", icon="CONSTRAINT_BONE")
+                        row.operator("coa_tools.set_stretch_bone", text="Create Stretch Bone", icon="CONSTRAINT_BONE")
 
                         row = layout.row(align=True)
                         row.operator("coa_tools.create_stretch_ik", text="Create Stretch IK", icon="CONSTRAINT_BONE")
@@ -453,7 +451,7 @@ class COATOOLS_UL_AnimationCollections(bpy.types.UIList):
             col.label(icon="ARMATURE_DATA")
             col.label(text=item.name)
 
-        if context.scene.coa_nla_mode == "NLA" and item.name not in ["NO ACTION","Restpose"]:
+        if context.scene.coa_tools.nla_mode == "NLA" and item.name not in ["NO ACTION","Restpose"]:
             col = layout.row(align=False)
             op = col.operator("coa_operator.create_nla_track",icon="NLA",text="")
             op.anim_collection_name = item.name
@@ -482,7 +480,7 @@ class COATOOLS_UL_EventCollection(bpy.types.UIList):
         if not item.collapsed:
             row = col.row(align=True)
             # row.alignment = "RIGHT"
-            op = row.operator("coa_tools.add_event", icon="ZOOMIN", text="Add new Event", emboss=True)
+            op = row.operator("coa_tools.add_event", icon="ADD", text="Add new Event", emboss=True)
             op.index = index
             for i, event in enumerate(item.event):
                 row = col.row(align=True)
@@ -660,85 +658,6 @@ class COATOOLS_PT_Collections(bpy.types.Panel):
     bl_region_type = "UI"
     bl_category = "COA Tools"
 
-
-    def set_actions(self,context):
-        scene = context.scene
-        sprite_object = functions.get_sprite_object(context.active_object)
-
-        if context.scene.coa_nla_mode == "ACTION":
-            scene.frame_start = sprite_object.coa_anim_collections[sprite_object.coa_anim_collections_index].frame_start
-            scene.frame_end = sprite_object.coa_anim_collections[sprite_object.coa_anim_collections_index].frame_end
-            functions.set_action(context)
-        for obj in context.visible_objects:
-            if obj.type == "MESH" and "coa_sprite" in obj:
-                functions.update_uv(context,obj)
-                functions.set_alpha(obj,bpy.context,obj.coa_alpha)
-                functions.set_z_value(context,obj,obj.coa_z_value)
-                functions.set_modulate_color(obj,context,obj.coa_modulate_color)
-
-        ### set export name
-        if scene.coa_nla_mode == "ACTION":
-            action_name = sprite_object.coa_anim_collections[sprite_object.coa_anim_collections_index].name
-            if action_name in ["Restpose","NO ACTION"]:
-                action_name = ""
-            else:
-                action_name += "_"
-            path = context.scene.render.filepath.replace("\\","/")
-            dirpath = path[:path.rfind("/")]
-            final_path = dirpath + "/" + action_name
-            context.scene.render.filepath = final_path
-
-
-    def set_nla_mode(self,context):
-        sprite_object = functions.get_sprite_object(context.active_object)
-        children = functions.get_children(context,sprite_object,ob_list=[])
-        if self.coa_nla_mode == "NLA":
-            for child in children:
-                if child.animation_data != None:
-                    child.animation_data.action = None
-            context.scene.frame_start = context.scene.coa_frame_start
-            context.scene.frame_end = context.scene.coa_frame_end
-
-            for child in children:
-                if child.animation_data != None:
-                    for track in child.animation_data.nla_tracks:
-                        track.mute = False
-        else:
-            if len(sprite_object.coa_anim_collections) > 0:
-                anim_collection = sprite_object.coa_anim_collections[sprite_object.coa_anim_collections_index]
-                context.scene.frame_start = anim_collection.frame_start
-                context.scene.frame_end = anim_collection.frame_end
-                functions.set_action(context)
-                for obj in context.visible_objects:
-                    if obj.type == "MESH" and "coa_sprite" in obj:
-                        functions.update_uv(context,obj)
-                        functions.set_alpha(obj,bpy.context,obj.coa_alpha)
-                        functions.set_z_value(context,obj,obj.coa_z_value)
-                        functions.set_modulate_color(obj,context,obj.coa_modulate_color)
-                for child in children:
-                    if child.animation_data != None:
-                        for track in child.animation_data.nla_tracks:
-                            track.mute = True
-
-        bpy.ops.coa_tools.toggle_animation_area(mode="UPDATE")
-
-
-
-
-    def update_frame_range(self,context):
-        sprite_object = functions.get_sprite_object(context.active_object)
-        if len(sprite_object.coa_anim_collections) > 0:
-            anim_collection = sprite_object.coa_anim_collections[sprite_object.coa_anim_collections_index]
-
-        if context.scene.coa_nla_mode == "NLA" or len(sprite_object.coa_anim_collections) == 0:
-            context.scene.frame_start = self.coa_frame_start
-            context.scene.frame_end = self.coa_frame_end
-
-    bpy.types.Object.coa_anim_collections_index: IntProperty(update=set_actions)
-    bpy.types.Scene.coa_nla_mode: EnumProperty(description="Animation Mode. Can be set to NLA or Action to playback all NLA Strips or only Single Actions",items=(("ACTION","ACTION","ACTION","ACTION",0),("NLA","NLA","NLA","NLA",1)),update=set_nla_mode)
-    bpy.types.Scene.coa_frame_start: IntProperty(name="Frame Start",default=0,min=0,update=update_frame_range)
-    bpy.types.Scene.coa_frame_end: IntProperty(name="Frame End",default=250,min=1,update=update_frame_range)
-
     def draw(self, context):
         layout = self.layout
         obj = context.active_object
@@ -748,31 +667,31 @@ class COATOOLS_PT_Collections(bpy.types.Panel):
 
 
             row = layout.row()
-            row.prop(sprite_object,"coa_animation_loop",text="Wrap Animation Playback")
+            row.prop(sprite_object.coa_tools,"animation_loop",text="Wrap Animation Playback")
 
             row = layout.row()
-            row.prop(scene,"coa_nla_mode",expand=True)
+            row.prop(scene.coa_tools,"nla_mode",expand=True)
 
-            if scene.coa_nla_mode == "NLA":
+            if scene.coa_tools.nla_mode == "NLA":
                 row = layout.row(align=True)
-                row.prop(scene,"coa_frame_start")
-                row.prop(scene,"coa_frame_end")
+                row.prop(scene.coa_tools,"frame_start")
+                row.prop(scene.coa_tools,"coa_frame_end")
 
             row = layout.row()
-            row.template_list("COATOOLS_UL_AnimationCollections","dummy",sprite_object, "coa_anim_collections", sprite_object, "coa_anim_collections_index",rows=2,maxrows=10,type='DEFAULT')
+            row.template_list("COATOOLS_UL_AnimationCollections","dummy",sprite_object.coa_tools, "anim_collections", sprite_object.coa_tools, "anim_collections_index",rows=2,maxrows=10,type='DEFAULT')
             col = row.column(align=True)
-            col.operator("coa_tools.add_animation_collection",text="",icon="ZOOMIN")
-            col.operator("coa_tools.remove_animation_collection",text="",icon="ZOOMOUT")
+            col.operator("coa_tools.add_animation_collection",text="",icon="ADD")
+            col.operator("coa_tools.remove_animation_collection",text="",icon="REMOVE")
 
-            if len(sprite_object.coa_anim_collections) > 2 and sprite_object.coa_anim_collections_index > 1:
+            if len(sprite_object.coa_tools.anim_collections) > 2 and sprite_object.coa_tools.anim_collections_index > 1:
                 col.operator("coa_tools.duplicate_animation_collection",text="",icon="COPY_ID")
 
             if not "-nonnormal" in context.screen.name:
                 col.operator("coa_tools.toggle_animation_area",text="",icon="ACTION")
 
-            if  len(sprite_object.coa_anim_collections) > 0 and sprite_object.coa_anim_collections[sprite_object.coa_anim_collections_index].action_collection:
+            if len(sprite_object.coa_tools.anim_collections) > 0 and sprite_object.coa_tools.anim_collections[sprite_object.coa_tools.anim_collections_index].action_collection:
                 row = layout.row(align=True)
-                item = sprite_object.coa_anim_collections[sprite_object.coa_anim_collections_index]
+                item = sprite_object.coa_tools.anim_collections[sprite_object.coa_tools.anim_collections_index]
                 row.prop(item,"frame_end",text="Animation Length")
 
 
@@ -782,10 +701,10 @@ class COATOOLS_PT_Collections(bpy.types.Panel):
                 row = layout.row(align=False)
                 row.template_list("COATOOLS_UL_EventCollection","dummy",item, "timeline_events", item, "event_index",rows=1,maxrows=10,type='DEFAULT')
                 col = row.column(align=True)
-                col.operator("coa_tools.add_timeline_event",text="",icon="ZOOMIN")
+                col.operator("coa_tools.add_timeline_event",text="",icon="ADD")
 
             row = layout.row(align=True)
-            if context.scene.coa_nla_mode == "ACTION":
+            if context.scene.coa_tools.nla_mode == "ACTION":
 
                 operator = row.operator("coa_tools.batch_render",text="Batch Render Animations",icon="RENDER_ANIMATION")
             else:

@@ -38,8 +38,8 @@ class COATOOLS_OT_AdvancedSettings(bpy.types.Operator):
         col = row.column()
 
         sub = col.column(align=True)
-        sub.operator("object.shape_key_add", icon='ZOOMIN', text="").from_mix = False
-        sub.operator("object.shape_key_remove", icon='ZOOMOUT', text="").all = False
+        sub.operator("object.shape_key_add", icon='ADD', text="").from_mix = False
+        sub.operator("object.shape_key_remove", icon='REMOVE', text="").all = False
         sub.menu("MESH_MT_shape_key_specials", icon='DOWNARROW_HLT', text="")
 
         if kb:
@@ -132,7 +132,3 @@ class COATOOLS_OT_AdvancedSettings(bpy.types.Operator):
     
     def execute(self, context):
         return {"FINISHED"}   
-    
-        
-        
-                

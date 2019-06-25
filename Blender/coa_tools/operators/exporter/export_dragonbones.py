@@ -868,7 +868,7 @@ def get_animation_data(self,sprite_object,armature,armature_orig):
 
     for anim_index,anim in enumerate(anims):
         if anim.name not in ["NO ACTION","Restpose"]:
-            sprite_object.coa_anim_collections_index = anim_index ### set animation
+            sprite_object.coa_tools.anim_collections_index = anim_index ### set animation
 
             anim_data = animation_data.copy()
             anim_data["duration"] = anim.frame_end
@@ -1206,7 +1206,7 @@ class COATOOLS_OT_DragonBonesExport(bpy.types.Operator):
         self.active_object = context.active_object
         self.sprite_object = get_sprite_object(context.active_object)
 
-        self.animation_index = self.sprite_object.coa_anim_collections_index
+        self.animation_index = self.sprite_object.coa_tools.anim_collections_index
         self.frame_current = context.scene.frame_current
 
     def set_init_state(self,context):
@@ -1218,7 +1218,7 @@ class COATOOLS_OT_DragonBonesExport(bpy.types.Operator):
         context.scene.objects.active = self.active_object
 
         if len(self.sprite_object.coa_anim_collections) > 0:
-            self.sprite_object.coa_anim_collections_index = self.animation_index
+            self.sprite_object.coa_tools.anim_collections_index = self.animation_index
         context.scene.frame_current = self.frame_current
 
     def execute(self, context):
@@ -1229,8 +1229,8 @@ class COATOOLS_OT_DragonBonesExport(bpy.types.Operator):
         self.scene = context.scene
 
         ### set animation mode to action
-        coa_nla_mode = str(self.scene.coa_nla_mode)
-        self.scene.coa_nla_mode = "ACTION"
+        coa_tools.nla_mode = str(self.scene.coa_tools.nla_mode)
+        self.scene.coa_tools.nla_mode = "ACTION"
 
 
         ### get sprite object, sprites and armature
@@ -1312,7 +1312,7 @@ class COATOOLS_OT_DragonBonesExport(bpy.types.Operator):
         for key in tmp_slots_data:
             bpy.data.objects.remove(tmp_slots_data[key]["object"], do_unlink=True)
 
-        self.scene.coa_nla_mode = coa_nla_mode
+        self.scene.coa_tools.nla_mode = coa_tools.nla_mode
 
         self.report({"INFO"},"Export successful.")
         return {"FINISHED"}

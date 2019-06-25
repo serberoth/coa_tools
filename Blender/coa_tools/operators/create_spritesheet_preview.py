@@ -54,25 +54,18 @@ class COATOOLS_OT_SelectFrameThumb(bpy.types.Operator):
 
         row = layout.row()
         row.scale_y = .8
-        thumb_scale =  clamp(256/(obj.coa_tiles_x * obj.coa_tiles_y),1,5)
-        row.template_icon_view(obj, "coa_sprite_frame_previews",scale=5)
+        row.template_icon_view(obj.coa_tools, "sprite_frame_previews",scale=5)
     
     def invoke(self, context, event):
         obj = context.active_object
-        if "coa_sprite" in obj and obj.type == "MESH" and obj.coa_tiles_x * obj.coa_tiles_y > 1:
-            if obj.coa_tiles_changed:
-                obj.coa_sprite_updated = False
-            bpy.ops.coa_tools.create_spritesheet_preview()
-                
-            wm = context.window_manager 
-            return wm.invoke_popup(self,100)
-        elif obj.coa_type == "SLOT" and len(obj.coa_slot) > 0:
+
+        if obj.coa_tools.type == "SLOT" and len(obj.coa_tools.slot) > 0:
             wm = context.window_manager
             try:
-                obj.coa_sprite_frame_previews = str(obj.coa_slot_index)
+                obj.coa_sprite_frame_previews = str(obj.coa_tools.slot_index)
             except:
                 pass    
-            return wm.invoke_popup(self,100)
+            return wm.invoke_popup(self, width=100)
         else:
             self.report({'INFO'},"Object has no Sprites.")
             return {"FINISHED"}
@@ -136,11 +129,6 @@ class COATOOLS_OT_CreateSpritesheetPreview(bpy.types.Operator):
                     uv_texture = uv_textures["preview_render_uv"]    
                 uv_layer = obj.data.uv_layers[uv_texture.name]
                 unwrap_with_bounds(obj,1)
-                
-#                uv_layer.data[0].uv = [0.0,0.0]
-#                uv_layer.data[1].uv = [1.0,0.0]
-#                uv_layer.data[2].uv = [1.0,1.0]
-#                uv_layer.data[3].uv = [0.0,1.0]
                 
                 if sprite_dimension[0] > sprite_dimension[1]:
                     preview_dimension = [thumb_size,int(sprite_dimension[1]*(thumb_size/sprite_dimension[0]))]

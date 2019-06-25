@@ -128,9 +128,9 @@ class COATOOLS_OT_ToggleAnimationArea(bpy.types.Operator):
         self.join_area(context,area_dopesheet_editor,area_3d)
         
     def execute(self, context):
-        if context.scene.coa_nla_mode == "ACTION":
+        if context.scene.coa_tools.nla_mode == "ACTION":
             self.editor = "DOPESHEET_EDITOR"
-        elif context.scene.coa_nla_mode == "NLA":
+        elif context.scene.coa_tools.nla_mode == "NLA":
             self.editor = "NLA_EDITOR"
             
         
