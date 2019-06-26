@@ -474,7 +474,6 @@ class COATOOLS_OT_Fill(bpy.types.Operator):
     def __init__(self):
         self.tiles_x = 1
         self.tiles_y = 1
-        self.sprite_frame = 0
 
     
     def get_img(self,context,obj):
@@ -632,10 +631,7 @@ class COATOOLS_OT_Fill(bpy.types.Operator):
         bpy.ops.object.mode_set(mode="OBJECT")
         
         functions.handle_uv_items(context,obj)
-        
-        self.tiles_x = obj.coa_tiles_x
-        self.tiles_y = obj.coa_tiles_y
-        self.sprite_frame = obj.coa_sprite_frame
+
         obj.coa_sprite_frame = 0
         obj.coa_tiles_x = 1
         obj.coa_tiles_y = 1
@@ -645,9 +641,6 @@ class COATOOLS_OT_Fill(bpy.types.Operator):
     def revert_rest_spritesheet(self,context,obj):
         bpy.ops.object.mode_set(mode="OBJECT")
         functions.set_uv_default_coords(context,obj)
-        obj.coa_tiles_x = self.tiles_x
-        obj.coa_tiles_y = self.tiles_y
-        obj.coa_sprite_frame = self.sprite_frame
         bpy.ops.object.mode_set(mode="EDIT")
         
     def normal_fill(self,context):
@@ -969,26 +962,6 @@ class COATOOLS_OT_DrawContour(bpy.types.Operator):
         bmesh.update_edit_mesh(obj.data)
     
     def set_bone_shape_color_and_wireframe(self,context,obj):
-        if self.bone.bone_group != None:
-            bone_group_name = self.bone.bone_group.name
-            bone_group_color = self.bone.bone_group.colors.normal
-            suffix = "_group_color"
-            if (bone_group_name+suffix) not in bpy.data.materials:
-                material = bpy.data.materials.new(bone_group_name+suffix)
-            else:
-                material = bpy.data.materials[bone_group_name+suffix]
-            
-            material.diffuse_color = bone_group_color
-            material.use_shadeless = True
-            
-            if len(obj.material_slots) == 0:
-                obj.data.materials.append(material)
-            else:
-                obj.material_slots[0].material = material
-        else:
-            if len(obj.material_slots) > 0:
-                obj.material_slots[0].material = None
-                      
         bm = bmesh.from_edit_mesh(obj.data)
         if len(bm.faces) > 0:
             self.armature.data.bones[self.bone.name].show_wire = False
@@ -1431,15 +1404,17 @@ class COATOOLS_OT_DrawContour(bpy.types.Operator):
             else:
                 self.bone.custom_shape = None    
             
-            self.bone_shape.select = False
+            self.bone_shape.select_set(False)
             self.bone_shape.parent = None
             context.collection.objects.unlink(self.bone_shape)
+            context.view_layer.objects.active = self.armature
+            self.armature.select_set(True)
             bpy.ops.object.mode_set(mode="POSE")    
         else:
             if len(self.obj.data.vertices) > 4:
                 self.obj.data.coa_tools.hide_base_sprite = True
             bpy.ops.object.mode_set(mode="OBJECT")    
-        context.view_layer.objects.active = obj
+            context.view_layer.objects.active = obj
         return{'FINISHED'}
     
     _timer = 0
@@ -1495,7 +1470,7 @@ class COATOOLS_OT_DrawContour(bpy.types.Operator):
 
 
 
-    def invoke(self, context, event):
+    def execute(self, context):
         bpy.ops.ed.undo_push(message="Edit Mesh")
         if context.active_object == None or (context.active_object.type != "MESH" and self.mode != "DRAW_BONE_SHAPE"):
             self.report({"ERROR"},"Sprite is hidden or not selected. Cannot go in Edit Mode.")
@@ -1553,7 +1528,6 @@ class COATOOLS_OT_DrawContour(bpy.types.Operator):
                     me = bpy.data.meshes[shape_name]
                 else:    
                     me = bpy.data.meshes.new(shape_name)
-            me.show_double_sided = True
             if shape_name in bpy.data.objects and self.new_shape_name == shape_name:
                 bone_shape = bpy.data.objects[shape_name]
             else:
@@ -1567,7 +1541,7 @@ class COATOOLS_OT_DrawContour(bpy.types.Operator):
             bone_shape["coa_bone_shape"] = True
             context.collection.objects.link(bone_shape)
             context.view_layer.objects.active = bone_shape
-            bone_shape.select = True
+            bone_shape.select_set(True)
             bone_shape.parent = self.sprite_object
             bone_shape.name = bone.name+"_custom_shape"
             me.name = bone.name+"_custom_shape"
@@ -1576,7 +1550,7 @@ class COATOOLS_OT_DrawContour(bpy.types.Operator):
             bone_shape.matrix_local = bone_mat
 #            scale = 1/bone_shape.dimensions.y
 #            bone_shape.scale = Vector((scale,scale,scale))
-            bone_shape.show_x_ray = True
+            bone_shape.show_in_front = True
             self.bone_shape = bone_shape
             self.bone = bone
             self.armature = armature
@@ -1592,7 +1566,7 @@ class COATOOLS_OT_DrawContour(bpy.types.Operator):
         
         if self.mode == "EDIT_MESH":
             functions.set_local_view(True)
-        self.texture_preview_object.select_set(False)
+            self.texture_preview_object.select_set(False)
         self.prev_coa_view = str(context.scene.coa_tools.view)
         context.scene.coa_tools.view = "2D"
 

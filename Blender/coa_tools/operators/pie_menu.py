@@ -9,7 +9,7 @@ preview_collections_pie = {}
 class COATOOLS_MT_menu(Menu):
     # label is displayed at the center of the pie menu.
     bl_label = "COA Tools"
-    bl_idname = "coa_tools.pie_menu"
+    bl_idname = "COATOOLS_MT_menu"
     
     @classmethod
     def poll(cls, context):
@@ -58,7 +58,7 @@ class COATOOLS_MT_menu(Menu):
 class COATOOLS_MT_keyframe_menu_01(Menu):
     # label is displayed at the center of the pie menu.
     bl_label = "COA Tools"
-    bl_idname = "coa_tools.pie_keyframe_menu_01"
+    bl_idname = "COATOOLS_MT_keyframe_menu_01"
     
     @classmethod
     def poll(cls, context):
@@ -79,7 +79,7 @@ class COATOOLS_MT_keyframe_menu_01(Menu):
 class COATOOLS_MT_keyframe_menu_add(Menu):
     # label is displayed at the center of the pie menu.
     bl_label = "COA Add Keyframe"
-    bl_idname = "coa_tools.pie_keyframe_menu_add"
+    bl_idname = "COATOOLS_MT_keyframe_menu_add"
     
     def draw(self, context):
         layout = self.layout
@@ -89,56 +89,56 @@ class COATOOLS_MT_keyframe_menu_add(Menu):
 class COATOOLS_MT_keyframe_menu_remove(Menu):
     # label is displayed at the center of the pie menu.
     bl_label = "COA Remove Keyframe"
-    bl_idname = "coa_tools.pie_keyframe_menu_remove"
+    bl_idname = "COATOOLS_MT_keyframe_menu_remove"
     
     def draw(self, context):
         layout = self.layout
         pie = layout.menu_pie()
-        add_remove_keyframe(pie,False)        
+        add_remove_keyframe(pie,False)
 
-def add_remove_keyframe(pie,add):
-    context= bpy.context
+
+def add_remove_keyframe(pie, add):
+    context = bpy.context
     obj = context.active_object
     if obj.type == "MESH":
-        op = pie.operator("coa_tools.add_keyframe",text="Sprite Frame",icon="IMAGE_RGB")
+        op = pie.operator("coa_tools.add_keyframe", text="Sprite Frame", icon="IMAGE_RGB")
         op.prop_name = "coa_sprite_frame"
         op.add_keyframe = add
         op.default_interpolation = "CONSTANT"
-        
-        op = pie.operator("coa_tools.add_keyframe",text="Sprite Alpha",icon="RESTRICT_VIEW_OFF")
-        op.prop_name = "coa_alpha"        
+
+        op = pie.operator("coa_tools.add_keyframe", text="Sprite Alpha", icon="RESTRICT_VIEW_OFF")
+        op.prop_name = "coa_alpha"
         op.add_keyframe = add
         op.default_interpolation = "BEZIER"
-        
-        op = pie.operator("coa_tools.add_keyframe",text="Modulate Color",icon="COLOR")
+
+        op = pie.operator("coa_tools.add_keyframe", text="Modulate Color", icon="COLOR")
         op.prop_name = "coa_modulate_color"
         op.add_keyframe = add
         op.default_interpolation = "BEZIER"
-        
-        op = pie.operator("coa_tools.add_keyframe",text="Z Value",icon="IMAGE_ZDEPTH")
+
+        op = pie.operator("coa_tools.add_keyframe", text="Z Value", icon="IMAGE_ZDEPTH")
         op.prop_name = "coa_z_value"
         op.add_keyframe = add
         op.default_interpolation = "CONSTANT"
-        
+
     elif obj.type == "ARMATURE":
         bone = context.active_pose_bone
-        op = pie.operator("coa_tools.add_keyframe",text="Location",icon="MAN_TRANS")
+        op = pie.operator("coa_tools.add_keyframe", text="Location", icon="MAN_TRANS")
         op.prop_name = "location"
         op.add_keyframe = add
         op.default_interpolation = "BEZIER"
-        
-        
-        op = pie.operator("coa_tools.add_keyframe",text="Scale",icon="MAN_SCALE")
+
+        op = pie.operator("coa_tools.add_keyframe", text="Scale", icon="MAN_SCALE")
         op.prop_name = "scale"
         op.add_keyframe = add
         op.default_interpolation = "BEZIER"
-        
-        op = pie.operator("coa_tools.add_keyframe",text="Rotation",icon="MAN_ROT")
+
+        op = pie.operator("coa_tools.add_keyframe", text="Rotation", icon="MAN_ROT")
         op.prop_name = "rotation"
         op.add_keyframe = add
-        op.default_interpolation = "BEZIER" 
-        
-        op = pie.operator("coa_tools.add_keyframe",text="Location Rotation Scale",icon="MOD_ARMATURE")
+        op.default_interpolation = "BEZIER"
+
+        op = pie.operator("coa_tools.add_keyframe", text="Location Rotation Scale", icon="MOD_ARMATURE")
         op.prop_name = "LocRotScale"
         op.add_keyframe = add
         op.default_interpolation = "BEZIER"

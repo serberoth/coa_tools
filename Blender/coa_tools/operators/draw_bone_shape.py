@@ -84,8 +84,8 @@ class COATOOLS_OT_DrawBoneShape(bpy.types.Operator):
                 if shape_name not in bpy.data.objects:
                     bone_shape = bpy.data.meshes.new_from_object(context.scene,bpy.data.objects[self.bone_shapes],False,"PREVIEW")                    
                     bone_shape.name = shape_name
-                bpy.ops.coa_tools.edit_mesh(mode="DRAW_BONE_SHAPE",new_shape_name=self.bone_shapes)
+                bpy.ops.coa_tools.edit_mesh(mode="DRAW_BONE_SHAPE", new_shape_name=self.bone_shapes)
         else:
-            self.report({'WARNING'},"Select Bone in Pose Mode.")
+            self.report({'WARNING'}, "Select Bone in Pose Mode.")
         return {'FINISHED'}
 

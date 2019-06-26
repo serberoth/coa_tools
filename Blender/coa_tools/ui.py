@@ -129,7 +129,8 @@ class COATOOLS_PT_ObjectProperties(bpy.types.Panel):
 
             col.prop(obj, "name", text="", icon=icon)
             if obj.type == "MESH" and obj.coa_tools.type == "SLOT":
-                col.prop(obj.coa_tools.slot[obj.coa_tools.slot_index].mesh,"name",text="",icon="OUTLINER_DATA_MESH")
+                index = min(len(obj.coa_tools.slot) - 1, obj.coa_tools.slot_index)
+                col.prop(obj.coa_tools.slot[index].mesh,"name",text="",icon="OUTLINER_DATA_MESH")
             if obj.type == "ARMATURE":
                 row = layout.row(align=True)
                 if context.active_bone != None:

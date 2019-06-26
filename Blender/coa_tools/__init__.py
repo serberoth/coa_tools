@@ -203,7 +203,7 @@ def register_keymaps():
     km = addon.keymaps.new(name="3D View", space_type="VIEW_3D")
     # insert keymap items here
     kmi = km.keymap_items.new("wm.call_menu_pie", type = "F", value = "PRESS")
-    kmi.properties.name = "coa_tools.pie_menu"
+    kmi.properties.name = "COATOOLS_MT_menu"
     addon_keymaps.append(km)
 
 def unregister_keymaps():
@@ -217,9 +217,8 @@ def unregister_keymaps():
 
 def register():
     # register classes
-    from bpy.utils import register_class
     for cls in classes:
-        register_class(cls)
+        bpy.utils.register_class(cls)
 
     # register tools
     bpy.utils.register_tool(edit_mesh.COATOOLS_TO_DrawPolygon, after={"builtin.cursor"}, separator=True, group=True)
@@ -229,15 +228,15 @@ def register():
     register_keymaps()
 
     # create handler
+    bpy.app.handlers.depsgraph_update_post.append(update_properties)
     bpy.app.handlers.load_post.append(check_view_2D_3D)
     bpy.app.handlers.load_post.append(set_shading)
 
 
 def unregister():
     # unregister classes
-    from bpy.utils import unregister_class
     for cls in classes:
-        unregister_class(cls)
+        bpy.utils.unregister_class(cls)
 
     # unregister tools
     bpy.utils.unregister_tool(edit_mesh.COATOOLS_TO_DrawPolygon)
@@ -247,6 +246,7 @@ def unregister():
     unregister_keymaps()
 
     # delete handler
+    bpy.app.handlers.depsgraph_update_post.remove(update_properties)
     bpy.app.handlers.load_post.remove(check_view_2D_3D)
     bpy.app.handlers.load_post.remove(set_shading)
 
@@ -272,3 +272,23 @@ def set_shading(dummy):
                     if area.type == "VIEW_3D":
                         area.spaces[0].shading.type = "RENDERED"
             break
+
+@persistent
+def update_properties(dummy):
+    context = bpy.context
+    for obj in context.view_layer.objects:
+        if obj.coa_tools.alpha != obj.coa_tools.alpha_last:
+            set_alpha(obj, context, obj.coa_tools.alpha)
+            obj.coa_tools.alpha_last = obj.coa_tools.alpha
+        
+        if obj.coa_tools.modulate_color != obj.coa_tools.modulate_color_last:
+            set_modulate_color(obj, context, obj.coa_tools.modulate_color)
+            obj.coa_tools.modulate_color_last = obj.coa_tools.modulate_color
+        
+        if obj.coa_tools.z_value != obj.coa_tools.z_value_last:
+            set_z_value(context, obj, obj.coa_tools.z_value)
+            obj.coa_tools.z_value_last = obj.coa_tools.z_value
+        
+        if obj.coa_tools.slot_index != obj.coa_tools.slot_index_last:
+            change_slot_mesh_data(bpy.context, obj)
+            obj.coa_tools.slot_index_last = obj.coa_tools.slot_index

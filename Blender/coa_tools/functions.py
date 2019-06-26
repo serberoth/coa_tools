@@ -448,11 +448,8 @@ def clear_pose(obj):
             bone.rotation_euler = Euler((0,0,0),"XYZ")
             bone.rotation_quaternion = Euler((0,0,0),"XYZ").to_quaternion()
     elif obj.type == "MESH":
-        obj.coa_tools.sprite_frame = 0
         obj.coa_tools.alpha = 1.0
         obj.coa_tools.modulate_color = (1.0,1.0,1.0)
-        #obj["coa_tools.slot_index"] = max(0,len(obj.coa_tools.slot)-1)
-        #obj["coa_tools.slot_index"] = obj.coa_slot_reset_index
         obj.coa_tools.slot_index = 0
 
 def set_direction(obj):
@@ -466,7 +463,8 @@ def set_direction(obj):
 def set_action(context,item=None):
     sprite_object = get_sprite_object(context.active_object)
     if item == None:
-        item = sprite_object.coa_tools.anim_collections[sprite_object.coa_tools.anim_collections_index]
+        index = min(len(sprite_object.coa_tools.anim_collections) - 1, sprite_object.coa_tools.anim_collections_index)
+        item = sprite_object.coa_tools.anim_collections[index]
     
     children = get_children(context,sprite_object,ob_list=[])
 
@@ -488,7 +486,6 @@ def set_action(context,item=None):
                 bone.rotation_euler = Euler((0,0,0),"XYZ")
                 bone.rotation_quaternion = Euler((0,0,0),"XYZ").to_quaternion()
         if child.type == "MESH" and item.name == "Restpose":
-            child.coa_tools.sprite_frame = 0
             child.coa_tools.alpha = 1.0
             child.coa_tools.modulate_color = (1.0,1.0,1.0)
         elif not (child.type == "MESH" and item.name == "Restpose") and context.scene.coa_tools.nla_mode == "ACTION":
@@ -712,8 +709,8 @@ def set_uv_default_coords(context,obj):
 
     ### set default uv coords
     frame_size = Vector((1, 1))
-    pos_x = frame_size.x# * (obj.coa_tools.sprite_frame % 1)
-    pos_y = frame_size.y# *  -int(int(obj.coa_tools.sprite_frame) / int(obj.coa_tools.tiles_x))
+    pos_x = frame_size.x
+    pos_y = frame_size.y
     frame = Vector((pos_x, pos_y))
     offset = Vector((0, 0))
     
@@ -723,61 +720,7 @@ def set_uv_default_coords(context,obj):
         uv_vec_y = (coord.uv[1] - offset[1] - frame[1])
         uv_vec = Vector((uv_vec_x, uv_vec_y))
         obj.coa_tools.uv_default_state[i].uv = uv_vec
-                        
-def update_uv(context,obj):
-    return
-    # if "coa_sprite" in obj and obj.mode == "OBJECT":
-    #     sprite_object = get_sprite_object(obj)
-    #
-    #     frame_size = Vector((1 / obj.coa_tiles_x,1 / obj.coa_tiles_y))
-    #     pos_x = frame_size.x * (obj.coa_tools.sprite_frame % obj.coa_tiles_x)
-    #     pos_y = frame_size.y *  -int(int(obj.coa_tools.sprite_frame) / int(obj.coa_tiles_x))
-    #     frame = Vector((pos_x,pos_y))
-    #     offset = Vector((0,1-(1/obj.coa_tiles_y)))
-    #
-    #     for i,coord in enumerate(obj.data.uv_layers[obj.data.uv_layers.active.name].data):
-    #         if i < len(obj.coa_uv_default_state):
-    #             coord.uv = Vector((obj.coa_uv_default_state[i].uv[0] / obj.coa_tiles_x , obj.coa_uv_default_state[i].uv[1]/ obj.coa_tiles_y)) + frame + offset
-        
-def update_verts(context,obj):
-    return
-    # if "coa_sprite" in obj:
-    #     sprite_object = get_sprite_object(obj)
-    #     armature = get_armature(sprite_object)
-    #     if armature != None:
-    #         armature_pose_position = armature.data.pose_position
-    #         armature.data.pose_position = "REST"
-    #         armature.update_tag()
-    #         bpy.context.scene.update()
-    #
-    #     mode_prev = obj.mode
-    #
-    #
-    #     hide = bool(obj.data.coa_tools.hide_base_sprite)
-    #     obj.data.coa_tools.hide_base_sprite = False
-    #     obj.coa_dimensions_old = Vector(obj.dimensions)
-    #     obj.data.coa_tools.hide_base_sprite = hide
-    #
-    #
-    #     spritesheet = obj.material_slots[0].material.texture_slots[0].texture.image
-    #     assign_tex_to_uv(spritesheet,obj.data.uv_textures[0])
-    #
-    #     sprite_sheet_width = obj.data.uv_textures[0].data[0].image.size[0]
-    #     sprite_sheet_height = obj.data.uv_textures[0].data[0].image.size[1]
-    #
-    #     scale_x = round(obj.coa_sprite_dimension[0] / sprite_sheet_width,5)
-    #     scale_y = round(obj.coa_sprite_dimension[2] / sprite_sheet_height,5)
-    #
-    #     sprite_object = get_sprite_object(obj)
-    #
-    #     for vert in obj.data.vertices:
-    #         vert.co[0] = (vert.co[0] / obj.coa_dimensions_old[0] * sprite_sheet_width / obj.coa_tiles_x * scale_x * obj.matrix_local.to_scale()[0])
-    #         vert.co[2] = (vert.co[2] / obj.coa_dimensions_old[2] * sprite_sheet_height / obj.coa_tiles_y * scale_y * obj.matrix_local.to_scale()[2])
-    #
-    #     bpy.ops.object.mode_set(mode=mode_prev)
-    #
-    #     if armature != None:
-    #         armature.data.pose_position = armature_pose_position
+
 
 def set_z_value(context,obj,z):
     scale = get_addon_prefs(context).sprite_import_export_scale

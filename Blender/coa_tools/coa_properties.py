@@ -24,11 +24,6 @@ def hide_select(self, context):
     self.id_data.hide_select = self.hide_select
 
 
-def update_uv(self, context):
-    self.sprite_frame_last = -1
-    functions.update_uv(context, context.active_object)
-
-
 def set_z_value(self, context):
     if context.scene.view_layers[0].objects.active == self.id_data:
         for obj in bpy.context.selected_objects:
@@ -191,9 +186,10 @@ def set_actions(self, context):
     scene = context.scene
     sprite_object = functions.get_sprite_object(context.active_object)
 
+    index = min(len(sprite_object.coa_tools.anim_collections) - 1, sprite_object.coa_tools.anim_collections_index)
     if context.scene.coa_tools.nla_mode == "ACTION":
-        scene.frame_start = sprite_object.coa_tools.anim_collections[sprite_object.coa_tools.anim_collections_index].frame_start
-        scene.frame_end = sprite_object.coa_tools.anim_collections[sprite_object.coa_tools.anim_collections_index].frame_end
+        scene.frame_start = sprite_object.coa_tools.anim_collections[index].frame_start
+        scene.frame_end = sprite_object.coa_tools.anim_collections[index].frame_end
         functions.set_action(context)
     for obj in context.visible_objects:
         if obj.type == "MESH" and "coa_sprite" in obj:
@@ -204,7 +200,7 @@ def set_actions(self, context):
 
     ### set export name
     if scene.coa_tools.nla_mode == "ACTION":
-        action_name = sprite_object.coa_tools.anim_collections[sprite_object.coa_tools.anim_collections_index].name
+        action_name = sprite_object.coa_tools.anim_collections[index].name
         if action_name in ["Restpose","NO ACTION"]:
             action_name = ""
         else:
@@ -351,8 +347,6 @@ class ObjectProperties(bpy.types.PropertyGroup):
 
     dimensions_old: FloatVectorProperty()
     sprite_dimension: FloatVectorProperty()
-    sprite_frame: IntProperty(description="Frame", default=0, min=0, update=update_uv)
-    sprite_frame_last: IntProperty(description="Frame")
     z_value: IntProperty(description="Z Depth", default=0, update=set_z_value)
     z_value_last: IntProperty(default=0)
     alpha: FloatProperty(default=1.0, min=0.0, max=1.0, update=set_alpha)
