@@ -344,6 +344,8 @@ class ObjectProperties(bpy.types.PropertyGroup):
     anim_collections: bpy.props.CollectionProperty(type=AnimationCollections)
     uv_default_state: bpy.props.CollectionProperty(type=UVData)
     slot: bpy.props.CollectionProperty(type=SlotData)
+    blend_mode: bpy.props.EnumProperty(name="Blend Mode", description="Defines the blend mode of a sprite", items=(
+        ("NORMAL", "Normal", "Normal"), ("ADD", "Add", "Add"), ("MULTIPLY", "Multiply", "Multiply")))
 
     dimensions_old: FloatVectorProperty()
     sprite_dimension: FloatVectorProperty()

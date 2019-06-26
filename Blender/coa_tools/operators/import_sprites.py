@@ -528,7 +528,7 @@ class COATOOLS_OT_ReImportSprite(bpy.types.Operator, ImportHelper):
             mat = obj.active_material
             for node in mat.node_tree.nodes:
                 if node.label == "COA Material":
-                    node.inputs["Color"].links[0].from_node.image = img
+                    node.inputs["Texture Color"].links[0].from_node.image = img
             
             img_dimension = img.size
             
@@ -545,7 +545,7 @@ class COATOOLS_OT_ReImportSprite(bpy.types.Operator, ImportHelper):
 
             ratio_x = img_dimension[0] / sprite_dimension[0]
             ratio_y = img_dimension[1] / sprite_dimension[2]
-            self.move_verts(obj,ratio_x,ratio_y)
+            # self.move_verts(obj,ratio_x,ratio_y)
 
             bpy.context.scene.view_layers[0].objects.active = active_obj
             active_obj.hide_viewport = obj_hide

@@ -63,13 +63,12 @@ class COATOOLS_OT_CreateOrtpographicCamera(bpy.types.Operator):
         
         scene = context.scene
         if self.create:
-            context.scene.objects.active = None
-            bpy.ops.object.camera_add(view_align=True, enter_editmode=False, location=(0, -self.resolution[0] * get_addon_prefs(context).sprite_import_export_scale, 0), rotation=(radians(90), 0, 0))
+            context.view_layer.objects.active = None
+            bpy.ops.object.camera_add(enter_editmode=False, align='WORLD', location=(0, -self.resolution[0] * get_addon_prefs(context).sprite_import_export_scale, 0), rotation=(radians(90), 0, 0))
         cam = context.active_object
-        context.scene.objects.active = cam
+        context.view_layer.objects.active = cam
         cam.data.type = "ORTHO"
-        scene.render.pixel_filter_type = "BOX"
-        scene.render.alpha_mode = "TRANSPARENT"
+        scene.render.film_transparent = True
         
         if sprite_object != None:
             cam.parent = sprite_object
@@ -84,7 +83,7 @@ class COATOOLS_OT_CreateOrtpographicCamera(bpy.types.Operator):
             scene.render.resolution_percentage = 100
         scene.camera = cam
         if bpy.context.space_data.region_3d.view_perspective != "CAMERA":
-            bpy.ops.view3d.viewnumpad(type="CAMERA")
+            bpy.ops.view3d.view_camera()
         return{"FINISHED"}
     
 

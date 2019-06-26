@@ -438,7 +438,7 @@ def create_action(context,item=None,obj=None):
     if obj.animation_data == None:
         obj.animation_data_create()
     obj.animation_data.action = action
-    context.scene.update()
+    context.view_layer.update()
 
 def clear_pose(obj):
     if obj.type == "ARMATURE":

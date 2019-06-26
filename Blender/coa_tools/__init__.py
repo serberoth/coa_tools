@@ -229,6 +229,7 @@ def register():
 
     # create handler
     bpy.app.handlers.depsgraph_update_post.append(update_properties)
+    bpy.app.handlers.frame_change_post.append(update_properties)
     bpy.app.handlers.load_post.append(check_view_2D_3D)
     bpy.app.handlers.load_post.append(set_shading)
 
@@ -247,6 +248,7 @@ def unregister():
 
     # delete handler
     bpy.app.handlers.depsgraph_update_post.remove(update_properties)
+    bpy.app.handlers.frame_change_post.remove(update_properties)
     bpy.app.handlers.load_post.remove(check_view_2D_3D)
     bpy.app.handlers.load_post.remove(set_shading)
 

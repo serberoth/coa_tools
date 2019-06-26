@@ -172,7 +172,8 @@ class COATOOLS_PT_ObjectProperties(bpy.types.Panel):
                 row.prop(obj.data.coa_tools, 'hide_base_sprite', text="Hide Base Sprite")
                 if len(obj.data.vertices) > 4 and obj.data.coa_tools.hide_base_sprite == False:
                     row.prop(obj.data.coa_tools, 'hide_base_sprite', text="", icon="ERROR", emboss=False)
-
+                row = layout.row(align=True)
+                row.prop(obj.coa_tools, 'blend_mode',text="", expand=True)
             if obj != None and obj.type == "MESH" and obj.mode == "OBJECT":
                 row = layout.row(align=True)
                 if obj.coa_tools.type == "SLOT":
@@ -196,31 +197,31 @@ class COATOOLS_PT_ObjectProperties(bpy.types.Panel):
                 row = layout.row(align=True)
                 row.prop(obj.coa_tools ,'z_value',text="Z Depth")
                 op = row.operator("coa_tools.add_keyframe",text="",icon="KEYTYPE_MOVING_HOLD_VEC")
-                op.prop_name = "coa_z_value"
+                op.prop_name = "coa_tools.z_value"
                 op.add_keyframe = True
                 op.default_interpolation = "CONSTANT"
                 op = row.operator("coa_tools.add_keyframe",text="",icon="HANDLETYPE_ALIGNED_VEC")
-                op.prop_name = "coa_z_value"
+                op.prop_name = "coa_tools.z_value"
                 op.add_keyframe = False
 
                 row = layout.row(align=True)
                 row.prop(obj.coa_tools,'alpha',text="Alpha",icon="TEXTURE")
                 op = row.operator("coa_tools.add_keyframe",text="",icon="KEYTYPE_MOVING_HOLD_VEC")
-                op.prop_name = "coa_alpha"
+                op.prop_name = "coa_tools.alpha"
                 op.add_keyframe = True
                 op.default_interpolation = "BEZIER"
                 op = row.operator("coa_tools.add_keyframe",text="",icon="HANDLETYPE_ALIGNED_VEC")
-                op.prop_name = "coa_alpha"
+                op.prop_name = "coa_tools.alpha"
                 op.add_keyframe = False
 
                 row = layout.row(align=True)
                 row.prop(obj.coa_tools,'modulate_color',text="")
                 op = row.operator("coa_tools.add_keyframe",text="",icon="KEYTYPE_MOVING_HOLD_VEC")
-                op.prop_name = "coa_modulate_color"
+                op.prop_name = "coa_tools.modulate_color"
                 op.add_keyframe = True
                 op.default_interpolation = "LINEAR"
                 op = row.operator("coa_tools.add_keyframe",text="",icon="HANDLETYPE_ALIGNED_VEC")
-                op.prop_name = "coa_modulate_color"
+                op.prop_name = "coa_tools.modulate_color"
                 op.add_keyframe = False
 
         if obj != None and obj.type == "CAMERA":
