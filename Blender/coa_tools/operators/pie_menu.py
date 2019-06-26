@@ -33,7 +33,8 @@ class COATOOLS_MT_menu(Menu):
                 pie.operator("coa_tools.select_frame_thumb",text="Select Frame",icon="IMAGE_RGB")
                 pie.operator("wm.call_menu_pie", icon="KEYTYPE_MOVING_HOLD_VEC", text="Add Keyframe(s)").name = "view3d.coa_pie_keyframe_menu_add"
                 pie.operator("coa_tools.edit_weights",text="Edit Weights",icon="MOD_VERTEX_WEIGHT")
-                pie.operator("coa_tools.edit_mesh",text="Edit Mesh",icon="GREASEPENCIL")
+                op = pie.operator("coa_tools.edit_mesh",text="Edit Mesh",icon="GREASEPENCIL")
+                op.mode = "EDIT_MESH"
                 pie.operator("coa_tools.quick_armature",text="Edit Armature",icon="ARMATURE_DATA")
                 pie.operator("coa_tools.edit_shapekey",text="Edit Shapekey",icon="SHAPEKEY_DATA")
                 pie.row()    

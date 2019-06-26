@@ -280,7 +280,8 @@ class COATOOLS_PT_Tools(bpy.types.Panel):
 
             if sprite_object.coa_tools.edit_mesh == False and sprite_object.coa_tools.edit_shapekey == False and sprite_object.coa_tools.edit_armature == False and sprite_object.coa_tools.edit_weights == False and obj.mode not in ["SCULPT"]:
                 row = layout.row(align=True)
-                row.operator("coa_tools.edit_mesh", text="Edit Mesh", icon="GREASEPENCIL")
+                op = row.operator("coa_tools.edit_mesh", text="Edit Mesh", icon="GREASEPENCIL")
+                op.mode = "EDIT_MESH"
 
             if sprite_object.coa_tools.edit_mesh == False and sprite_object.coa_tools.edit_shapekey == False and sprite_object.coa_tools.edit_armature == False and sprite_object.coa_tools.edit_weights == False and not (
                     obj.type == "MESH" and obj.mode in ["EDIT", "SCULPT"]):

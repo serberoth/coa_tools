@@ -34,11 +34,11 @@
           </provider>
         </entry>
       </file>
-      <file pinned="false" current-in-tab="false">
+      <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/ui.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="547">
-              <caret line="131" column="32" selection-start-line="131" selection-start-column="32" selection-end-line="131" selection-end-column="32" />
+            <state relative-caret-position="364">
+              <caret line="283" column="36" selection-start-line="283" selection-start-column="36" selection-end-line="283" selection-end-column="36" />
               <folding>
                 <element signature="e#741#751#0" expanded="true" />
               </folding>
@@ -72,10 +72,10 @@
           </provider>
         </entry>
       </file>
-      <file pinned="false" current-in-tab="true">
+      <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/operators/edit_mesh.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="174">
+            <state relative-caret-position="12189">
               <caret line="1510" column="44" selection-start-line="1510" selection-start-column="44" selection-end-line="1510" selection-end-column="44" />
               <folding>
                 <element signature="e#747#757#0" expanded="true" />
@@ -96,8 +96,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/operators/pie_menu.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="555">
-              <caret line="91" column="45" selection-start-line="91" selection-start-column="45" selection-end-line="91" selection-end-column="45" />
+            <state relative-caret-position="334">
+              <caret line="36" column="36" selection-start-line="36" selection-start-column="36" selection-end-line="36" selection-end-column="36" />
             </state>
           </provider>
         </entry>
@@ -122,8 +122,6 @@
   </component>
   <component name="FindInProjectRecents">
     <findStrings>
-      <find>coa_anim_collections_index</find>
-      <find>coa_nla_mode</find>
       <find>coa_frame_start</find>
       <find>coa_frame_end</find>
       <find>ZOOMIN</find>
@@ -152,6 +150,8 @@
       <find>update_uv</find>
       <find>sprite_frame</find>
       <find>invoke</find>
+      <find>show_x_ray</find>
+      <find>edit_mesh</find>
     </findStrings>
     <replaceStrings>
       <replace>active_object.coa_tools.type</replace>
@@ -204,13 +204,13 @@
         <option value="$PROJECT_DIR$/operators/advanced_settings.py" />
         <option value="$PROJECT_DIR$/operators/animation_handling.py" />
         <option value="$PROJECT_DIR$/operators/edit_armature.py" />
-        <option value="$PROJECT_DIR$/operators/pie_menu.py" />
-        <option value="$PROJECT_DIR$/ui.py" />
         <option value="$PROJECT_DIR$/__init__.py" />
         <option value="$PROJECT_DIR$/coa_properties.py" />
         <option value="$PROJECT_DIR$/functions.py" />
         <option value="$PROJECT_DIR$/operators/draw_bone_shape.py" />
         <option value="$PROJECT_DIR$/operators/edit_mesh.py" />
+        <option value="$PROJECT_DIR$/operators/pie_menu.py" />
+        <option value="$PROJECT_DIR$/ui.py" />
       </list>
     </option>
   </component>
@@ -433,13 +433,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/operators/pie_menu.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="555">
-          <caret line="91" column="45" selection-start-line="91" selection-start-column="45" selection-end-line="91" selection-end-column="45" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/constants.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="120">
@@ -449,16 +442,6 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/functions_draw.py">
       <provider selected="true" editor-type-id="text-editor" />
-    </entry>
-    <entry file="file://$PROJECT_DIR$/ui.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="547">
-          <caret line="131" column="32" selection-start-line="131" selection-start-column="32" selection-end-line="131" selection-end-column="32" />
-          <folding>
-            <element signature="e#741#751#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/__init__.py">
       <provider selected="true" editor-type-id="text-editor">
@@ -499,10 +482,27 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/operators/edit_mesh.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="174">
+        <state relative-caret-position="12189">
           <caret line="1510" column="44" selection-start-line="1510" selection-start-column="44" selection-end-line="1510" selection-end-column="44" />
           <folding>
             <element signature="e#747#757#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/operators/pie_menu.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="334">
+          <caret line="36" column="36" selection-start-line="36" selection-start-column="36" selection-end-line="36" selection-end-column="36" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/ui.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="364">
+          <caret line="283" column="36" selection-start-line="283" selection-start-column="36" selection-end-line="283" selection-end-column="36" />
+          <folding>
+            <element signature="e#741#751#0" expanded="true" />
           </folding>
         </state>
       </provider>
