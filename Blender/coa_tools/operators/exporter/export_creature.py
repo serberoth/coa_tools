@@ -201,7 +201,12 @@ class CreatureExport(bpy.types.Operator):
         anim_collections = self.sprite_object.coa_anim_collections
         mesh_deformed = {}
         for anim_index, anim in enumerate(anim_collections):
-            if anim.name not in ["NO ACTION", "Restpose"]:
+            if anim.name not in ["NO ACTION"]:
+                if anim.name == "Restpose":
+                    if "default" in anim_collections:
+                        continue
+                anim_name = anim.name if anim.name != "Restpose" else "default"
+
                 for sprite in self.sprite_data:
                     for i, slot in enumerate(sprite.slots):
                         sprite_name = sprite.name if len(sprite.slots) <= 1 else sprite.name + "_" + str(i).zfill(3)
@@ -212,16 +217,16 @@ class CreatureExport(bpy.types.Operator):
 
                         if sprite.object.data.shape_keys != None and len(sprite.object.data.shape_keys.key_blocks) > 1:
                             mesh_contains_shapekeys = True
-                        if anim.name in self.bone_scaled:
-                            for bone_name in self.bone_scaled[anim.name]:
+                        if anim_name in self.bone_scaled:
+                            for bone_name in self.bone_scaled[anim_name]:
                                 if bone_name in sprite.object.vertex_groups:
                                     mesh_is_scaled = True
                                     break
 
                         if mesh_contains_shapekeys or mesh_is_scaled:
-                            if anim.name not in mesh_deformed:
-                                mesh_deformed[anim.name] = []
-                            mesh_deformed[anim.name].append(sprite_name)
+                            if anim_name not in mesh_deformed:
+                                mesh_deformed[anim_name] = []
+                            mesh_deformed[anim_name].append(sprite_name)
         return mesh_deformed
 
 
@@ -230,7 +235,11 @@ class CreatureExport(bpy.types.Operator):
         anim_collections = self.sprite_object.coa_anim_collections
         bone_scaled = {}
         for anim_index, anim in enumerate(anim_collections):
-            if anim.name not in ["NO ACTION", "Restpose"]:
+            if anim.name not in ["NO ACTION"]:
+                if anim.name == "Restpose":
+                    if "default" in anim_collections:
+                        continue
+                anim_name = anim.name if anim.name != "Restpose" else "default"
                 self.sprite_object.coa_anim_collections_index = anim_index  ### set animation
 
                 for frame in range(anim.frame_end+1):
@@ -239,9 +248,9 @@ class CreatureExport(bpy.types.Operator):
                         bone_scale = bone.matrix.to_scale()
                         bone_scale = Vector((round(bone_scale.x,1), round(bone_scale.y,1), round(bone_scale.z,1)))
                         if bone_scale != Vector((1, 1, 1)):
-                            if anim.name not in bone_scaled:
-                                bone_scaled[anim.name] = []
-                            bone_scaled[anim.name].append(bone.name)
+                            if anim_name not in bone_scaled:
+                                bone_scaled[anim_name] = []
+                            bone_scaled[anim_name].append(bone.name)
         return bone_scaled
 
 
@@ -651,13 +660,16 @@ class CreatureExport(bpy.types.Operator):
 
                         for i, slot in enumerate(sprite.slots):
                             slot_name = sprite.name + "_" + str(i).zfill(3) if sprite_object.coa_type == "SLOT" else sprite.name
-                            sprite.object.data = slot["slot"]
+                            if sprite.object.data != slot["slot"]:
+                                context.scene.update()
+                                sprite.object.data = slot["slot"]
                             # collect shapekey animation
                             use_local_displacements = True if anim_name in self.mesh_deformed and slot_name in self.mesh_deformed[anim_name] else False
                             use_post_displacements = False
                             animation[anim_name]["meshes"][str(frame)][slot_name] = {"use_dq": True}
                             animation[anim_name]["meshes"][str(frame)][slot_name]["use_local_displacements"] = use_local_displacements
                             animation[anim_name]["meshes"][str(frame)][slot_name]["use_post_displacements"] = use_post_displacements
+
                             if use_local_displacements:
                                 local_displacements = self.get_shapekey_vert_data(sprite.object, slot_name, sprite.object.data.vertices, anim, relative=True)
                                 animation[anim_name]["meshes"][str(frame)][slot_name]["local_displacements"] = local_displacements
@@ -666,7 +678,7 @@ class CreatureExport(bpy.types.Operator):
                                 animation[anim_name]["meshes"][str(frame)][slot_name]["post_displacements"] = post_displacements
 
                             # collect slot swapping data
-                            enabled = False if sprite_object.coa_type == "MESH" else True
+                            enabled = True# if sprite.object.coa_type == "MESH" else True
                             scale = [1, 1] if i == sprite_object.coa_slot_index else [-1, -1]
                             animation[anim_name]["uv_swaps"][str(frame)][slot_name] = {"local_offset": [0, 0], "global_offset": [0, 0], "scale": scale, "enabled": enabled}
 
