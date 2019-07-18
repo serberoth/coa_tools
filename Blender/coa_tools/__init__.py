@@ -216,12 +216,14 @@ def unregister_keymaps():
 
 
 def register():
+    copy_icons()
+
     # register classes
     for cls in classes:
         bpy.utils.register_class(cls)
 
     # register tools
-    bpy.utils.register_tool(edit_mesh.COATOOLS_TO_DrawPolygon, after={"builtin.cursor"}, separator=True, group=True)
+    # bpy.utils.register_tool(edit_mesh.COATOOLS_TO_DrawPolygon, after={"builtin.cursor"}, separator=True, group=True)
 
     # register props and keymap
     props.register()
@@ -294,3 +296,23 @@ def update_properties(dummy):
         if obj.coa_tools.slot_index != obj.coa_tools.slot_index_last:
             change_slot_mesh_data(bpy.context, obj)
             obj.coa_tools.slot_index_last = obj.coa_tools.slot_index
+
+def copy_icons():
+    version = str(bpy.app.version[0]) + "." + str(bpy.app.version[1])
+
+    icons = [
+        "coa_tools.draw_polygon.dat",
+        "coa_tools.draw_bone.dat",
+        ]
+
+    for icon_name in icons:
+        icon_path = os.path.join(bpy.utils.user_resource("SCRIPTS", "addons"), "coa_tools", "icons", icon_name)
+        b_icon_path = os.path.join(os.path.dirname(bpy.app.binary_path), version, "datafiles", "icons", icon_name)
+
+        if os.path.isfile(b_icon_path):
+            os.remove(b_icon_path)
+
+        dir_path = os.path.dirname(b_icon_path)
+        if not os.path.exists(dir_path):
+            os.makedirs(dir_path)
+        shutil.copyfile(icon_path, b_icon_path)

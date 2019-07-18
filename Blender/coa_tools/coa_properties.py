@@ -66,6 +66,16 @@ def exit_edit_weights(self, context):
         obj = context.active_object
         if obj != None and obj.mode == "WEIGHT_PAINT":
             bpy.ops.object.mode_set(mode="OBJECT")
+        sprite_object = functions.get_sprite_object(obj)
+        armature = functions.get_armature(sprite_object)
+        armature.data.pose_position = "POSE"
+
+
+def exit_edit_shapekey(self, context):
+    if not self.edit_weights:
+        obj = context.active_object
+        if obj != None and obj.mode == "SCULPT":
+            bpy.ops.object.mode_set(mode="OBJECT")
 
 
 def hide_base_sprite(self, context):
@@ -105,8 +115,8 @@ def get_shapekeys(self, context):
 
 
 def select_shapekey(self, context):
-    if self.data.shape_keys != None:
-        self.active_shape_key_index = int(self.coa_selected_shapekey)
+    if self.id_data.data.shape_keys != None:
+        self.id_data.active_shape_key_index = int(self.selected_shapekey)
 
 def enum_sprite_previews(self, context):
     """EnumProperty callback"""
@@ -193,10 +203,9 @@ def set_actions(self, context):
         functions.set_action(context)
     for obj in context.visible_objects:
         if obj.type == "MESH" and "coa_sprite" in obj:
-            functions.update_uv(context,obj)
-            functions.set_alpha(obj,bpy.context,obj.coa_tools.alpha)
-            functions.set_z_value(context,obj,obj.coa_tools.z_value)
-            functions.set_modulate_color(obj,context,obj.coa_tools.modulate_color)
+            functions.set_alpha(obj, bpy.context, obj.coa_tools.alpha)
+            functions.set_z_value(context, obj, obj.coa_tools.z_value)
+            functions.set_modulate_color(obj, context, obj.coa_tools.modulate_color)
 
     ### set export name
     if scene.coa_tools.nla_mode == "ACTION":
@@ -253,6 +262,9 @@ def update_frame_range(self,context):
     if context.scene.coa_tools.nla_mode == "NLA" or len(sprite_object.coa_tools.anim_collections) == 0:
         context.scene.frame_start = self.coa_tools.frame_start
         context.scene.frame_end = self.coa_tools.coa_frame_end
+
+def set_blend_mode(self, context):
+    self.id_data.active_material.blend_method = self.blend_mode
 
 class UVData(bpy.types.PropertyGroup):
     uv: FloatVectorProperty(default=(0,0),size=2)
@@ -345,7 +357,7 @@ class ObjectProperties(bpy.types.PropertyGroup):
     uv_default_state: bpy.props.CollectionProperty(type=UVData)
     slot: bpy.props.CollectionProperty(type=SlotData)
     blend_mode: bpy.props.EnumProperty(name="Blend Mode", description="Defines the blend mode of a sprite", items=(
-        ("NORMAL", "Normal", "Normal"), ("ADD", "Add", "Add"), ("MULTIPLY", "Multiply", "Multiply")))
+        ("BLEND", "Blendmode - Normal", "Normal"), ("ADD", "Blendmode - Add", "Add"), ("MULTIPLY", "Blendmode - Multiply", "Multiply")), update=set_blend_mode)
 
     dimensions_old: FloatVectorProperty()
     sprite_dimension: FloatVectorProperty()
@@ -389,7 +401,7 @@ class ObjectProperties(bpy.types.PropertyGroup):
         ("WEIGHTS", "Weights", "Weights"), ("SHAPEKEY", "Shapkey", "Shapekey")))
     edit_weights: BoolProperty(default=False, update=exit_edit_weights)
     edit_armature: BoolProperty(default=False)
-    edit_shapekey: BoolProperty(default=False)
+    edit_shapekey: BoolProperty(default=False, update=exit_edit_shapekey)
     edit_mesh: BoolProperty(default=False, update=change_edit_mode)
 
     anim_collections_index: IntProperty(update=set_actions)

@@ -247,9 +247,9 @@ class COATOOLS_OT_LoadJsonData(bpy.types.Operator):
                         else:
                             bpy.ops.coa_tools.import_sprite(path=filepath,parent=sprite_object.name,scale=scale,pos=pos,tilesize=[1,1],offset=offset)
                     
-                    
-                    obj = bpy.data.objects[sprite["name"]]
-                    obj.parent = sprite_object
+                    if sprite["name"] in bpy.data.objects:
+                        obj = bpy.data.objects[sprite["name"]]
+                        obj.parent = sprite_object
                 
         context.scene.view_layers[0].objects.active = sprite_object    
         

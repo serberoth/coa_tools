@@ -33,6 +33,16 @@ import json
 from bpy.app.handlers import persistent
 from . import constants as CONSTANTS
 
+def get_active_tool(mode): #"EDIT_MESH", "EDIT_ARMATURE", "OBJECT"
+    return bpy.context.workspace.tools.from_space_view3d_mode(mode, create=False).idname
+
+def set_active_tool(self, context, tool_name):
+    for area in context.screen.areas:
+        if area.type == "VIEW_3D":
+            override = bpy.context.copy()
+            override["space_data"] = area.spaces[0]
+            override["area"] = area
+            bpy.ops.wm.tool_set_by_id(override, name=tool_name)
 
 def link_object(context, obj):
     active_collection = bpy.data.collections[context.scene.coa_tools.active_collection]
@@ -70,7 +80,7 @@ def draw_sculpt_ui(self,context,layout):
             op = subrow.operator("coa_tools.shapekey_remove",icon="X",text="")
             
         if obj.data.shape_keys != None:
-            shapekey_index = int(obj.coa_selected_shapekey)
+            shapekey_index = int(obj.coa_tools.selected_shapekey)
             if shapekey_index > 0:
                 active_shapekey = obj.data.shape_keys.key_blocks[shapekey_index]
                 col.prop(active_shapekey,"value")        
