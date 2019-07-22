@@ -223,7 +223,7 @@ def set_actions(self, context):
 def set_nla_mode(self, context):
     sprite_object = functions.get_sprite_object(context.active_object)
     children = functions.get_children(context,sprite_object,ob_list=[])
-    if self.coa_tools.nla_mode == "NLA":
+    if self.nla_mode == "NLA":
         for child in children:
             if child.animation_data != None:
                 child.animation_data.action = None

@@ -103,26 +103,12 @@ class COATOOLS_OT_CreateMaterialGroup(bpy.types.Operator):
             group_tree = bpy.data.node_groups[CONSTANTS.COA_NODE_GROUP_NAME]
             for node in group_tree.nodes:
                 group_tree.nodes.remove(node)
-            # for input in group_tree.inputs:
-            #     group_tree.inputs.remove(input)
-            # for output in group_tree.outputs:
-            #     group_tree.outputs.remove(output)
         else:
             group_tree = bpy.data.node_groups.new(CONSTANTS.COA_NODE_GROUP_NAME, "ShaderNodeTree")
         # recreate group from scratch to ensure to be always latest version
 
         # create input/output sockets
         self.create_sockets(group_tree)
-
-        # group_tree.inputs.new("NodeSocketColor", "Texture Color")
-        # group_tree.inputs.new("NodeSocketFloat", "Texture Alpha")
-        # modulate_input = group_tree.inputs.new("NodeSocketColor", "Modulate Color")
-        # alpha_input = group_tree.inputs.new("NodeSocketFloat", "Alpha")
-        # group_tree.outputs.new("NodeSocketShader", "BSDF")
-        #
-        # # setup sockets
-        # alpha_input.min_value = 0.0
-        # alpha_input.max_value = 1.0
 
         # create nodes
         input_node = group_tree.nodes.new("NodeGroupInput")
@@ -260,7 +246,7 @@ class COATOOLS_OT_LoadJsonData(bpy.types.Operator):
 class COATOOLS_OT_ImportSprite(bpy.types.Operator):
     bl_idname = "coa_tools.import_sprite"
     bl_label = "Import Sprite"
-    bl_options = {"REGISTER","UNDO"}
+    bl_options = {"REGISTER", "UNDO"}
     
     path: StringProperty(name="Sprite Path", default="",subtype="FILE_PATH")
     pos: FloatVectorProperty(default=Vector((0, 0, 0)))
@@ -320,7 +306,7 @@ class COATOOLS_OT_ImportSprite(bpy.types.Operator):
             obj.parent = bpy.data.objects[self.parent]
         return obj
 
-    def create_material(self, context, obj, name="Sprite"):
+    def create_material(self, context, mesh, name="Sprite"):
         mat = bpy.data.materials.new(name)
         mat.use_nodes = True
         mat.blend_method = "BLEND"
@@ -354,7 +340,7 @@ class COATOOLS_OT_ImportSprite(bpy.types.Operator):
         tex_node.location = (0, 0)
         coa_node.location = (280, 0)
         output_node.location = (460, 0)
-        obj.data.materials.append(mat)
+        mesh.materials.append(mat)
         return mat
 
     def execute(self, context):
@@ -374,7 +360,7 @@ class COATOOLS_OT_ImportSprite(bpy.types.Operator):
                 img = data.images.load(self.path)
 
             obj = self.create_mesh(context, name=img.name, width=img.size[0], height=img.size[1], pos=self.pos)
-            mat = self.create_material(context, obj, name=img.name)
+            mat = self.create_material(context, obj.data, name=img.name)
             msg = sprite_name + " Sprite created."
             
             selected_objects = []

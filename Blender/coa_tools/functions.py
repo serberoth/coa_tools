@@ -625,7 +625,7 @@ def get_sprite_object(obj):
     
     context = bpy.context
     if obj != None:
-        if "coa_sprite_object" in obj:
+        if "sprite_object" in obj.coa_tools:
             last_sprite_object = obj.name
             return obj
         elif obj.parent != None:

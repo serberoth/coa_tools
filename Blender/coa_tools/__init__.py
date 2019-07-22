@@ -67,6 +67,7 @@ from . operators import pie_menu
 from . operators import slot_handling
 from . operators import toggle_animation_area
 from . operators import view_sprites
+from . operators import version_converter
 
 # register
 ################################## 
@@ -187,8 +188,7 @@ classes = (
     pie_menu.COATOOLS_MT_keyframe_menu_remove,
 
     toggle_animation_area.COATOOLS_OT_ToggleAnimationArea,
-
-
+    version_converter.COATOOLS_OT_VersionConverter,
 )
 
 addon_keymaps = []
@@ -270,7 +270,7 @@ def check_view_2D_3D(dummy):
 @persistent
 def set_shading(dummy):
     for obj in bpy.data.objects:
-        if "coa_sprite_object" in obj:
+        if "sprite_object" in obj.coa_tools:
             for screen in bpy.data.screens:
                 for area in screen.areas:
                     if area.type == "VIEW_3D":
