@@ -890,9 +890,7 @@ def draw_children(self,context,sprite_object,layout,box,row,col,children,obj,cur
                                 subrow2.enabled = False
 
                             if child.type == "MESH" and len(child.data.vertices) > 4 and child.data.coa_tools.hide_base_sprite == False and "coa_base_sprite" in child.vertex_groups and "coa_base_sprite" in child.modifiers:
-                                subrow = row.row()
-                                subrow.alignment = "LEFT"
-                                subrow.prop(child.data.coa_tools,'hide_base_sprite',text="",icon="ERROR",emboss=False)
+                                subrow2.prop(child.data.coa_tools,'hide_base_sprite',text="",icon="ERROR",emboss=False)
                             else:
                                 subrow2.separator()
                                 subrow2.separator()
