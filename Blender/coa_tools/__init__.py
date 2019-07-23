@@ -311,6 +311,7 @@ def set_shading(dummy):
                     if area.type == "VIEW_3D":
                         area.spaces[0].shading.type = "RENDERED"
             break
+    bpy.ops.coa_tools.updater_check_now()
 
 @persistent
 def update_properties(dummy):
