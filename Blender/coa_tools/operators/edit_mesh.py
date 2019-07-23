@@ -529,7 +529,9 @@ class COATOOLS_OT_DrawContour(bpy.types.Operator):
         self.cut_edge = False
         
         self.edit_object = None
+        self.edit_object_name = ""
         self.texture_preview_object = None
+        self.texture_preview_object_name = ""
         
         self.bone = None
         self.bone_shape = None
@@ -1135,6 +1137,7 @@ class COATOOLS_OT_DrawContour(bpy.types.Operator):
         # bpy.types.SpaceView3D.draw_handler_remove(self.draw_handler2, "WINDOW")
         
         self.draw_handler_removed = True
+        self.sprite_object = functions.get_sprite_object(context.active_object)
         self.sprite_object.coa_tools.edit_mesh = False
         self.sprite_object.coa_tools.edit_mode = "OBJECT"
 
@@ -1142,9 +1145,9 @@ class COATOOLS_OT_DrawContour(bpy.types.Operator):
         bpy.ops.object.mode_set(mode="OBJECT")
         self.sprite_object.coa_tools.edit_mesh = False
         functions.set_local_view(False)
-        
+
         obj = context.active_object
-        context.view_layer.objects.active = self.edit_object
+        context.view_layer.objects.active = bpy.data.objects[self.edit_object_name]
         context.scene.coa_tools.view = self.prev_coa_view
         bpy.ops.object.mode_set(mode="EDIT")
         if self.mode == "DRAW_BONE_SHAPE":
@@ -1155,11 +1158,12 @@ class COATOOLS_OT_DrawContour(bpy.types.Operator):
 
         self.sprite_object.coa_tools.edit_mesh = False
         functions.set_local_view(False)
-        
+
+        self.armature = functions.get_armature(self.sprite_object)
         if self.armature !=  None:
             self.armature.data.pose_position = self.armature_pose_mode
-            
-        if self.mode == "DRAW_BONE_SHAPE":            
+
+        if self.mode == "DRAW_BONE_SHAPE":
             self.armature.display_type = self.display_type
             context.scene.coa_tools.lock_to_bounds = self.draw_bounds
             if self.armature != None:
@@ -1168,18 +1172,18 @@ class COATOOLS_OT_DrawContour(bpy.types.Operator):
                 self.bone.custom_shape = self.bone_shape
                 self.bone.use_custom_shape_bone_size = False
             else:
-                self.bone.custom_shape = None    
-            
+                self.bone.custom_shape = None
+
             self.bone_shape.select_set(False)
             self.bone_shape.parent = None
             context.collection.objects.unlink(self.bone_shape)
             context.view_layer.objects.active = self.armature
             self.armature.select_set(True)
-            bpy.ops.object.mode_set(mode="POSE")    
+            bpy.ops.object.mode_set(mode="POSE")
         else:
-            if len(self.obj.data.vertices) > 4:
-                self.obj.data.coa_tools.hide_base_sprite = True
-            bpy.ops.object.mode_set(mode="OBJECT")    
+            if len(context.active_object.data.vertices) > 4:
+                context.active_object.data.coa_tools.hide_base_sprite = True
+            bpy.ops.object.mode_set(mode="OBJECT")
             context.view_layer.objects.active = obj
         return{'FINISHED'}
     
@@ -1225,8 +1229,13 @@ class COATOOLS_OT_DrawContour(bpy.types.Operator):
 
     def finish_edit_object(self, context):
         functions.set_active_tool(self, context, "builtin.select")
-        bpy.utils.unregister_tool(COATOOLS_TO_DrawPolygon)
+        try:
+            bpy.utils.unregister_tool(COATOOLS_TO_DrawPolygon)
+        except:
+            pass
 
+
+        self.texture_preview_object = bpy.data.objects[self.texture_preview_object_name] if self.texture_preview_object_name in bpy.data.objects else None
         if self.texture_preview_object != None:
             bpy.data.objects.remove(self.texture_preview_object)
             context.view_layer.objects.active = self.edit_object
@@ -1249,6 +1258,8 @@ class COATOOLS_OT_DrawContour(bpy.types.Operator):
 
         if self.mode == "EDIT_MESH":
             self.edit_object, self.texture_preview_object = self.prepare_edit_object(context)
+            self.edit_object_name = str(self.edit_object.name)
+            self.texture_preview_object_name = str(self.texture_preview_object.name)
 
         #bpy.ops.wm.coa_modal() ### start coa modal mode if not running
         self.sprite_object = functions.get_sprite_object(context.active_object)
@@ -1308,6 +1319,7 @@ class COATOOLS_OT_DrawContour(bpy.types.Operator):
                 else:    
                     bone_shape = bpy.data.objects.new(shape_name,me)
             self.edit_object = bone_shape
+            self.edit_object_name = str(self.edit_object.name)
             
             bone_shape["coa_bone_shape"] = True
             context.collection.objects.link(bone_shape)
