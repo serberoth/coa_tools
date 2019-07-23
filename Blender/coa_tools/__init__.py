@@ -22,7 +22,7 @@ bl_info = {
     "name": "COA Tools",
     "description": "This Addon provides a Toolset for a 2D Animation Workflow.",
     "author": "Andreas Esau",
-    "version": (1, 0, 4),
+    "version": (2, 0, 0),
     "blender": (2, 80, 0),
     "location": "View 3D > Tools > Cutout Animation Tools",
     "warning": "",
@@ -36,6 +36,8 @@ import os
 import shutil
 import tempfile
 from bpy.app.handlers import persistent
+
+from . import addon_updater_ops
 
 # load and reload submodules
 ##################################
@@ -62,7 +64,6 @@ from . operators import edit_shapekey
 from . operators import edit_weights
 from . operators import import_sprites
 from . operators import material_converter
-from . operators import modal_update
 from . operators import pie_menu
 from . operators import slot_handling
 from . operators import toggle_animation_area
@@ -85,8 +86,39 @@ class COAToolsPreferences(bpy.types.AddonPreferences):
     sprite_thumb_size: bpy.props.IntProperty(name="Sprite thumbnail size",default=48)
     json_export: bpy.props.BoolProperty(name="Experimental Json export",default=False)
     dragon_bones_export: bpy.props.BoolProperty(name="Dragonbones Export",default=False)
-    enable_spritesheets: bpy.props.BoolProperty(name="Enable Spritesheets",default=False, description="This feature is deprecated and should not be used for future projects. Use this only for older projects.")
-    
+
+    auto_check_update: bpy.props.BoolProperty(
+    name = "Auto-check for Update",
+    description = "If enabled, auto-check for updates using an interval",
+    default = True,
+    )
+    updater_intrval_months: bpy.props.IntProperty(
+    name='Months',
+    description = "Number of months between checking for updates",
+    default=0,
+    min=0
+    )
+    updater_intrval_days: bpy.props.IntProperty(
+    name='Days',
+    description = "Number of days between checking for updates",
+    default=1,
+    min=0,
+    )
+    updater_intrval_hours: bpy.props.IntProperty(
+    name='Hours',
+    description = "Number of hours between checking for updates",
+    default=0,
+    min=0,
+    max=23
+    )
+    updater_intrval_minutes: bpy.props.IntProperty(
+    name='Minutes',
+    description = "Number of minutes between checking for updates",
+    default=0,
+    min=0,
+    max=59
+    )
+
     def draw(self, context):
         layout = self.layout
         layout.prop(self, "show_donate_icon")
@@ -94,6 +126,8 @@ class COAToolsPreferences(bpy.types.AddonPreferences):
         layout.prop(self, "sprite_import_export_scale")
         layout.prop(self, "sprite_thumb_size")
         layout.prop(self, "alpha_update_frequency")
+
+        addon_updater_ops.update_settings_ui(self, context)
 
 
 classes = (
@@ -137,7 +171,6 @@ classes = (
 
     edit_mesh.COATOOLS_OT_ReprojectSpriteTexture,
     edit_mesh.COATOOLS_OT_GenerateMeshFromEdgesAndVerts,
-    edit_mesh.COATOOLS_OT_Fill,
     edit_mesh.COATOOLS_OT_DrawContour,
     edit_mesh.COATOOLS_OT_PickEdgeLength,
 
@@ -216,6 +249,7 @@ def unregister_keymaps():
 
 
 def register():
+    addon_updater_ops.register(bl_info)
     copy_icons()
 
     # register classes
@@ -233,6 +267,7 @@ def register():
     bpy.app.handlers.depsgraph_update_post.append(update_properties)
     bpy.app.handlers.frame_change_post.append(update_properties)
     bpy.app.handlers.load_post.append(check_view_2D_3D)
+    bpy.app.handlers.load_post.append(check_for_deprecated_data)
     bpy.app.handlers.load_post.append(set_shading)
 
 
@@ -252,8 +287,14 @@ def unregister():
     bpy.app.handlers.depsgraph_update_post.remove(update_properties)
     bpy.app.handlers.frame_change_post.remove(update_properties)
     bpy.app.handlers.load_post.remove(check_view_2D_3D)
+    bpy.app.handlers.load_post.remove(check_for_deprecated_data)
     bpy.app.handlers.load_post.remove(set_shading)
 
+@persistent
+def check_for_deprecated_data(dummy):
+    for obj in bpy.data.objects:
+        if "sprite_object" in obj:
+            bpy.context.scene.coa_tools.deprecated_data_found = True
 
 @persistent
 def check_view_2D_3D(dummy):
@@ -269,6 +310,7 @@ def check_view_2D_3D(dummy):
 
 @persistent
 def set_shading(dummy):
+    bpy.context.scene.eevee.use_taa_reprojection = False
     for obj in bpy.data.objects:
         if "sprite_object" in obj.coa_tools:
             for screen in bpy.data.screens:
