@@ -802,7 +802,7 @@ def update_settings_ui(self, context):
         split.enabled = False
         split.scale_y = 2
         split.operator(addon_updater_check_now.bl_idname,
-                        updater.error)
+                        text=updater.error)
         split = subcol.split(align=True)
         split.scale_y = 2
         split.operator(addon_updater_check_now.bl_idname,
@@ -818,7 +818,7 @@ def update_settings_ui(self, context):
         split.enabled = False
         split.scale_y = 2
         split.operator(addon_updater_check_now.bl_idname,
-                        "Checking...")
+                        text="Checking...")
         split = subcol.split(align=True)
         split.scale_y = 2
         split.operator(addon_updater_end_background.bl_idname,
@@ -845,7 +845,7 @@ def update_settings_ui(self, context):
         split = subcol.split(align=True)
         split.scale_y = 2
         split.operator(addon_updater_update_now.bl_idname,
-                    "Update now to "+str(updater.update_version))
+                    text="Update now to "+str(updater.update_version))
         split = subcol.split(align=True)
         split.scale_y = 2
         split.operator(addon_updater_check_now.bl_idname,
@@ -854,7 +854,7 @@ def update_settings_ui(self, context):
     elif updater.update_ready==True and updater.manual_only==True:
         col.scale_y = 2
         col.operator("wm.url_open",
-                "Download "+str(updater.update_version)).url=updater.website
+                text="Download "+str(updater.update_version)).url=updater.website
     else: # i.e. that updater.update_ready == False
         subcol = col.row(align=True)
         subcol.scale_y = 1
