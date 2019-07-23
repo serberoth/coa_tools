@@ -3,8 +3,8 @@ import os
 
 
 class COATOOLS_OT_VersionConverter(bpy.types.Operator):
-    bl_idname = "coa_tools.convert_version"
-    bl_label = "Convert COA(2.79 to 2.80)"
+    bl_idname = "coa_tools.convert_deprecated_data"
+    bl_label = "Convert COA Data(2.79 to 2.80)"
     bl_description = "Convert blendfile from 2.79 to 2.80"
     bl_options = {"REGISTER"}
 
@@ -48,7 +48,8 @@ class COATOOLS_OT_VersionConverter(bpy.types.Operator):
         # create all required nodes and connect them
         tex_node = node_tree.nodes.new("ShaderNodeTexImage")
         tex_node.interpolation = "Closest"
-        tex_node.image = bpy.data.images[name]
+        if name in bpy.data.images:
+            tex_node.image = bpy.data.images[name]
 
         bpy.ops.coa_tools.create_material_group()
         coa_node_tree = bpy.data.node_groups["COATools Material"]
@@ -73,15 +74,38 @@ class COATOOLS_OT_VersionConverter(bpy.types.Operator):
     def convert_materials(self, context):
         texture_dir_path = os.path.join(os.path.dirname(bpy.data.filepath), "sprites")
         bpy.ops.coa_tools.create_material_group()
-        for mesh in bpy.data.meshes:
+        meshes = []
+        for obj in bpy.data.objects:
+            if obj.type == "MESH":
+                if obj.coa_tools.type == "MESH":
+                    if obj.data not in meshes:
+                        meshes.append(obj.data)
+                elif obj.coa_tools.type == "SLOT":
+                    for slot in obj.coa_tools.slot:
+                        if slot.mesh not in meshes:
+                            meshes.append(slot.mesh)
+
+        for mesh in meshes:
             for material_name in mesh.materials.keys():
                 mat = mesh.materials[material_name]
                 texture_path = os.path.join(texture_dir_path, material_name)
                 if os.path.isfile(texture_path):
                     bpy.data.images.load(texture_path, check_existing=True)
                     bpy.data.materials.remove(mat, do_unlink=True, do_id_user=True, do_ui_user=True)
-                    mesh.materials.clear()
-                    self.create_material(context, mesh, material_name)
+                mesh.materials.clear()
+                self.create_material(context, mesh, material_name)
+
+    def convert_drivers(self, context):
+        for obj in bpy.data.objects:
+            if obj.animation_data != None:
+                anim_data = obj.animation_data
+                for driver in anim_data.drivers:
+                    if "coa_" in driver.data_path and not "coa_tools." in driver.data_path:
+                        driver.data_path = "coa_tools." + driver.data_path.split("coa_")[1]
+
+                        # Update Driver dependencies by setting expression value and resetting
+                        driver.driver.expression += " "
+                        driver.driver.expression = driver.driver.expression[:-1]
 
     def set_shading(self):
         bpy.context.scene.view_settings.view_transform = "Standard"
@@ -96,5 +120,7 @@ class COATOOLS_OT_VersionConverter(bpy.types.Operator):
     def execute(self, context):
         self.convert_properties()
         self.convert_materials(context)
+        self.convert_drivers(context)
         self.set_shading()
+        context.scene.coa_tools.deprecated_data_found = False
         return {"FINISHED"}
