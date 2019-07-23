@@ -64,6 +64,8 @@ class COATOOLS_PT_Info(bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
+        if addon_updater_ops.updater.update_ready and addon_updater_ops.updater.json["ignore"] == False:
+            return context
         if context.scene.coa_tools.deprecated_data_found:
             return context
         if context.space_data.shading.type != "RENDERED" or context.scene.view_settings.view_transform != "Standard":
@@ -100,7 +102,7 @@ class COATOOLS_PT_Info(bpy.types.Panel):
         #     op.hashtags = "b3d,coatools"
         #     op.via = "ndee85"
 
-        # addon_updater_ops.update_notice_box_ui(self, context)
+        addon_updater_ops.update_notice_box_ui(self, context)
 
 last_obj = None
 class COATOOLS_PT_ObjectProperties(bpy.types.Panel):
