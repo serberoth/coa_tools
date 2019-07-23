@@ -98,11 +98,13 @@ class COATOOLS_OT_QuickArmature(bpy.types.Operator):
         self.shift = False
         self.shift_hist = False
         self.sprite_object = None
+        self.sprite_object_name = ""
         self.alt = False
         self.alt_hist = False
-        self.selected_objects = []
-        self.active_object = None
+        self.selected_object_names = []
+        self.active_object_name = None
         self.armature = None
+        self.armature_name = ""
         self.emulate_3_button = False
         self.obj_settings = {}
         
@@ -281,6 +283,8 @@ class COATOOLS_OT_QuickArmature(bpy.types.Operator):
             
             
             ### lock posebone scale z value
+            self.sprite_object = bpy.data.objects[self.sprite_object_name]
+            self.armature = bpy.data.objects[self.armature_name]
             for bone in self.armature.data.bones:
                 if "lock_z" in bone:
                     if bone.name in ob.pose.bones:
@@ -413,35 +417,43 @@ class COATOOLS_OT_QuickArmature(bpy.types.Operator):
     
     def exit_edit_mode(self,context):
         functions.set_active_tool(self, context, "builtin.select")
-        bpy.utils.unregister_tool(COATOOLS_TO_DrawBone)
+        try:
+            bpy.utils.unregister_tool(COATOOLS_TO_DrawBone)
+        except:
+            pass
 
         ### remove draw call
-        bpy.types.SpaceView3D.draw_handler_remove(self.draw_handler, "WINDOW")
+        # bpy.types.SpaceView3D.draw_handler_remove(self.draw_handler, "WINDOW")
 
         bpy.context.window.cursor_set("CROSSHAIR")
-        #bpy.ops.object.mode_set(mode=self.armature_mode)
-        bpy.ops.object.mode_set(mode="POSE")
-        
-        for pose_bone in context.active_object.pose.bones:
-            if "default_bones" in context.active_object.pose.bone_groups and pose_bone.bone_group == None:
-                pose_bone.bone_group = context.active_object.pose.bone_groups["default_bones"]
+
+        if context.active_object.type == "ARMATURE":
+            bpy.ops.object.mode_set(mode="POSE")
+
+            for pose_bone in context.active_object.pose.bones:
+                if "default_bones" in context.active_object.pose.bone_groups and pose_bone.bone_group == None:
+                    pose_bone.bone_group = context.active_object.pose.bone_groups["default_bones"]
         
         #lock_sprites(context,get_sprite_object(context.active_object),get_sprite_object(context.active_object).lock_sprites)
+        self.sprite_object = bpy.data.objects[self.sprite_object_name]
         self.sprite_object.coa_tools.edit_armature = False
         self.sprite_object.coa_tools.edit_mode = "OBJECT"
         
         ### restore previous selection
         for obj in bpy.context.scene.objects:
             obj.select_set(False)
-        for obj in self.selected_objects:
-            obj.select_set(True)
-        context.view_layer.objects.active = self.active_object
+        for obj_name in self.selected_object_names:
+            obj = bpy.data.objects[obj_name] if obj_name in bpy.data.objects else None
+            if obj != None:
+                obj.select_set(True)
+        context.view_layer.objects.active = bpy.data.objects[self.active_object_name] if self.active_object_name in bpy.data.objects else None
         context.preferences.inputs.use_mouse_emulate_3_button = self.emulate_3_button
         
         ### restore object settings
-        for obj in self.obj_settings:
-            # obj.show_in_front = self.obj_settings[obj]["show_in_front"]
-            obj.show_name = self.obj_settings[obj]["show_name"]
+        for obj_name in self.obj_settings:
+            obj = bpy.data.objects[obj_name] if obj_name in bpy.data.objects else None
+            if obj != None:
+                obj.show_name = self.obj_settings[obj_name]["show_name"]
         return{'FINISHED'}
     
     def execute(self, context):
@@ -452,19 +464,21 @@ class COATOOLS_OT_QuickArmature(bpy.types.Operator):
         ### store object settings
         for obj in context.scene.objects:
             # self.obj_settings[obj] = {"show_in_front":obj.show_in_front, "show_name":obj.show_name}
-            self.obj_settings[obj] = {"show_name":obj.show_name}
+            self.obj_settings[obj.name] = {"show_name":obj.show_name}
 
         for obj in context.scene.objects:
             if obj.select_get():
-                self.selected_objects.append(obj)
-        self.active_object = context.active_object
+                self.selected_object_names.append(obj.name)
+        self.active_object_name = context.active_object.name
         
         self.sprite_object = functions.get_sprite_object(context.active_object)
+        self.sprite_object_name = str(self.sprite_object.name)
         self.sprite_object.coa_tools.edit_armature = True
         self.sprite_object.coa_tools.edit_mode = "ARMATURE"
         
         functions.lock_sprites(context,functions.get_sprite_object(context.active_object),False)
         self.armature = self.create_armature(context)
+        self.armature_name = str(self.armature.name)
         
         self.armature.coa_tools.hide = False    
         self.armature_mode = context.active_object.mode
@@ -477,8 +491,8 @@ class COATOOLS_OT_QuickArmature(bpy.types.Operator):
         context.window_manager.modal_handler_add(self)
         
         ### call draw code
-        args = ()
-        self.draw_handler = bpy.types.SpaceView3D.draw_handler_add(self.draw_callback_px, args, "WINDOW", "POST_PIXEL")
+        # args = ()
+        # self.draw_handler = bpy.types.SpaceView3D.draw_handler_add(self.draw_callback_px, args, "WINDOW", "POST_PIXEL")
         return {'RUNNING_MODAL'}
 
     def cancel(self, context):
