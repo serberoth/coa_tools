@@ -79,13 +79,9 @@ import traceback
 
 class COAToolsPreferences(bpy.types.AddonPreferences):
     bl_idname = __package__
-    
-    alpha_update_frequency: bpy.props.IntProperty(name="Alpha Update Frequency",default=1,min=1,description="Updates alpha on each x frame.")
+
     show_donate_icon: bpy.props.BoolProperty(name="Show Donate Icon",default=False)
     sprite_import_export_scale: bpy.props.FloatProperty(name="Sprite import/export scale",default=0.01)
-    sprite_thumb_size: bpy.props.IntProperty(name="Sprite thumbnail size",default=48)
-    json_export: bpy.props.BoolProperty(name="Experimental Json export",default=False)
-    dragon_bones_export: bpy.props.BoolProperty(name="Dragonbones Export",default=False)
 
     auto_check_update: bpy.props.BoolProperty(
     name = "Auto-check for Update",
@@ -122,10 +118,7 @@ class COAToolsPreferences(bpy.types.AddonPreferences):
     def draw(self, context):
         layout = self.layout
         layout.prop(self, "show_donate_icon")
-        layout.prop(self, "dragon_bones_export")
         layout.prop(self, "sprite_import_export_scale")
-        layout.prop(self, "sprite_thumb_size")
-        layout.prop(self, "alpha_update_frequency")
 
         addon_updater_ops.update_settings_ui(self, context)
 
