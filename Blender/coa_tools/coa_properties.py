@@ -4,11 +4,11 @@ from bpy.props import BoolProperty, FloatVectorProperty, IntProperty, FloatPrope
 from . import functions
 
 def hide_bone(self, context):
-    self.hide = self.coa_hide
+    self.hide = self.hide
 
 
 def hide_select_bone(self, context):
-    self.hide_select = self.coa_hide_select
+    self.iddata.hide_select = self.hide_select
 
 
 def hide(self, context):
@@ -228,7 +228,7 @@ def set_nla_mode(self, context):
             if child.animation_data != None:
                 child.animation_data.action = None
         context.scene.frame_start = context.scene.coa_tools.frame_start
-        context.scene.frame_end = context.scene.coa_tools.coa_frame_end
+        context.scene.frame_end = context.scene.coa_tools.frame_end
 
         for child in children:
             if child.animation_data != None:
@@ -261,7 +261,7 @@ def update_frame_range(self,context):
 
     if context.scene.coa_tools.nla_mode == "NLA" or len(sprite_object.coa_tools.anim_collections) == 0:
         context.scene.frame_start = self.coa_tools.frame_start
-        context.scene.frame_end = self.coa_tools.coa_frame_end
+        context.scene.frame_end = self.coa_tools.frame_end
 
 def set_blend_mode(self, context):
     self.id_data.active_material.blend_method = self.blend_mode
@@ -408,18 +408,16 @@ class ObjectProperties(bpy.types.PropertyGroup):
 
 class SceneProperties(bpy.types.PropertyGroup):
     display_all: BoolProperty(default=True)
-    display_page: IntProperty(default=0, min=0, name="Display Page",
-                                                  description="Defines which page is displayed")
-    display_length: IntProperty(default=10, min=0, name="Page Length",
-                                                    description="Defines how Many Items are displayed")
-    distance: FloatProperty(description="Set the asset distance for each Paint Stroke",default = 1.0,min=-.0, max=30.0)
-    detail: FloatProperty(description="Detail",default = .3,min=0,max=1.0)
-    snap_distance: FloatProperty(description="Snap Distance",default = 0.01,min=0)
-    surface_snap: BoolProperty(default=True,description="Snap Vertices on Surface",update=snapping)
+    display_page: IntProperty(default=0, min=0, name="Display Page", description="Defines which page is displayed")
+    display_length: IntProperty(default=10, min=0, name="Page Length", description="Defines how Many Items are displayed")
+    distance: FloatProperty(description="Set the asset distance for each Paint Stroke", default=1.0, min=-.0, max=30.0)
+    detail: FloatProperty(description="Detail", default=.3, min=0, max=1.0)
+    snap_distance: FloatProperty(description="Snap Distance", default=0.01, min=0)
+    surface_snap: BoolProperty(default=True, description="Snap Vertices on Surface", update=snapping)
     automerge: BoolProperty(default=False)
-    distance_constraint: BoolProperty(default=False,description="Constraint Distance to Viewport", update=update_stroke_distance)
-    lock_to_bounds: BoolProperty(default=True,description="Lock Cursor to Object Bounds")
-    frame_last: IntProperty(description="Stores last frame Number",default=0)
+    distance_constraint: BoolProperty(default=False, description="Constraint Distance to Viewport", update=update_stroke_distance)
+    lock_to_bounds: BoolProperty(default=True, description="Lock Cursor to Object Bounds")
+    frame_last: IntProperty(description="Stores last frame Number", default=0)
     view: EnumProperty(default="3D",
                        items=(("3D", "3D View", "3D", "MESH_CUBE", 0), ("2D", "2D View", "2D", "MESH_PLANE", 1)),
                        update=lock_view)
@@ -427,7 +425,8 @@ class SceneProperties(bpy.types.PropertyGroup):
 
     nla_mode: EnumProperty(description="Animation Mode. Can be set to NLA or Action to playback all NLA Strips or only Single Actions",items=(("ACTION","ACTION","ACTION","ACTION",0),("NLA","NLA","NLA","NLA",1)),update=set_nla_mode)
     frame_start: IntProperty(name="Frame Start",default=0,min=0,update=update_frame_range)
-    coa_frame_end: IntProperty(name="Frame End",default=250,min=1,update=update_frame_range)
+    frame_end: IntProperty(name="Frame End",default=250,min=1,update=update_frame_range)
+    deprecated_data_found: BoolProperty(name="Deprecated Data", default=False)
 
 class MeshProperties(bpy.types.PropertyGroup):
     hide_base_sprite: BoolProperty(default=False, update=hide_base_sprite,
@@ -440,6 +439,7 @@ class BoneProperties(bpy.types.PropertyGroup):
     data_path: StringProperty()
     hide_select: BoolProperty(default=False, update=hide_select_bone)
     hide: BoolProperty(default=False, update=hide_bone)
+    bone_name: StringProperty()
 
 class WindowManagerProperties(bpy.types.PropertyGroup):
     show_help: BoolProperty(default=False, description="Hide Help")
@@ -451,6 +451,7 @@ def register():
     bpy.types.Bone.coa_tools = PointerProperty(type=BoneProperties)
     bpy.types.WindowManager.coa_tools = PointerProperty(type=WindowManagerProperties)
     print("COATools Properties have been registered")
+
 def unregister():
     del bpy.types.Object.coa_tools
     del bpy.types.Scene.coa_tools

@@ -17,9 +17,9 @@ class COATOOLS_MT_menu(Menu):
         sprite_object = get_sprite_object(obj)
         if context.area.type == "NLA_EDITOR ":
             return True
-        
+
         if sprite_object != None:
-            if (obj != None and ("coa_sprite" in obj or "sprite_object" in obj.coa_tools)) or (sprite_object != None and obj.type == "ARMATURE"):
+            if (obj != None and ("sprite" in obj.coa_tools or "sprite_object" in obj.coa_tools)) or (sprite_object != None and obj.type == "ARMATURE"):
                 return True
     
     def draw(self, context):

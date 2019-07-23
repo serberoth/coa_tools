@@ -31,6 +31,7 @@ import os
 from bpy_extras.io_utils import ExportHelper, ImportHelper
 import json
 from . import functions
+from . import addon_updater_ops
 #from . import preview_collections
 
 bone_layers = []
@@ -48,6 +49,7 @@ class COATOOLS_OT_ChangeShadingMode(bpy.types.Operator):
         return True
 
     def execute(self, context):
+        context.scene.eevee.use_taa_reprojection = False
         context.space_data.shading.type = 'RENDERED'
         context.scene.view_settings.view_transform = "Standard"
         return {"FINISHED"}
@@ -62,12 +64,24 @@ class COATOOLS_PT_Info(bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        return context
+        if context.scene.coa_tools.deprecated_data_found:
+            return context
+        if context.space_data.shading.type != "RENDERED" or context.scene.view_settings.view_transform != "Standard":
+            return context
+
 
 
     def draw(self, context):
 
         layout = self.layout
+
+        if context.scene.coa_tools.deprecated_data_found:
+            row = layout.row()
+            row.operator("coa_tools.convert_deprecated_data", icon="LIBRARY_DATA_BROKEN")
+
+        if (context.space_data.shading.type != "RENDERED" or context.scene.view_settings.view_transform != "Standard") and not context.scene.coa_tools.deprecated_data_found:
+            row = layout.row()
+            row.operator("coa_tools.change_shading_mode", text="Set Textured Shading Mode", icon="ERROR")
 
         if functions.get_addon_prefs(context).show_donate_icon:
             row = layout.row()
@@ -86,6 +100,8 @@ class COATOOLS_PT_Info(bpy.types.Panel):
             op.hashtags = "b3d,coatools"
             op.via = "ndee85"
 
+        # addon_updater_ops.update_notice_box_ui(self, context)
+
 last_obj = None
 class COATOOLS_PT_ObjectProperties(bpy.types.Panel):
     bl_idname = "COATOOLS_PT_object_properties"
@@ -96,7 +112,8 @@ class COATOOLS_PT_ObjectProperties(bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        return True
+        if not context.scene.coa_tools.deprecated_data_found:
+            return context
 
     def draw(self, context):
         global last_obj
@@ -110,8 +127,6 @@ class COATOOLS_PT_ObjectProperties(bpy.types.Panel):
         sprite_object = functions.get_sprite_object(obj)
         scene = context.scene
 
-        if context.space_data.shading.type != "RENDERED" or context.scene.view_settings.view_transform != "Standard":
-            layout.operator("coa_tools.change_shading_mode", text="Set Proper Shading Mode", icon="ERROR")
         functions.display_children(self,context,obj)
 
         if sprite_object != None and obj != None:
@@ -138,7 +153,7 @@ class COATOOLS_PT_ObjectProperties(bpy.types.Panel):
                     col.prop(context.active_bone, 'name', text="", icon="BONE_DATA")
                     ### remove bone ik constraints
                     pose_bone = context.active_pose_bone
-                    if pose_bone != None:
+                    if pose_bone != None and context.active_object != None:
                         for bone in context.active_object.pose.bones:
                             for const in bone.constraints:
                                 if const.type == "IK":
@@ -167,7 +182,7 @@ class COATOOLS_PT_ObjectProperties(bpy.types.Panel):
                 row = layout.row(align=True)
                 row.label(text="Sprite Properties:")
 
-            if obj != None and obj.type == "MESH" and "coa_sprite" in obj and "coa_base_sprite" in obj.modifiers:
+            if obj != None and obj.type == "MESH" and "sprite" in obj.coa_tools and "coa_base_sprite" in obj.modifiers:
                 row = layout.row(align=True)
                 row.prop(obj.data.coa_tools, 'hide_base_sprite', text="Hide Base Sprite")
                 if len(obj.data.vertices) > 4 and obj.data.coa_tools.hide_base_sprite == False:
@@ -253,6 +268,11 @@ class COATOOLS_PT_Tools(bpy.types.Panel):
     bl_category = "COA Tools"
 
     bpy.types.WindowManager.coa_show_help: BoolProperty(default=False,description="Hide Help")
+
+    @classmethod
+    def poll(cls, context):
+        if not context.scene.coa_tools.deprecated_data_found:
+            return context
 
     def draw(self, context):
         global last_obj
@@ -402,22 +422,14 @@ class COATOOLS_PT_Tools(bpy.types.Panel):
                     row.prop(tool_settings, "use_auto_normalize", text="Auto Normalize")
 
         if obj != None and (
-                "coa_sprite" in obj or "coa_bone_shape" in obj) and obj.mode == "EDIT" and obj.type == "MESH" and sprite_object.coa_tools.edit_mesh:
+                "sprite" in obj.coa_tools or "coa_bone_shape" in obj) and obj.mode == "EDIT" and obj.type == "MESH" and sprite_object.coa_tools.edit_mesh:
             row = layout.row(align=True)
             row.label(text="Mesh Tools:")
 
-            if "coa_sprite" in obj:
+            if "sprite" in obj.coa_tools:
                 row = layout.row(align=True)
                 operator = row.operator("coa_tools.generate_mesh_from_edges_and_verts", text="Generate Mesh",
                                         icon="OUTLINER_OB_SURFACE")
-
-                row = layout.row(align=True)
-                operator = row.operator("coa_tools.fill_edge_loop", text="Normal Fill", icon="OUTLINER_OB_SURFACE")
-                operator.triangulate = False
-
-                row = layout.row(align=True)
-                operator = row.operator("coa_tools.fill_edge_loop", text="Triangle Fill", icon="OUTLINER_OB_SURFACE")
-                operator.triangulate = True
 
             col = layout.column(align=True)
 
@@ -435,7 +447,7 @@ class COATOOLS_PT_Tools(bpy.types.Panel):
 
             col = layout.column(align=True)
             operator = col.operator("mesh.knife_tool", text="Knife")
-            if "coa_sprite" in obj:
+            if "sprite" in obj.coa_tools:
                 operator = col.operator("coa_tools.reproject_sprite_texture", text="Reproject Sprite")
 
 ### Custom template_list look
@@ -661,6 +673,11 @@ class COATOOLS_PT_Collections(bpy.types.Panel):
     bl_region_type = "UI"
     bl_category = "COA Tools"
 
+    @classmethod
+    def poll(cls, context):
+        if not context.scene.coa_tools.deprecated_data_found:
+            return context
+
     def draw(self, context):
         layout = self.layout
         obj = context.active_object
@@ -678,7 +695,7 @@ class COATOOLS_PT_Collections(bpy.types.Panel):
             if scene.coa_tools.nla_mode == "NLA":
                 row = layout.row(align=True)
                 row.prop(scene.coa_tools,"frame_start")
-                row.prop(scene.coa_tools,"coa_frame_end")
+                row.prop(scene.coa_tools,"frame_end")
 
             row = layout.row()
             row.template_list("COATOOLS_UL_AnimationCollections","dummy",sprite_object.coa_tools, "anim_collections", sprite_object.coa_tools, "anim_collections_index",rows=2,maxrows=10,type='DEFAULT')

@@ -298,7 +298,6 @@ class COATOOLS_OT_ImportSprite(bpy.types.Operator):
         mod.show_on_cage = True
         
         obj.data.uv_layers.new(name="UVMap")
-        functions.set_uv_default_coords(context, obj)
         
         obj.location = Vector((pos[0],pos[1],-pos[2]))*self.scale + Vector((self.offset[0],self.offset[1],self.offset[2]))*self.scale
         obj["coa_sprite"] = True
