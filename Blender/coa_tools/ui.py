@@ -83,22 +83,22 @@ class COATOOLS_PT_Info(bpy.types.Panel):
             row = layout.row()
             row.operator("coa_tools.change_shading_mode", text="Set Textured Shading Mode", icon="ERROR")
 
-        if functions.get_addon_prefs(context).show_donate_icon:
-            row = layout.row()
-            row.alignment = "CENTER"
-
-            pcoll = preview_collections["main"]
-            donate_icon = pcoll["donate_icon"]
-            twitter_icon = pcoll["twitter_icon"]
-            row.operator("coa_operator.coa_donate",text="Show Your Love",icon_value=donate_icon.icon_id,emboss=True)
-            row = layout.row()
-            row.alignment = "CENTER"
-            row.scale_x = 1.75
-            op = row.operator("coa_operator.coa_tweet",text="Tweet",icon_value=twitter_icon.icon_id,emboss=True)
-            op.link = "https://www.youtube.com/ndee85"
-            op.text = "Check out CutoutAnimation Tools Addon for Blender by Andreas Esau."
-            op.hashtags = "b3d,coatools"
-            op.via = "ndee85"
+        # if functions.get_addon_prefs(context).show_donate_icon:
+        #     row = layout.row()
+        #     row.alignment = "CENTER"
+        #
+        #     pcoll = preview_collections["main"]
+        #     donate_icon = pcoll["donate_icon"]
+        #     twitter_icon = pcoll["twitter_icon"]
+        #     row.operator("coa_operator.coa_donate",text="Show Your Love",icon_value=donate_icon.icon_id,emboss=True)
+        #     row = layout.row()
+        #     row.alignment = "CENTER"
+        #     row.scale_x = 1.75
+        #     op = row.operator("coa_operator.coa_tweet",text="Tweet",icon_value=twitter_icon.icon_id,emboss=True)
+        #     op.link = "https://www.youtube.com/ndee85"
+        #     op.text = "Check out CutoutAnimation Tools Addon for Blender by Andreas Esau."
+        #     op.hashtags = "b3d,coatools"
+        #     op.via = "ndee85"
 
         # addon_updater_ops.update_notice_box_ui(self, context)
 
