@@ -941,14 +941,8 @@ class COATOOLS_OT_DrawContour(bpy.types.Operator):
             click_button = None
             select_button = None
             keyconfig = wm.keyconfigs.active
-            if (getattr(keyconfig.preferences, "select_mouse") == "RIGHT"):
-                click_button = 'LEFTMOUSE'
-                select_button = 'RIGHTMOUSE'
-            else:
-                click_button = 'LEFTMOUSE'
-                select_button = 'RIGHTMOUSE'
-                # click_button = 'RIGHTMOUSE'
-                # select_button = 'LEFTMOUSE'
+            click_button = 'LEFTMOUSE'
+            select_button = 'RIGHTMOUSE'
             
             
             ### leave edit mode

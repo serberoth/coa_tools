@@ -303,10 +303,7 @@ class COATOOLS_OT_QuickArmature(bpy.types.Operator):
                 mouse_button = None
                 wm = context.window_manager
                 keyconfig = wm.keyconfigs.active
-                if getattr(keyconfig.preferences, "select_mouse") == "RIGHT":
-                    mouse_button = 'LEFTMOUSE' 
-                else:
-                    mouse_button = 'LEFTMOUSE'
+                mouse_button = 'LEFTMOUSE'
                 ### Set Mouse click
                 
                      
