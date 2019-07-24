@@ -70,6 +70,9 @@ from . operators import toggle_animation_area
 from . operators import view_sprites
 from . operators import version_converter
 
+from . operators.exporter import export_dragonbones
+from . operators.exporter import export_creature
+
 # register
 ################################## 
 
@@ -215,6 +218,12 @@ classes = (
 
     toggle_animation_area.COATOOLS_OT_ToggleAnimationArea,
     version_converter.COATOOLS_OT_VersionConverter,
+
+    # exporter
+    export_dragonbones.COATOOLS_OT_DragonBonesExport,
+    export_dragonbones.COATOOLS_PT_ExportPanel,
+    export_creature.COATOOLS_OT_CreatureExport,
+
 )
 
 addon_keymaps = []

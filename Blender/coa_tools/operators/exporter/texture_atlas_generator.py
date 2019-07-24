@@ -2,6 +2,7 @@ import bpy
 from mathutils import Vector
 from mathutils.geometry import intersect_line_line_2d
 import math
+from ... import constants
 
 
 class TextureData:
@@ -50,20 +51,17 @@ class TextureAtlasGenerator:
     @staticmethod
     def get_texture_bounds(obj, output_scale):
         uvs = obj.data.uv_layers[0].data
-        textures = obj.data.uv_textures[0].data
+        textures = obj.data.uv_layers[0].data
 
-        texture = None
-        for mat_slot in obj.material_slots:
-            if mat_slot.material != None:
-                material = mat_slot.material
-                for tex_slot in material.texture_slots:
-                    if tex_slot.texture != None:
-                        texture = tex_slot.texture
-                        break
-                if texture != None:
-                    break
-        if texture != None:
-            img_size = texture.image.size
+        image = None
+
+        for node in obj.active_material.node_tree.nodes:
+            if node.type == "GROUP" and node.node_tree.name == constants.COA_NODE_GROUP_NAME:
+                links = node.inputs[0].links
+                image = links[0].from_node.image if len(links) > 0 else None
+
+        if image != None:
+            img_size = image.size
             bottom_left_x = 1.0
             bottom_left_y = 1.0
             top_right_x = 0.0
@@ -82,7 +80,7 @@ class TextureAtlasGenerator:
                 bounds_px[i] = int(bounds_px[i] * output_scale)
             width = abs((bounds_px[2] - bounds_px[0]))
             height = abs((bounds_px[3] - bounds_px[1]))
-            texture_data = TextureData(texture.image.name, obj, bounds_px, bounds_rel, width, height)
+            texture_data = TextureData(image.name, obj, bounds_px, bounds_rel, width, height)
             return texture_data
         return None
 
@@ -220,7 +218,7 @@ class TextureAtlasGenerator:
             if slot.texture_data != None:
 
                 obj = slot.texture_data.texture_object
-                uv_map = obj.data.uv_textures.new(name="COA_UV_ATLAS")
+                uv_map = obj.data.uv_layers.new(name="COA_UV_ATLAS")
                 uv_layer = obj.data.uv_layers["COA_UV_ATLAS"]
 
                 uv_old_width = slot.texture_data.bounds_rel[2] - slot.texture_data.bounds_rel[0]
@@ -247,13 +245,13 @@ class TextureAtlasGenerator:
         if len(context.selected_objects) > 1:
             bpy.ops.object.join()
         merged_uv_obj = context.active_object
-        merged_uv_obj.data.uv_textures.active = merged_uv_obj.data.uv_textures["COA_UV_ATLAS"]
+        merged_uv_obj.data.uv_layers.active = merged_uv_obj.data.uv_layers["COA_UV_ATLAS"]
         atlas_img = bpy.data.images.new(atlas_data.name, atlas_data.width, atlas_data.height, alpha=True)
         for vert in merged_uv_obj.data.vertices:
             vert.select = True
             vert.hide = False
-        for uv_data in merged_uv_obj.data.uv_textures["COA_UV_ATLAS"].data:
-            uv_data.image = atlas_img
+        # for uv_data in merged_uv_obj.data.uv_layers["COA_UV_ATLAS"].data:
+        #     uv_data.image = atlas_img
 
         ### bake uv atlas
         context.scene.render.bake_type = "TEXTURE"
