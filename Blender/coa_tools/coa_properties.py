@@ -426,7 +426,7 @@ class SceneProperties(bpy.types.PropertyGroup):
     runtime_format: bpy.props.EnumProperty(default="CREATURE", description="Exports for choosen runtime.",items=(("CREATURE","Creature","Creature"),("DRAGONBONES","Dragonbones","Dragonbones")))
     export_path: bpy.props.StringProperty(default="", name="Export Path",subtype="DIR_PATH")
     export_image_mode: bpy.props.EnumProperty(default="ATLAS", name="Image Mode",items=(("ATLAS","Atlas","Atlas"),("IMAGES","Images","Images")))
-    atlas_mode: bpy.props.EnumProperty(default="AUTO_SIZE", name="Atlas Mode",items=(("AUTO_SIZE", "Auto Size", "Auto Size"),("LIMIT_SIZE","Limit Size","Limit Size")))
+    atlas_mode: bpy.props.EnumProperty(default="LIMIT_SIZE", name="Atlas Mode",items=(("AUTO_SIZE", "Auto Size", "Auto Size"),("LIMIT_SIZE","Limit Size","Limit Size")))
     sprite_scale: bpy.props.FloatProperty(default=1.0, min=0.1, max=1.0, name="Sprite Output Scale", description="Define the Sprite Output Scale", step=0.1)
     atlas_resolution_x: bpy.props.IntProperty(default=1024,name="Resolution X",min=8,subtype="PIXEL")
     atlas_resolution_y: bpy.props.IntProperty(default=1024, name="Resolution Y",min=8,subtype="PIXEL")
