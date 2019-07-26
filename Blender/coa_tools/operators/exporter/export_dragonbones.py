@@ -29,6 +29,7 @@ import math
 from mathutils import Vector,Matrix, Quaternion, Euler
 import shutil
 from . texture_atlas_generator import TextureAtlasGenerator
+from ... import constants
 
 json_data = OrderedDict({
             "info":"Generated with COA Tools",
@@ -125,10 +126,13 @@ def setup_json_project(project_name):
 def get_sprite_image_data(sprite_data):
     #mat = sprite.active_material
     mat = sprite_data.materials[0]
-    tex = [slot.texture for slot in mat.texture_slots if slot != None and slot.texture.type == "IMAGE"][0]
-    img = tex.image if tex.image != None else None
+    for node in mat.node_tree.nodes:
+        if node.type == "GROUP" and node.node_tree.name == constants.COA_NODE_GROUP_NAME:
+            links = node.inputs[0].links
+            tex_node = links[0].from_node
+            img = tex_node.image if len(links) > 0 and tex_node.type == "TEX_IMAGE" else None
 
-    return mat, tex, img
+    return mat, img
 
 def copy_textures(self,sprites,texture_dir_path):
     global img_names
@@ -138,13 +142,15 @@ def copy_textures(self,sprites,texture_dir_path):
             imgs = []
             if sprite.coa_tools.type == "MESH":
                 if len(sprite.data.materials) > 0:
-                    mat, tex, img = get_sprite_image_data(sprite.data)
-                    imgs.append({"img":img,"key":sprite.data.name})
+                    mat, img = get_sprite_image_data(sprite.data)
+                    if img != None:
+                        imgs.append({"img":img,"key":sprite.data.name})
             elif sprite.coa_tools.type == "SLOT":
                 for slot in sprite.coa_tools.slot:
                     if len(slot.mesh.materials) > 0:
-                        mat, tex, img = get_sprite_image_data(slot.mesh)
-                        imgs.append({"img":img,"key":slot.mesh.name})
+                        mat, img = get_sprite_image_data(slot.mesh)
+                        if img != None:
+                            imgs.append({"img":img,"key":slot.mesh.name})
 
             for data in imgs:
                 img = data["img"]
@@ -185,7 +191,7 @@ def remove_base_sprite(obj):
     bpy.ops.mesh.quads_convert_to_tris(quad_method='BEAUTY', ngon_method='BEAUTY')
 
 
-    bmesh.ops.delete(bm,geom=verts,context=1)
+    bmesh.ops.delete(bm,geom=verts,context='VERTS')
     bm = bmesh.update_edit_mesh(obj.data)
     bpy.ops.object.mode_set(mode="OBJECT")
 
@@ -197,9 +203,9 @@ def get_mixed_vertex_data(obj):
     shapes = obj.data.shape_keys
     verts = []
     index = int(obj.active_shape_key_index)
-    shape_key = obj.shape_key_add("tmp_mixed_mesh",from_mix=True)
+    shape_key = obj.shape_key_add(name="tmp_mixed_mesh",from_mix=True)
     for vert in shape_key.data:
-        coord = obj.matrix_world * vert.co
+        coord = obj.matrix_world @ vert.co
         verts.append([vert.co[0],vert.co[1],vert.co[2]])
     obj.shape_key_remove(shape_key)
     obj.active_shape_key_index = index
@@ -501,8 +507,8 @@ def get_skin_slot(self,sprite,armature,scale,slot_data=None):
         sprite_data = slot_data.copy()
     sprite = sprite.copy()
     sprite.data = sprite_data
-    self.collection.objects.link(sprite)
-    self.view_layer.objects.active = sprite
+    context.collection.objects.link(sprite)
+    context.view_layer.objects.active = sprite
 
     ### normalize weights
     normalize_weights(sprite, armature, 0.0)
@@ -520,9 +526,10 @@ def get_skin_slot(self,sprite,armature,scale,slot_data=None):
     tmp_slots_data[sprite_data_name] = {"data":sprite_data,"object":sprite,"name":sprite_data_name}
 
     ### get sprite material, texture and img data
-    mat, tex, img = get_sprite_image_data(sprite_data)
-    tex_path = os.path.join(self.scene.coa_tools.project_name+"_texture" , img_names[sprite_data_name])
-    tex_pathes[sprite_name] = tex_path
+    mat, img = get_sprite_image_data(sprite_data)
+    if sprite_data_name in img_names:
+        tex_path = os.path.join(self.scene.coa_tools.project_name+"_texture", img_names[sprite_data_name])
+        tex_pathes[sprite_name] = tex_path
     ### delete basesprite mesh in sprite duplicate
     remove_base_sprite(sprite)
 
@@ -559,7 +566,7 @@ def get_skin_slot(self,sprite,armature,scale,slot_data=None):
 
     if armature != None:
         armature.data.pose_position = "REST"
-        bpy.context.scene.update()
+        bpy.context.view_layer.update()
 
         if len(sprite.data.vertices) != 4:
             ### write mesh bone data
@@ -578,7 +585,7 @@ def get_skin_slot(self,sprite,armature,scale,slot_data=None):
                 display_data["bonePose"].append(round(mat[1][3] * scale ,3))#pos x
                 display_data["bonePose"].append(round(-mat[0][3] *scale ,3))#pos y
             armature.data.pose_position = "POSE"
-            bpy.context.scene.update()
+            bpy.context.view_layer.update()
 
             w = round(sprite.matrix_local[0][0], 3)
             x = round(sprite.matrix_local[0][2], 3)
@@ -594,7 +601,7 @@ def get_skin_slot(self,sprite,armature,scale,slot_data=None):
             if bone != None:
                 bone_pos = get_bone_matrix(self.armature, bone, relative=False).to_translation()
                 p_bone = self.armature.pose.bones[bone.name]
-                sprite_pos_final = (bone.matrix_local.inverted() * sprite_center_pos) * scale
+                sprite_pos_final = (bone.matrix_local.inverted() @ sprite_center_pos) * scale
                 angle = get_bone_angle(armature, bone, relative=False)
             else:
                 sprite_pos_final = sprite_center_pos * scale
@@ -696,7 +703,7 @@ def get_mesh_center(sprite, scale):
     for i,vert in enumerate(sprite.data.vertices):
         average_vert += vert.co
     average_vert /= len(sprite.data.vertices)
-    pos = (sprite.matrix_world @ average_vert) @ scale
+    pos = (sprite.matrix_world @ average_vert) * scale
     pos_2d = Vector((pos[0], pos[2]))
     return pos
 
@@ -1176,6 +1183,7 @@ class COATOOLS_OT_DragonBonesExport(bpy.types.Operator):
 
     def __init__(self):
         self.reduce_size = bpy.context.scene.coa_tools.minify_json
+        self.sprite_scale = bpy.context.scene.coa_tools.sprite_scale
 
     def draw(self,context):
         layout = self.layout
@@ -1222,6 +1230,7 @@ class COATOOLS_OT_DragonBonesExport(bpy.types.Operator):
         context.scene.frame_current = self.frame_current
 
     def execute(self, context):
+        bpy.ops.ed.undo_push(message="Export to Dragonbones")
         global tmp_slots_data
         tmp_slots_data = {}
 
@@ -1315,6 +1324,7 @@ class COATOOLS_OT_DragonBonesExport(bpy.types.Operator):
         self.scene.coa_tools.nla_mode = coa_nla_mode
 
         self.report({"INFO"},"Export successful.")
+        bpy.ops.ed.undo()
         return {"FINISHED"}
 
 
@@ -1443,7 +1453,19 @@ def generate_texture_atlas(self, sprites, atlas_name, img_path, img_width=512, i
 
         bpy.ops.object.mode_set(mode="OBJECT")
 
-    img_atlas, tex_atlas_obj, atlas = TextureAtlasGenerator.generate_uv_layout(name="COA_UV_ATLAS", objects=context.selected_objects, width=16, height=16, max_width=img_width, max_height=img_height, margin=margin, texture_bleed=0, square=False, output_scale=sprite_scale)
+    img_atlas, tex_atlas_obj, atlas = TextureAtlasGenerator.generate_uv_layout(
+        name="COA_UV_ATLAS",
+        objects=context.selected_objects,
+        width=2,
+        height=2,
+        max_width=img_width,
+        max_height=img_height,
+        margin=self.scene.coa_tools.atlas_island_margin,
+        texture_bleed=self.scene.coa_tools.export_texture_bleed,
+        square=self.scene.coa_tools.export_square_atlas,
+        output_scale=self.sprite_scale
+    )
+
     img_width = atlas.width
     img_height = atlas.height
 

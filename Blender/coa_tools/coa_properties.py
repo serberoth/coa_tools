@@ -100,11 +100,6 @@ def update_filter(self, context):
     pass
 
 
-def change_direction(self, context):
-    functions.set_direction(self)
-    self.coa_flip_direction_last = self.coa_flip_direction
-
-
 def get_shapekeys(self, context):
     SHAPEKEYS = []
     obj = context.active_object
@@ -242,10 +237,9 @@ def set_nla_mode(self, context):
             functions.set_action(context)
             for obj in context.visible_objects:
                 if obj.type == "MESH" and "coa_sprite" in obj:
-                    functions.update_uv(context,obj)
-                    functions.set_alpha(obj,bpy.context,obj.coa_alpha)
-                    functions.set_z_value(context,obj,obj.coa_z_value)
-                    functions.set_modulate_color(obj,context,obj.coa_modulate_color)
+                    functions.set_alpha(obj,bpy.context,obj.coa_tools.alpha)
+                    functions.set_z_value(context,obj,obj.coa_tools.z_value)
+                    functions.set_modulate_color(obj,context,obj.coa_tools.modulate_color)
             for child in children:
                 if child.animation_data != None:
                     for track in child.animation_data.nla_tracks:
@@ -390,8 +384,6 @@ class ObjectProperties(bpy.types.PropertyGroup):
     slot_index_last: bpy.props.IntProperty()
     slot_reset_index: bpy.props.IntProperty(default=0, min=0)
     slot_show: bpy.props.BoolProperty(default=False)
-    flip_direction: bpy.props.BoolProperty(default=False, update=change_direction)
-    flip_direction_last: bpy.props.BoolProperty(default=False)
     change_z_ordering: bpy.props.BoolProperty(default=False)
     selected_shapekey: bpy.props.EnumProperty(items=get_shapekeys, update=select_shapekey,
                                                                    name="Active Shapkey")
