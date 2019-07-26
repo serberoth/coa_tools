@@ -55,6 +55,13 @@ C:\Program Files\Adobe\Adobe Photoshop CC 2015\Presets\Scripts
 
 Don’t forget to restart Photoshop and then go to File -> Scripts -> BlenderExporter.jsx
 
+### Krita Exporter:
+Start Krita, go to Settings -> Manage Resources and click the "Open Resource Folder" in the new window. This will open up the krita resource directory. If no pykrita directory exists, create one.
+Now copy all content from the the Github Krita directory into the pykrita directory. Restart Krita.
+Now go to Settings -> Configure Krita, then to Python Plugin Manager and enable the COA Tools Exporter. Once the plugin is activated, you can enable the docker under Settings -> Dockers -> COA Tools Exporter.
+
+Now just select the desired layer you want to export. Define a project name and path in the docker and export the images.
+
 ### GIMP Exporter:
 
 The coatools_exporter.py should be copied to your GIMP plug-ins folder which is located in:
