@@ -2,13 +2,5 @@ Blender/coa_tools/__pycache__
 Blender/coa_tools/operators/__pycache__
 *.pyc
 Blender/coa_tools/venv
-Blender/coa_tools/.idea/coa_tools.iml
-Blender/coa_tools/.idea/misc.xml
-Blender/coa_tools/.idea/workspace.xml
-Blender/coa_tools/.idea/workspace.xml
-Blender/coa_tools/.idea/misc.xml
-Blender/coa_tools/.idea/coa_tools.iml
-Blender/coa_tools/.idea/coa_tools.iml
-Blender/coa_tools/.idea/misc.xml
-Blender/coa_tools/.idea/modules.xml
-Blender/coa_tools/.idea/workspace.xml
+Blender/coa_tools/.idea/
+Krita/coa_tools_exporter/.idea/
