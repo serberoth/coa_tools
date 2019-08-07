@@ -300,7 +300,7 @@ class COATOOLS_OT_ImportSprite(bpy.types.Operator):
         obj.data.uv_layers.new(name="UVMap")
         
         obj.location = Vector((pos[0],pos[1],-pos[2]))*self.scale + Vector((self.offset[0],self.offset[1],self.offset[2]))*self.scale
-        obj["coa_sprite"] = True
+        obj.coa_tools["sprite"] = True
         if self.parent != "None":
             obj.parent = bpy.data.objects[self.parent]
         return obj
