@@ -274,6 +274,8 @@ def register():
 
 
 def unregister():
+    addon_updater_ops.unregister()
+
     # unregister classes
     for cls in classes:
         bpy.utils.unregister_class(cls)
@@ -355,9 +357,15 @@ def copy_icons():
         b_icon_path = os.path.join(os.path.dirname(bpy.app.binary_path), version, "datafiles", "icons", icon_name)
 
         if os.path.isfile(b_icon_path):
-            os.remove(b_icon_path)
+            try:
+                os.remove(b_icon_path)
+            except IOError as e:
+                print("Unable to delete file. %s" % e)
 
         dir_path = os.path.dirname(b_icon_path)
         if not os.path.exists(dir_path):
             os.makedirs(dir_path)
-        shutil.copyfile(icon_path, b_icon_path)
+        try:
+            shutil.copyfile(icon_path, b_icon_path)
+        except IOError as e:
+            print("Unable to copy file. %s" % e)
