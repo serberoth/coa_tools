@@ -703,7 +703,7 @@ class COATOOLS_OT_CreatureExport(bpy.types.Operator):
     def save_texture_atlas(self, context, img_atlas, img_path, atlas_name):
         context.scene.render.image_settings.color_mode = "RGBA"
         compression_rate = int(context.scene.render.image_settings.compression)
-        context.scene.render.image_settings.compression = 100
+        context.scene.render.image_settings.compression = 85
         texture_path = os.path.join(img_path, atlas_name + "_atlas.png")
         img_atlas.save_render(texture_path)
         context.scene.render.image_settings.compression = compression_rate
@@ -768,8 +768,6 @@ class COATOOLS_OT_CreatureExport(bpy.types.Operator):
             output_scale=self.sprite_scale
         )
 
-        self.save_texture_atlas(context, img_atlas, self.export_path_abs, self.project_name)
-
         # collect all relevant json data for export
         points, uvs, indices = self.create_mesh_data(context, merged_atlas_obj)
         self.json_data["mesh"]["points"] = points
@@ -781,6 +779,7 @@ class COATOOLS_OT_CreatureExport(bpy.types.Operator):
 
 
         self.write_json_file()
+        self.save_texture_atlas(context, img_atlas, self.export_path_abs, self.project_name)
 
         # cleanup scene and add an undo history step
         bpy.ops.ed.undo()
