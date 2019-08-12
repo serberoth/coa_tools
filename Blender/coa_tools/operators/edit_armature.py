@@ -481,8 +481,10 @@ class COATOOLS_OT_QuickArmature(bpy.types.Operator):
         self.armature_mode = context.active_object.mode
         bpy.ops.object.mode_set(mode='EDIT')
 
-
-        bpy.utils.register_tool(COATOOLS_TO_DrawBone, after={"builtin.select"}, separator=True, group=True)
+        try:
+            bpy.utils.register_tool(COATOOLS_TO_DrawBone, after={"builtin.select"}, separator=True, group=True)
+        except:
+            pass
         functions.set_active_tool(self, context, "coa_tools.draw_bone")
 
         context.window_manager.modal_handler_add(self)
