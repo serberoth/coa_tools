@@ -76,6 +76,7 @@ def exit_edit_shapekey(self, context):
         obj = context.active_object
         if obj != None and obj.mode == "SCULPT":
             bpy.ops.object.mode_set(mode="OBJECT")
+            obj.show_wire = False
 
 
 def hide_base_sprite(self, context):
