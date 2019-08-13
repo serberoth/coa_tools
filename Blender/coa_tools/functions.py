@@ -772,6 +772,7 @@ def display_children(self, context, obj):
         col = box.column(align=True)
         sprite_object = get_sprite_object(obj)
         children = get_children(context,sprite_object,ob_list=[])
+        armature = get_armature(sprite_object)
         
         list1 = []
         list2 = []
@@ -822,7 +823,15 @@ def display_children(self, context, obj):
                     op = subrow.operator("coa_tools.show_children",text=obj2.name,emboss=False)
                     op.mode = "object"
                     op.ob_name = obj2.name
-                    
+
+                    icon = "POSE_HLT"
+                    if armature.mode == "OBJECT":
+                        icon = "OBJECT_DATAMODE"
+                    elif armature.mode == "EDIT":
+                        icon = "EDITMODE_HLT"
+                    op = subrow.operator("coa_tools.toggle_pose_mode", icon=icon, text="", emboss=False)
+                    op.ob_name = armature.name
+
                     op = subrow.operator("coa_tools.view_sprite",icon="ZOOM_SELECTED",text="",emboss=False)
                     op.type = "VIEW_ALL"
                     op.name = obj2.name
