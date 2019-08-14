@@ -170,6 +170,7 @@ classes = (
     edit_mesh.COATOOLS_OT_DrawContour,
     edit_mesh.COATOOLS_OT_PickEdgeLength,
 
+    edit_armature.COATOOLS_OT_TooglePoseMode,
     edit_armature.COATOOLS_OT_BindMeshToBones,
     edit_armature.COATOOLS_OT_QuickArmature,
     edit_armature.COATOOLS_OT_SetStretchBone,
