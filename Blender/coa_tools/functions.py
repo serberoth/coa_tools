@@ -83,7 +83,10 @@ def draw_sculpt_ui(self,context,layout):
             shapekey_index = int(obj.coa_tools.selected_shapekey)
             if shapekey_index > 0:
                 active_shapekey = obj.data.shape_keys.key_blocks[shapekey_index]
-                col.prop(active_shapekey,"value")        
+                subrow = col.row(align=True)
+                subrow.prop(active_shapekey,"value")
+
+                subrow.prop(obj,"show_only_shape_key", text="",icon="UNPINNED")
         
         col = layout.column(align=False)
         subrow = col.row(align=True)

@@ -104,7 +104,9 @@ class COATOOLS_OT_EditWeights(bpy.types.Operator):
 
     def exit_edit_mode(self, context):
         ### remove draw call
-        bpy.types.SpaceView3D.draw_handler_remove(self.draw_handler, "WINDOW")
+        if self.draw_handler != None:
+            bpy.types.SpaceView3D.draw_handler_remove(self.draw_handler, "WINDOW")
+            self.draw_handler = None
 
         sprite_object = bpy.data.objects[self.sprite_object_name]
         

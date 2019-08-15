@@ -69,6 +69,7 @@ from . operators import slot_handling
 from . operators import toggle_animation_area
 from . operators import view_sprites
 from . operators import version_converter
+from . operators import change_alpha_mode
 
 from . operators.exporter import export_dragonbones
 from . operators.exporter import export_creature
@@ -219,6 +220,8 @@ classes = (
 
     toggle_animation_area.COATOOLS_OT_ToggleAnimationArea,
     version_converter.COATOOLS_OT_VersionConverter,
+
+    change_alpha_mode.COATOOLS_OT_ChangeAlphaMode,
 
     # exporter
     export_dragonbones.COATOOLS_OT_DragonBonesExport,
