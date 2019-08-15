@@ -373,6 +373,9 @@ class COATOOLS_PT_Tools(bpy.types.Panel):
                     if obj != None and obj.coa_tools.type == "SLOT":
                         row.operator("coa_tools.extract_slots", text="Extract Slots", icon="EXPORT", emboss=True)
 
+                    row = layout.row()
+                    row.operator("coa_tools.change_alpha_mode", text="Change Alpha Mode", icon="SHADING_RENDERED")
+
                     if functions.operator_exists("object.create_driver_constraint") and len(context.selected_objects) > 1:
                         row = layout.row()
                         row.operator("object.create_driver_constraint", text="Driver Constraint", icon="DRIVER")
