@@ -65,9 +65,26 @@ It should show up under Files>Export to CoaTools... after your restart GIMP
 
 
 ### Blender Addon:
-Zip the coa_folder.
-Go to File -> User Preferences -> Add-ons and click the “Install from file...” button.
-This will install and enable the Addon for Blender. Don’t forget to save the user preferences, otherwise the addon will not be activated after restart.
+
+#### Blender 2.9x
+
+Not supported yet. See #172.
+
+#### Blender 2.8x
+
+1. Download the `blender28` branch, not the `master`branch.
+1. Zip the `coa_tools` folder that you can find inside the `Blender` folder.
+1. Go to Edit -> Preferences -> Add-ons and click the “📥 Install” button, but don't enable it yet.
+1. Restart Blender (see #159).
+1. Go to Edit -> Preferences -> Add-ons, search for "COA", and enable the addon.
+1. Look for a "COA Tools" tab on the vertical toolbar to the right of the 3D view (press "N" if you don't see that toolbar).
+
+#### Blender < 2.8
+
+1. Download the `master` branch.
+1. Zip the `coa_tools` folder that you can find inside the `Blender` folder.
+1. Go to File -> User Preferences -> Add-ons and click the “Install from file...” button.
+1. Don’t forget to save the user preferences, otherwise the addon will not be activated after restart.
 
 ### Godot Importer:
 Notice, this importer will only run with current godot 2.1 dev builds. 
