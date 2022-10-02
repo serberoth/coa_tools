@@ -357,7 +357,7 @@ def copy_icons():
         ]
 
     for icon_name in icons:
-        icon_path = os.path.join(bpy.utils.user_resource("SCRIPTS", "addons"), "coa_tools", "icons", icon_name)
+        icon_path = os.path.join(bpy.utils.user_resource("SCRIPTS", path="addons"), "coa_tools", "icons", icon_name)
         b_icon_path = os.path.join(os.path.dirname(bpy.app.binary_path), version, "datafiles", "icons", icon_name)
 
         if os.path.isfile(b_icon_path):
