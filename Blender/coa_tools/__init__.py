@@ -285,7 +285,7 @@ def unregister():
         bpy.utils.unregister_class(cls)
 
     # unregister tools
-    bpy.utils.unregister_tool(edit_mesh.COATOOLS_TO_DrawPolygon)
+    # bpy.utils.unregister_tool(edit_mesh.COATOOLS_TO_DrawPolygon)
 
     # unregisters props and keymap
     props.unregister()

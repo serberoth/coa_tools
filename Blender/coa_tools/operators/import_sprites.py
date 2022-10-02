@@ -367,7 +367,9 @@ class COATOOLS_OT_ImportSprite(bpy.types.Operator):
                 selected_objects.append(obj2)
                 if obj2 != context.active_object:
                     obj2.select_set(False)
-            obj.coa_tools.z_value = -self.pos[1]
+            # XXX: Is this conversion from float to int correct here?
+            # Because z_value is an IntProperty and pos is a FloatVectorProperty
+            obj.coa_tools.z_value = int(-self.pos[1])
             for obj2 in selected_objects:
                 obj2.select_set(True)
             
